@@ -903,7 +903,7 @@
       <div class="two-col">
         <div class="field">
           <label>Cantidad</label>
-          <input type="number" id="quantity" placeholder="200" inputmode="decimal" min="0">
+          <input type="number" id="quantity" placeholder="200" inputmode="decimal" min="0" oninput="recalcByQty()">
         </div>
         <div class="field">
           <label>Unidad</label>
@@ -1239,50 +1239,60 @@
   // ── State ──────────────────────────────────────────────────────────
   let selectedMeal = null;
   let selectedOrigin = "Casa";
-  let foodsDb = JSON.parse(localStorage.getItem('nf_foods') || 'null');
+  let foodsDb = []; // loaded from foods.json — read only
+  let customFoods = JSON.parse(localStorage.getItem('nf_custom_foods') || '[]'); // user additions
 
-  // ── Default food database (Costa Rica / Latin America common foods) ──
   const DEFAULT_FOODS = [
-    { name: 'Pechuga de pollo cocida',    qty: 100, unit: 'gramos',   cal: 165, p: 31,  c: 0,  f: 3.6, fib: 0 },
-    { name: 'Arroz blanco cocido',         qty: 100, unit: 'gramos',   cal: 130, p: 2.7, c: 28, f: 0.3, fib: 0.4 },
-    { name: 'Frijoles negros cocidos',     qty: 100, unit: 'gramos',   cal: 132, p: 8.9, c: 24, f: 0.5, fib: 8.7 },
-    { name: 'Gallo pinto',                 qty: 200, unit: 'gramos',   cal: 260, p: 9,   c: 48, f: 2,   fib: 4 },
-    { name: 'Huevo entero',                qty: 1,   unit: 'unidades', cal: 70,  p: 6,   c: 0.5,f: 5,   fib: 0 },
-    { name: 'Huevo (clara)',               qty: 1,   unit: 'unidades', cal: 17,  p: 3.6, c: 0.2,f: 0,   fib: 0 },
-    { name: 'Aguacate',                    qty: 100, unit: 'gramos',   cal: 160, p: 2,   c: 9,  f: 15,  fib: 7 },
-    { name: 'Plátano maduro',              qty: 1,   unit: 'unidades', cal: 105, p: 1.3, c: 27, f: 0.4, fib: 3.1 },
-    { name: 'Plátano verde cocido',        qty: 100, unit: 'gramos',   cal: 116, p: 1.3, c: 31, f: 0.2, fib: 2.3 },
-    { name: 'Tortilla de maíz',            qty: 1,   unit: 'unidades', cal: 58,  p: 1.5, c: 12, f: 0.7, fib: 1.4 },
-    { name: 'Pan integral (rebanada)',     qty: 1,   unit: 'rebanadas',cal: 80,  p: 4,   c: 15, f: 1,   fib: 2 },
-    { name: 'Yogur griego natural',        qty: 150, unit: 'gramos',   cal: 100, p: 17,  c: 6,  f: 0.7, fib: 0 },
-    { name: 'Leche entera',               qty: 240, unit: 'ml',       cal: 150, p: 8,   c: 12, f: 8,   fib: 0 },
-    { name: 'Leche descremada',           qty: 240, unit: 'ml',       cal: 90,  p: 9,   c: 12, f: 0.5, fib: 0 },
-    { name: 'Queso blanco',               qty: 30,  unit: 'gramos',   cal: 80,  p: 6,   c: 1,  f: 6,   fib: 0 },
-    { name: 'Atún en agua (lata)',         qty: 85,  unit: 'gramos',   cal: 100, p: 22,  c: 0,  f: 1,   fib: 0 },
-    { name: 'Salmón al horno',            qty: 100, unit: 'gramos',   cal: 206, p: 20,  c: 0,  f: 13,  fib: 0 },
-    { name: 'Carne molida (90% magra)',   qty: 100, unit: 'gramos',   cal: 176, p: 20,  c: 0,  f: 10,  fib: 0 },
-    { name: 'Avena en hojuelas',           qty: 40,  unit: 'gramos',   cal: 150, p: 5,   c: 27, f: 2.5, fib: 4 },
-    { name: 'Banana',                      qty: 1,   unit: 'unidades', cal: 89,  p: 1.1, c: 23, f: 0.3, fib: 2.6 },
-    { name: 'Manzana',                     qty: 1,   unit: 'unidades', cal: 80,  p: 0.4, c: 21, f: 0.3, fib: 3.7 },
-    { name: 'Papaya',                      qty: 150, unit: 'gramos',   cal: 60,  p: 0.9, c: 15, f: 0.4, fib: 2.3 },
-    { name: 'Piña',                        qty: 150, unit: 'gramos',   cal: 75,  p: 0.8, c: 20, f: 0.2, fib: 1.7 },
-    { name: 'Ensalada verde (sin aderezo)',qty: 100, unit: 'gramos',   cal: 20,  p: 1.5, c: 3,  f: 0.3, fib: 1.5 },
-    { name: 'Brócoli cocido',             qty: 100, unit: 'gramos',   cal: 35,  p: 2.4, c: 7,  f: 0.4, fib: 2.6 },
-    { name: 'Zanahoria',                   qty: 100, unit: 'gramos',   cal: 41,  p: 0.9, c: 10, f: 0.2, fib: 2.8 },
-    { name: 'Papa cocida',                qty: 150, unit: 'gramos',   cal: 130, p: 3,   c: 30, f: 0.2, fib: 2.4 },
-    { name: 'Pasta cocida',               qty: 150, unit: 'gramos',   cal: 220, p: 8,   c: 43, f: 1.3, fib: 2.5 },
-    { name: 'Aceite de oliva',            qty: 1,   unit: 'tbsp',     cal: 119, p: 0,   c: 0,  f: 14,  fib: 0 },
-    { name: 'Mantequilla de maní',        qty: 2,   unit: 'tbsp',     cal: 188, p: 8,   c: 6,  f: 16,  fib: 2 },
-    { name: 'Almendras',                  qty: 30,  unit: 'gramos',   cal: 173, p: 6,   c: 6,  f: 15,  fib: 3.5 },
-    { name: 'Proteína en polvo (whey)',   qty: 30,  unit: 'gramos',   cal: 120, p: 24,  c: 3,  f: 2,   fib: 0 },
-    { name: 'Café negro',                 qty: 240, unit: 'ml',       cal: 5,   p: 0.3, c: 0,  f: 0,   fib: 0 },
-    { name: 'Jugo de naranja natural',    qty: 240, unit: 'ml',       cal: 112, p: 1.7, c: 26, f: 0.5, fib: 0.5 },
+    { name: 'Pechuga de pollo cocida',     qty: 100, unit: 'gramos',    cal: 165, p: 31,  c: 0,   f: 3.6, fib: 0   },
+    { name: 'Arroz blanco cocido',          qty: 100, unit: 'gramos',    cal: 130, p: 2.7, c: 28,  f: 0.3, fib: 0.4 },
+    { name: 'Frijoles negros cocidos',      qty: 100, unit: 'gramos',    cal: 132, p: 8.9, c: 24,  f: 0.5, fib: 8.7 },
+    { name: 'Gallo pinto',                  qty: 200, unit: 'gramos',    cal: 260, p: 9,   c: 48,  f: 2,   fib: 4   },
+    { name: 'Huevo entero',                 qty: 1,   unit: 'unidades',  cal: 70,  p: 6,   c: 0.5, f: 5,   fib: 0   },
+    { name: 'Huevo (clara)',                qty: 1,   unit: 'unidades',  cal: 17,  p: 3.6, c: 0.2, f: 0,   fib: 0   },
+    { name: 'Aguacate',                     qty: 100, unit: 'gramos',    cal: 160, p: 2,   c: 9,   f: 15,  fib: 7   },
+    { name: 'Plátano maduro',               qty: 1,   unit: 'unidades',  cal: 105, p: 1.3, c: 27,  f: 0.4, fib: 3.1 },
+    { name: 'Plátano verde cocido',         qty: 100, unit: 'gramos',    cal: 116, p: 1.3, c: 31,  f: 0.2, fib: 2.3 },
+    { name: 'Tortilla de maíz',             qty: 1,   unit: 'unidades',  cal: 58,  p: 1.5, c: 12,  f: 0.7, fib: 1.4 },
+    { name: 'Pan integral (rebanada)',      qty: 1,   unit: 'rebanadas', cal: 80,  p: 4,   c: 15,  f: 1,   fib: 2   },
+    { name: 'Yogur griego natural',         qty: 150, unit: 'gramos',    cal: 100, p: 17,  c: 6,   f: 0.7, fib: 0   },
+    { name: 'Leche entera',                 qty: 240, unit: 'ml',        cal: 150, p: 8,   c: 12,  f: 8,   fib: 0   },
+    { name: 'Leche descremada',             qty: 240, unit: 'ml',        cal: 90,  p: 9,   c: 12,  f: 0.5, fib: 0   },
+    { name: 'Queso blanco',                 qty: 30,  unit: 'gramos',    cal: 80,  p: 6,   c: 1,   f: 6,   fib: 0   },
+    { name: 'Atún en agua (lata)',          qty: 85,  unit: 'gramos',    cal: 100, p: 22,  c: 0,   f: 1,   fib: 0   },
+    { name: 'Salmón al horno',              qty: 100, unit: 'gramos',    cal: 206, p: 20,  c: 0,   f: 13,  fib: 0   },
+    { name: 'Carne molida (90% magra)',     qty: 100, unit: 'gramos',    cal: 176, p: 20,  c: 0,   f: 10,  fib: 0   },
+    { name: 'Avena en hojuelas',            qty: 40,  unit: 'gramos',    cal: 150, p: 5,   c: 27,  f: 2.5, fib: 4   },
+    { name: 'Banana',                       qty: 1,   unit: 'unidades',  cal: 89,  p: 1.1, c: 23,  f: 0.3, fib: 2.6 },
+    { name: 'Manzana',                      qty: 1,   unit: 'unidades',  cal: 80,  p: 0.4, c: 21,  f: 0.3, fib: 3.7 },
+    { name: 'Papaya',                       qty: 150, unit: 'gramos',    cal: 60,  p: 0.9, c: 15,  f: 0.4, fib: 2.3 },
+    { name: 'Piña',                         qty: 150, unit: 'gramos',    cal: 75,  p: 0.8, c: 20,  f: 0.2, fib: 1.7 },
+    { name: 'Ensalada verde (sin aderezo)', qty: 100, unit: 'gramos',    cal: 20,  p: 1.5, c: 3,   f: 0.3, fib: 1.5 },
+    { name: 'Brócoli cocido',               qty: 100, unit: 'gramos',    cal: 35,  p: 2.4, c: 7,   f: 0.4, fib: 2.6 },
+    { name: 'Zanahoria',                    qty: 100, unit: 'gramos',    cal: 41,  p: 0.9, c: 10,  f: 0.2, fib: 2.8 },
+    { name: 'Papa cocida',                  qty: 150, unit: 'gramos',    cal: 130, p: 3,   c: 30,  f: 0.2, fib: 2.4 },
+    { name: 'Pasta cocida',                 qty: 150, unit: 'gramos',    cal: 220, p: 8,   c: 43,  f: 1.3, fib: 2.5 },
+    { name: 'Aceite de oliva',              qty: 1,   unit: 'tbsp',      cal: 119, p: 0,   c: 0,   f: 14,  fib: 0   },
+    { name: 'Mantequilla de maní',          qty: 2,   unit: 'tbsp',      cal: 188, p: 8,   c: 6,   f: 16,  fib: 2   },
+    { name: 'Almendras',                    qty: 30,  unit: 'gramos',    cal: 173, p: 6,   c: 6,   f: 15,  fib: 3.5 },
+    { name: 'Proteína en polvo (whey)',     qty: 30,  unit: 'gramos',    cal: 120, p: 24,  c: 3,   f: 2,   fib: 0   },
+    { name: 'Café negro',                   qty: 240, unit: 'ml',        cal: 5,   p: 0.3, c: 0,   f: 0,   fib: 0   },
+    { name: 'Jugo de naranja natural',      qty: 240, unit: 'ml',        cal: 112, p: 1.7, c: 26,  f: 0.5, fib: 0.5 },
   ];
 
-  if (!foodsDb) {
-    foodsDb = DEFAULT_FOODS;
-    localStorage.setItem('nf_foods', JSON.stringify(foodsDb));
+  async function loadFoodsDb() {
+    try {
+      const url = settings.scriptUrl;
+      if (!url) throw new Error('no url');
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('fetch failed');
+      foodsDb = await res.json();
+    } catch (e) {
+      foodsDb = DEFAULT_FOODS;
+    }
+    buildSuggestions();
+    renderFoodsList();
   }
+
   let entries = JSON.parse(localStorage.getItem('nf_entries') || '[]');
   let queue = JSON.parse(localStorage.getItem('nf_queue') || '[]');
   let settings = JSON.parse(localStorage.getItem('nf_settings') || '{}');
@@ -1298,7 +1308,7 @@
     updateQueueBadge();
     renderHistory();
     renderToday();
-    buildSuggestions();
+    loadFoodsDb(); // carga alimentos desde Apps Script URL (settings) y llama buildSuggestions()
   }
 
   function updateClock() {
@@ -1706,8 +1716,9 @@
     if (!val.trim()) { dd.classList.remove('show'); return; }
 
     const q = val.toLowerCase();
-    // Search in foodsDb first, then in past entries
-    const dbMatches = foodsDb.filter(f => f.name.toLowerCase().includes(q)).slice(0, 6);
+    // Custom foods first, then global DB, then past entries
+    const allDb = [...customFoods, ...foodsDb];
+    const dbMatches = allDb.filter(f => f.name.toLowerCase().includes(q)).slice(0, 6);
     const pastNames = [...new Set(entries.map(e => e.food_name))];
     const pastMatches = pastNames
       .filter(n => n.toLowerCase().includes(q) && !dbMatches.find(f => f.name === n))
@@ -1730,11 +1741,13 @@
     dd.classList.add('show');
   }
 
+  let selectedFoodBase = null; // stores base macros for proportional recalc
+
   function selectFood(food) {
     document.getElementById('foodName').value = food.name;
     document.getElementById('foodDropdown').classList.remove('show');
-    if (food._past) return; // past entries: just fill name
-    // Autofill all nutrition fields
+    if (food._past) { selectedFoodBase = null; return; }
+    selectedFoodBase = { qty: food.qty, cal: food.cal, p: food.p, c: food.c, f: food.f, fib: food.fib || 0 };
     document.getElementById('quantity').value = food.qty;
     document.getElementById('unit').value = food.unit;
     document.getElementById('calories').value = food.cal;
@@ -1746,12 +1759,26 @@
     document.getElementById('autofillBadge').style.display = 'flex';
   }
 
+  function recalcByQty() {
+    if (!selectedFoodBase) return;
+    const newQty = parseFloat(document.getElementById('quantity').value);
+    if (!newQty || newQty <= 0) return;
+    const ratio = newQty / selectedFoodBase.qty;
+    document.getElementById('calories').value = Math.round(selectedFoodBase.cal * ratio * 10) / 10;
+    document.getElementById('protein').value  = Math.round(selectedFoodBase.p   * ratio * 10) / 10;
+    document.getElementById('carbs').value    = Math.round(selectedFoodBase.c   * ratio * 10) / 10;
+    document.getElementById('fat').value      = Math.round(selectedFoodBase.f   * ratio * 10) / 10;
+    document.getElementById('fiber').value    = Math.round(selectedFoodBase.fib * ratio * 10) / 10;
+    updateCalDisplay();
+  }
+
   function hideFoodDropdown() {
     dropdownTimeout = setTimeout(() =>
       document.getElementById('foodDropdown').classList.remove('show'), 150);
   }
 
   function clearAutofill() {
+    selectedFoodBase = null;
     ['quantity','calories','protein','carbs','fat','fiber'].forEach(id =>
       document.getElementById(id).value = '');
     document.getElementById('autofillBadge').style.display = 'none';
@@ -1798,8 +1825,8 @@
     const fib  = parseFloat(document.getElementById('newFoodFib').value)  || 0;
     if (!name) { showToast('Ingresa el nombre del alimento', true); return; }
     if (!cal && !p && !c && !f) { showToast('Agrega al menos un valor nutricional', true); return; }
-    foodsDb.push({ name, qty, unit, cal, p, c, f, fib });
-    localStorage.setItem('nf_foods', JSON.stringify(foodsDb));
+    customFoods.push({ name, qty, unit, cal, p, c, f, fib });
+    localStorage.setItem('nf_custom_foods', JSON.stringify(customFoods));
     ['newFoodName','newFoodQty','newFoodCal','newFoodP','newFoodC','newFoodF','newFoodFib']
       .forEach(id => document.getElementById(id).value = '');
     renderFoodsList();
@@ -1807,9 +1834,9 @@
   }
 
   function deleteFood(idx) {
-    if (!confirm(`¿Eliminar "${foodsDb[idx].name}"?`)) return;
-    foodsDb.splice(idx, 1);
-    localStorage.setItem('nf_foods', JSON.stringify(foodsDb));
+    if (!confirm(`¿Eliminar "${customFoods[idx].name}"?`)) return;
+    customFoods.splice(idx, 1);
+    localStorage.setItem('nf_custom_foods', JSON.stringify(customFoods));
     renderFoodsList();
   }
 
@@ -1832,9 +1859,9 @@
     const item = document.querySelector(`.food-list-item[data-idx="${idx}"]`);
     const name = item.querySelector('.ef-name').value.trim();
     if (!name) { showToast('El nombre no puede estar vacío', true); return; }
-    foodsDb[idx] = {
+    customFoods[idx] = {
       name,
-      qty:  parseFraction(item.querySelector('.ef-qty').value) || foodsDb[idx].qty,
+      qty:  parseFraction(item.querySelector('.ef-qty').value) || customFoods[idx].qty,
       unit: item.querySelector('.ef-unit').value,
       cal:  parseFloat(item.querySelector('.ef-cal').value)  || 0,
       p:    parseFloat(item.querySelector('.ef-p').value)    || 0,
@@ -1842,13 +1869,13 @@
       f:    parseFloat(item.querySelector('.ef-f').value)    || 0,
       fib:  parseFloat(item.querySelector('.ef-fib').value)  || 0,
     };
-    localStorage.setItem('nf_foods', JSON.stringify(foodsDb));
+    localStorage.setItem('nf_custom_foods', JSON.stringify(customFoods));
     renderFoodsList();
     showToast('✓ Alimento actualizado');
   }
 
   function renderFoodItem(el, i, editing) {
-    const f = foodsDb[i];
+    const f = customFoods[i];
     el.classList.toggle('editing', editing);
     el.innerHTML = `
       <div class="food-list-row">
@@ -1920,17 +1947,49 @@
 
   function renderFoodsList() {
     const list = document.getElementById('foodsList');
-    if (!foodsDb.length) {
-      list.innerHTML = '<div class="empty"><div class="empty-icon">🥦</div><div class="empty-text">No hay alimentos guardados aún.</div></div>';
-      return;
+    list.innerHTML = '';
+
+    // ── Mis alimentos (editable)
+    if (customFoods.length) {
+      const label = document.createElement('div');
+      label.className = 'section-label';
+      label.style.marginTop = '4px';
+      label.textContent = 'Mis alimentos';
+      list.appendChild(label);
+      customFoods.forEach((f, i) => {
+        const el = document.createElement('div');
+        el.className = 'food-list-item';
+        el.dataset.idx = i;
+        list.appendChild(el);
+        renderFoodItem(el, i, false);
+      });
     }
-    list.innerHTML = foodsDb.map((f, i) =>
-      `<div class="food-list-item" data-idx="${i}"></div>`
-    ).join('');
-    foodsDb.forEach((f, i) => {
-      const el = list.querySelector(`[data-idx="${i}"]`);
-      renderFoodItem(el, i, false);
-    });
+
+    // ── Base de datos global (read-only)
+    if (foodsDb.length) {
+      const label = document.createElement('div');
+      label.className = 'section-label';
+      label.style.marginTop = '12px';
+      label.textContent = 'Base de datos';
+      list.appendChild(label);
+      foodsDb.forEach(f => {
+        const el = document.createElement('div');
+        el.className = 'food-list-item';
+        el.innerHTML = `
+          <div class="food-list-row">
+            <div style="flex:1;min-width:0">
+              <div class="food-list-name">${f.name}</div>
+              <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g</div>
+            </div>
+            <div class="food-list-cal">${f.cal} kcal</div>
+          </div>`;
+        list.appendChild(el);
+      });
+    }
+
+    if (!customFoods.length && !foodsDb.length) {
+      list.innerHTML = '<div class="empty"><div class="empty-icon">🥦</div><div class="empty-text">No hay alimentos guardados aún.</div></div>';
+    }
   }
 
   // ── Suggestions ───────────────────────────────────────────────────
@@ -1982,6 +2041,7 @@
     settings.goalAlcohol = parseInt(document.getElementById('goalAlcohol').value) || 0;
     localStorage.setItem('nf_settings', JSON.stringify(settings));
     showToast('Ajustes guardados ✓');
+    loadFoodsDb(); // recarga alimentos si cambió el URL
   }
 
   function clearAllData() {
