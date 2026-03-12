@@ -3,10 +3,10 @@
   "short_name": "Beiß zu",
   "start_url": "/beisszu/",
   "display": "standalone",
-  "background_color": "#0e110a",
-  "theme_color": "#0e110a",
+  "background_color": "#a8c060",
+  "theme_color": "#a8c060",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/beisszu/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/beisszu/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
