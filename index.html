@@ -1375,13 +1375,18 @@ function switchTab(name) {
   if (name === 'profile') { renderFoodsList(); showProfileSection('metas'); }
 }
 
-function showProfileSection(sec) {
+async function showProfileSection(sec) {
   ['metas','platillos','alimentos'].forEach(s => {
     document.getElementById('psec-' + s).style.display = s === sec ? 'flex' : 'none';
     document.getElementById('qbtn-' + s).classList.toggle('active', s === sec);
   });
   if (sec === 'alimentos') renderFoodsList();
-  if (sec === 'platillos') renderDishesList();
+  if (sec === 'platillos') {
+    const list = document.getElementById('dishesList');
+    if (list) list.innerHTML = '<div class="empty"><div class="empty-icon" style="font-size:24px">⏳</div><div class="empty-text">Cargando platillos…</div></div>';
+    await loadDishes();
+    renderDishesList();
+  }
 }
 
 function switchSubTab(tab) {
@@ -2066,14 +2071,29 @@ let foodServings = {};           // { food_name: [{ serving_name, grams }] }
 
 // ── Load dishes ──
 async function loadDishes() {
-  const { data, error } = await sb.from('dishes')
-    .select('*, dish_ingredients(*)')
+  const { data: dishData, error: dishErr } = await sb.from('dishes')
+    .select('*')
     .eq('user_id', currentUser.id)
     .order('created_at', { ascending: false });
-  if (error) { console.error('loadDishes error:', error); dishes = []; return; }
-  dishes = (data || []).map(d => ({
+  if (dishErr) { console.error('loadDishes error:', dishErr); dishes = []; return; }
+  if (!dishData || !dishData.length) { dishes = []; return; }
+
+  const dishIds = dishData.map(d => d.id);
+  const { data: ingData, error: ingErr } = await sb.from('dish_ingredients')
+    .select('*')
+    .in('dish_id', dishIds)
+    .eq('user_id', currentUser.id);
+  if (ingErr) { console.error('loadDishIngredients error:', ingErr); }
+
+  const ingsById = {};
+  (ingData || []).forEach(i => {
+    if (!ingsById[i.dish_id]) ingsById[i.dish_id] = [];
+    ingsById[i.dish_id].push(i);
+  });
+
+  dishes = dishData.map(d => ({
     ...d,
-    dish_ingredients: (d.dish_ingredients || []).filter(i => i.dish_id === d.id)
+    dish_ingredients: ingsById[d.id] || []
   }));
 }
 
