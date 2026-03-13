@@ -1276,6 +1276,24 @@
   let hydEntries = [];
   let settings = {};
 
+  // ── Handle email confirmation token ───────────────────────────────
+  // When Supabase redirects to root domain, the token comes in the URL.
+  // We detect it here and verify it regardless of which page loaded.
+  (async () => {
+    const params = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace('#', ''));
+    const token_hash = params.get('token_hash') || hash.get('token_hash');
+    const type = params.get('type') || hash.get('type');
+    if (token_hash && type) {
+      const { error } = await sb.auth.verifyOtp({ token_hash, type });
+      if (error) {
+        console.error('Error verificando token:', error.message);
+      }
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  })();
+
   // ── Auth UI ────────────────────────────────────────────────────────
   function togglePwd(inputId, btn) {
     const input = document.getElementById(inputId);
