@@ -631,7 +631,26 @@ select { cursor: pointer; }
 .hyd-card-val { font-size: 16px; font-weight: 400; font-family: var(--font-display); color: var(--text); }
 .hyd-card-label { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
 
-/* ══ PROFILE PAGE ══ */
+/* ══ PROFILE QUICK BTNS ══ */
+.profile-quick-btn {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 16px 8px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 6px;
+  cursor: pointer; transition: all 0.18s;
+  color: var(--text2);
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 400;
+}
+.profile-quick-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(168,192,96,0.08);
+}
+.profile-quick-btn:active { transform: scale(0.96); }
+
+
 .profile-header {
   display: flex; flex-direction: column;
   align-items: center; gap: 8px;
@@ -923,15 +942,168 @@ select { cursor: pointer; }
   <!-- ══ PAGE: PERFIL ══ -->
   <div class="page" id="page-profile">
 
+    <!-- User header -->
     <div class="profile-header">
       <div class="profile-avatar">👤</div>
       <div class="profile-name" id="profileName">—</div>
       <div class="profile-email" id="profileEmail">—</div>
     </div>
 
-    <!-- Alimentos -->
-    <div class="profile-section">
-      <div class="section-label">Mis alimentos</div>
+    <!-- Quick access grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <button onclick="showProfileSection('metas')" class="profile-quick-btn" id="qbtn-metas">
+        <span style="font-size:22px">🎯</span>
+        <span>Metas</span>
+      </button>
+      <button onclick="showProfileSection('platillos')" class="profile-quick-btn" id="qbtn-platillos">
+        <span style="font-size:22px">🍽️</span>
+        <span>Platillos</span>
+      </button>
+      <button onclick="showProfileSection('alimentos')" class="profile-quick-btn" id="qbtn-alimentos">
+        <span style="font-size:22px">🥦</span>
+        <span>Alimentos</span>
+      </button>
+    </div>
+
+    <!-- ── SECCIÓN: METAS ── -->
+    <div id="psec-metas" class="profile-section">
+      <div class="section-label">Metas de nutrición diaria</div>
+      <div class="card">
+        <div class="settings-row"><div><div class="settings-label">Calorías</div></div><input class="settings-input" type="number" id="goalCal" placeholder="2000" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Proteína (g)</div></div><input class="settings-input" type="number" id="goalProtein" placeholder="150" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Carbohidratos (g)</div></div><input class="settings-input" type="number" id="goalCarbs" placeholder="250" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Grasas (g)</div></div><input class="settings-input" type="number" id="goalFat" placeholder="70" inputmode="numeric"></div>
+      </div>
+      <div class="section-label" style="margin-top:4px">Metas de hidratación diaria</div>
+      <div class="card">
+        <div class="settings-row"><div><div class="settings-label">Agua (ml)</div></div><input class="settings-input" type="number" id="goalWater" placeholder="2000" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Café (ud)</div></div><input class="settings-input" type="number" id="goalCoffee" placeholder="2" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Té (ud)</div></div><input class="settings-input" type="number" id="goalTea" placeholder="2" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Isotónica (ml)</div></div><input class="settings-input" type="number" id="goalIsotonic" placeholder="500" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Jugo (ml)</div></div><input class="settings-input" type="number" id="goalJuice" placeholder="250" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Alcohol (ud)</div></div><input class="settings-input" type="number" id="goalAlcohol" placeholder="1" inputmode="numeric"></div>
+      </div>
+      <button class="save-settings-btn" onclick="saveSettings()">Guardar metas</button>
+    </div>
+
+    <!-- ── SECCIÓN: PLATILLOS ── -->
+    <div id="psec-platillos" class="profile-section" style="display:none">
+
+      <!-- Lista de platillos -->
+      <div id="dishesList"></div>
+
+      <!-- Botón crear -->
+      <button class="btn-primary" onclick="showDishBuilder()">+ Crear platillo</button>
+
+      <!-- ── Builder (oculto por defecto) ── -->
+      <div id="dishBuilder" style="display:none">
+        <div class="card">
+          <div class="section-label" style="margin-bottom:0">Nuevo platillo</div>
+          <div class="field">
+            <label>Nombre del platillo</label>
+            <input type="text" id="dishName" placeholder="Ej: Casado, Ensalada verde…">
+          </div>
+          <div class="field">
+            <label>Notas (opcional)</label>
+            <input type="text" id="dishNotes" placeholder="Ej: sin sal, versión light…">
+          </div>
+        </div>
+
+        <!-- Ingredientes agregados -->
+        <div id="dishIngredientsList" style="display:flex;flex-direction:column;gap:8px;margin-top:2px"></div>
+
+        <!-- Totales en tiempo real -->
+        <div class="card" id="dishTotalsCard" style="display:none">
+          <div class="section-label" style="margin-bottom:4px">Total del platillo</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+            <div><div style="font-size:18px;font-weight:300;color:var(--accent);font-family:var(--font-display)" id="dtCal">0</div><div style="font-size:10px;color:var(--muted)">kcal</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtProt">0</div><div style="font-size:10px;color:var(--muted)">prot g</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtCarb">0</div><div style="font-size:10px;color:var(--muted)">carb g</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtFat">0</div><div style="font-size:10px;color:var(--muted)">gras g</div></div>
+          </div>
+        </div>
+
+        <!-- Agregar ingrediente -->
+        <div class="card" style="margin-top:2px">
+          <div class="section-label" style="margin-bottom:0">Agregar ingrediente</div>
+
+          <!-- Tipo de ingrediente -->
+          <div class="sub-tabs" style="margin-top:4px">
+            <button class="sub-tab active" id="ingTabFood" onclick="switchIngTab('food')">🥦 Alimento</button>
+            <button class="sub-tab" id="ingTabDish" onclick="switchIngTab('dish')">🍽️ Platillo</button>
+          </div>
+
+          <!-- Búsqueda alimento -->
+          <div id="ingFoodSearch">
+            <div class="field">
+              <label>Buscar alimento</label>
+              <div style="position:relative">
+                <input type="text" id="ingFoodName" placeholder="Buscar en base de datos…" autocomplete="off" oninput="onIngFoodInput(this.value)" onfocus="onIngFoodInput(this.value)" onblur="hideIngDropdown()">
+                <div class="food-dropdown" id="ingFoodDropdown"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Búsqueda sub-platillo -->
+          <div id="ingDishSearch" style="display:none">
+            <div class="field">
+              <label>Seleccionar platillo</label>
+              <select id="ingDishSelect" onchange="onIngDishSelect(this.value)">
+                <option value="">— elegí un platillo —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Cantidad + unidad -->
+          <div class="two-col" id="ingQtyRow" style="display:none">
+            <div class="field">
+              <label>Cantidad</label>
+              <input type="text" id="ingQty" placeholder="100" inputmode="decimal" oninput="recalcIngMacros()">
+            </div>
+            <div class="field">
+              <label>Unidad</label>
+              <select id="ingUnit" onchange="onIngUnitChange()">
+                <option>gramos</option><option>ml</option><option>oz</option>
+                <option>tazas</option><option>cdas</option><option>cditas</option>
+                <option>unidades</option><option>rebanadas</option><option>piezas</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Selector de porción (aparece según unidad) -->
+          <div id="ingServingRow" style="display:none">
+            <div class="field">
+              <label>Porción</label>
+              <select id="ingServingSelect" onchange="onIngServingSelect(this.value)">
+                <option value="">— elegí una porción —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Preview macros del ingrediente -->
+          <div id="ingMacroPreview" style="display:none;background:rgba(168,192,96,0.06);border:1px solid rgba(168,192,96,0.2);border-radius:10px;padding:10px 14px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center">
+              <div><div style="font-size:15px;color:var(--accent);font-family:var(--font-display)" id="ipCal">0</div><div style="font-size:10px;color:var(--muted)">kcal</div></div>
+              <div><div style="font-size:15px;color:var(--text);font-family:var(--font-display)" id="ipProt">0</div><div style="font-size:10px;color:var(--muted)">prot</div></div>
+              <div><div style="font-size:15px;color:var(--text);font-family:var(--font-display)" id="ipCarb">0</div><div style="font-size:10px;color:var(--muted)">carb</div></div>
+              <div><div style="font-size:15px;color:var(--text);font-family:var(--font-display)" id="ipFat">0</div><div style="font-size:10px;color:var(--muted)">gras</div></div>
+            </div>
+          </div>
+
+          <button class="btn-primary" onclick="addIngredientToDish()" style="background:var(--surface2);color:var(--accent);border:1.5px solid var(--accent)">+ Agregar ingrediente</button>
+        </div>
+
+        <!-- Guardar / cancelar -->
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button onclick="cancelDishBuilder()" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">Cancelar</button>
+          <button onclick="saveDish()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Guardar platillo</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── SECCIÓN: ALIMENTOS ── -->
+    <div id="psec-alimentos" class="profile-section" style="display:none">
       <div class="card">
         <div class="section-label" style="margin-bottom:0">Agregar alimento personalizado</div>
         <div class="field">
@@ -986,31 +1158,8 @@ select { cursor: pointer; }
       <div id="foodsList"></div>
     </div>
 
-    <!-- Ajustes -->
-    <div class="profile-section">
-      <div class="section-label">Metas de nutrición diaria</div>
-      <div class="card">
-        <div class="settings-row"><div><div class="settings-label">Calorías</div></div><input class="settings-input" type="number" id="goalCal" placeholder="2000" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Proteína (g)</div></div><input class="settings-input" type="number" id="goalProtein" placeholder="150" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Carbohidratos (g)</div></div><input class="settings-input" type="number" id="goalCarbs" placeholder="250" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Grasas (g)</div></div><input class="settings-input" type="number" id="goalFat" placeholder="70" inputmode="numeric"></div>
-      </div>
-    </div>
-
-    <div class="profile-section">
-      <div class="section-label">Metas de hidratación diaria</div>
-      <div class="card">
-        <div class="settings-row"><div><div class="settings-label">Agua (ml)</div></div><input class="settings-input" type="number" id="goalWater" placeholder="2000" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Café (ud)</div></div><input class="settings-input" type="number" id="goalCoffee" placeholder="2" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Té (ud)</div></div><input class="settings-input" type="number" id="goalTea" placeholder="2" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Isotónica (ml)</div></div><input class="settings-input" type="number" id="goalIsotonic" placeholder="500" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Jugo (ml)</div></div><input class="settings-input" type="number" id="goalJuice" placeholder="250" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Alcohol (ud)</div></div><input class="settings-input" type="number" id="goalAlcohol" placeholder="1" inputmode="numeric"></div>
-      </div>
-      <button class="save-settings-btn" onclick="saveSettings()">Guardar metas</button>
-    </div>
-
-    <div class="profile-section">
+    <!-- Cuenta (siempre visible) -->
+    <div class="profile-section" style="margin-top:8px">
       <div class="section-label">Cuenta</div>
       <button class="logout-btn" onclick="confirmLogout()">Cerrar sesión</button>
       <button onclick="clearAllData()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:var(--r);padding:14px;font-family:var(--font-display);font-size:14px;cursor:pointer;width:100%;margin-top:8px">🗑 Borrar todos mis datos</button>
@@ -1201,7 +1350,7 @@ async function initApp(user) {
   // Profile info
   document.getElementById('profileName').textContent = user.user_metadata?.full_name || 'Usuario';
   document.getElementById('profileEmail').textContent = user.email;
-  await Promise.all([loadSettings(), loadEntries(), loadHydration(), loadFoodsDb()]);
+  await Promise.all([loadSettings(), loadEntries(), loadHydration(), loadFoodsDb(), loadDishes(), loadFoodServings()]);
   updateClock();
   setInterval(updateClock, 30000);
   checkOnline();
@@ -1223,7 +1372,16 @@ function switchTab(name) {
   document.getElementById('nav-' + name).classList.add('active');
   if (name === 'home') { renderToday(); }
   if (name === 'history') { renderHistory(); }
-  if (name === 'profile') { renderFoodsList(); }
+  if (name === 'profile') { renderFoodsList(); showProfileSection('metas'); }
+}
+
+function showProfileSection(sec) {
+  ['metas','platillos','alimentos'].forEach(s => {
+    document.getElementById('psec-' + s).style.display = s === sec ? 'flex' : 'none';
+    document.getElementById('qbtn-' + s).classList.toggle('active', s === sec);
+  });
+  if (sec === 'alimentos') renderFoodsList();
+  if (sec === 'platillos') renderDishesList();
 }
 
 function switchSubTab(tab) {
@@ -1293,7 +1451,16 @@ function onFoodInput(val) {
   if (!val.trim()) { dd.classList.remove('show'); return; }
   const q = val.toLowerCase();
   const allDb = [...customFoods, ...foodsDb];
-  const dbMatches = allDb.filter(f => f.name.toLowerCase().includes(q)).slice(0, 6);
+  // Also include dishes as selectable items
+  const dishItems = dishes.map(d => {
+    const ings = d.dish_ingredients || [];
+    const cal  = ings.reduce((s,i) => s+(i.calories||0), 0);
+    const p    = ings.reduce((s,i) => s+(i.protein_g||0), 0);
+    const c    = ings.reduce((s,i) => s+(i.carbs_g||0), 0);
+    const f    = ings.reduce((s,i) => s+(i.fat_g||0), 0);
+    return { name: `🍽️ ${d.name}`, qty: 1, unit: 'porción', cal, p, c, f, fib: 0, _isDish: true };
+  });
+  const dbMatches = [...allDb, ...dishItems].filter(f => f.name.toLowerCase().includes(q)).slice(0, 6);
   const pastNames = [...new Set(entries.map(e => e.food_name))];
   const pastMatches = pastNames
     .filter(n => n.toLowerCase().includes(q) && !dbMatches.find(f => f.name === n))
@@ -1885,6 +2052,336 @@ function showToast(msg, isError = false) {
   t.className = 'toast show' + (isError ? ' error' : '');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ══════════════════════════════════════════
+// PLATILLOS
+// ══════════════════════════════════════════
+let dishes = [];
+let currentDishIngredients = []; // staging area while building
+let currentIngFoodBase = null;   // selected food base for ingredient
+let currentIngDishBase = null;   // selected sub-dish for ingredient
+let ingTab = 'food';
+let foodServings = {};           // { food_name: [{ serving_name, grams }] }
+
+// ── Load dishes ──
+async function loadDishes() {
+  const { data } = await sb.from('dishes').select(`
+    *, dish_ingredients (*)
+  `).eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  dishes = data || [];
+}
+
+// ── Load food servings ──
+async function loadFoodServings() {
+  const { data } = await sb.from('food_servings').select('*');
+  foodServings = {};
+  (data || []).forEach(s => {
+    if (!foodServings[s.food_name]) foodServings[s.food_name] = [];
+    foodServings[s.food_name].push({ serving_name: s.serving_name, grams: s.grams });
+  });
+}
+
+// ── Render dishes list ──
+function renderDishesList() {
+  const list = document.getElementById('dishesList');
+  if (!list) return;
+  if (!dishes.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🍽️</div><div class="empty-text">Aún no tenés platillos guardados.<br>¡Creá el primero!</div></div>';
+    return;
+  }
+  list.innerHTML = dishes.map(d => {
+    const ings = d.dish_ingredients || [];
+    const totCal  = ings.reduce((s, i) => s + (i.calories  || 0), 0);
+    const totProt = ings.reduce((s, i) => s + (i.protein_g || 0), 0);
+    const totCarb = ings.reduce((s, i) => s + (i.carbs_g   || 0), 0);
+    const totFat  = ings.reduce((s, i) => s + (i.fat_g     || 0), 0);
+    return `<div class="food-list-item">
+      <div class="food-list-row">
+        <div style="flex:1;min-width:0">
+          <div class="food-list-name">🍽️ ${d.name}</div>
+          <div class="food-list-meta">${ings.length} ingrediente${ings.length !== 1 ? 's' : ''} · P:${totProt.toFixed(1)}g C:${totCarb.toFixed(1)}g G:${totFat.toFixed(1)}g</div>
+        </div>
+        <div class="food-list-cal">${Math.round(totCal)} kcal</div>
+        <div class="food-list-actions">
+          <button class="food-delete-btn" onclick="deleteDish(${d.id})">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Show / hide builder ──
+function showDishBuilder() {
+  currentDishIngredients = [];
+  document.getElementById('dishName').value = '';
+  document.getElementById('dishNotes').value = '';
+  document.getElementById('dishIngredientsList').innerHTML = '';
+  document.getElementById('dishTotalsCard').style.display = 'none';
+  document.getElementById('dishBuilder').style.display = 'block';
+  document.querySelector('#psec-platillos .btn-primary').style.display = 'none';
+  resetIngForm();
+  // Populate dish select
+  populateDishSelect();
+}
+
+function cancelDishBuilder() {
+  document.getElementById('dishBuilder').style.display = 'none';
+  document.querySelector('#psec-platillos .btn-primary').style.display = 'block';
+  currentDishIngredients = [];
+}
+
+function populateDishSelect() {
+  const sel = document.getElementById('ingDishSelect');
+  sel.innerHTML = '<option value="">— elegí un platillo —</option>' +
+    dishes.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+}
+
+// ── Ingredient tab ──
+function switchIngTab(tab) {
+  ingTab = tab;
+  document.getElementById('ingTabFood').classList.toggle('active', tab === 'food');
+  document.getElementById('ingTabDish').classList.toggle('active', tab === 'dish');
+  document.getElementById('ingFoodSearch').style.display = tab === 'food' ? 'block' : 'none';
+  document.getElementById('ingDishSearch').style.display = tab === 'dish' ? 'block' : 'none';
+  resetIngForm();
+}
+
+// ── Food search for ingredient ──
+let ingDropdownTimeout;
+
+function onIngFoodInput(val) {
+  clearTimeout(ingDropdownTimeout);
+  const dd = document.getElementById('ingFoodDropdown');
+  if (!val.trim()) { dd.classList.remove('show'); return; }
+  const q = val.toLowerCase();
+  const allDb = [...customFoods, ...foodsDb];
+  const matches = allDb.filter(f => f.name.toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length) { dd.classList.remove('show'); return; }
+  dd.innerHTML = matches.map(f => `
+    <div class="food-option" onmousedown="selectIngFood(${JSON.stringify(f).replace(/"/g,'&quot;')})">
+      <div class="food-option-name">${f.name}</div>
+      <div class="food-option-meta">${f.qty} ${f.unit} · <span class="food-option-cal">${f.cal} kcal</span> · P:${f.p}g C:${f.c}g G:${f.f}g</div>
+    </div>`).join('');
+  dd.classList.add('show');
+}
+
+function hideIngDropdown() {
+  ingDropdownTimeout = setTimeout(() => document.getElementById('ingFoodDropdown').classList.remove('show'), 150);
+}
+
+function selectIngFood(food) {
+  currentIngFoodBase = food;
+  currentIngDishBase = null;
+  document.getElementById('ingFoodName').value = food.name;
+  document.getElementById('ingFoodDropdown').classList.remove('show');
+  document.getElementById('ingQtyRow').style.display = 'grid';
+  document.getElementById('ingQty').value = food.qty;
+  document.getElementById('ingUnit').value = food.unit;
+  onIngUnitChange();
+  recalcIngMacros();
+}
+
+// ── Dish select for sub-dish ──
+function onIngDishSelect(id) {
+  if (!id) { currentIngDishBase = null; document.getElementById('ingQtyRow').style.display = 'none'; return; }
+  const dish = dishes.find(d => d.id == id);
+  if (!dish) return;
+  const ings = dish.dish_ingredients || [];
+  const totCal  = ings.reduce((s, i) => s + (i.calories  || 0), 0);
+  const totProt = ings.reduce((s, i) => s + (i.protein_g || 0), 0);
+  const totCarb = ings.reduce((s, i) => s + (i.carbs_g   || 0), 0);
+  const totFat  = ings.reduce((s, i) => s + (i.fat_g     || 0), 0);
+  currentIngDishBase = { id: dish.id, name: dish.name, cal: totCal, p: totProt, c: totCarb, f: totFat, qty: 1, unit: 'porciones' };
+  currentIngFoodBase = null;
+  document.getElementById('ingQtyRow').style.display = 'grid';
+  document.getElementById('ingQty').value = 1;
+  document.getElementById('ingUnit').value = 'porciones';
+  document.getElementById('ingServingRow').style.display = 'none';
+  recalcIngMacros();
+}
+
+// ── Unit change → show serving selector if applicable ──
+function onIngUnitChange() {
+  const unit = document.getElementById('ingUnit').value;
+  const nonGram = !['gramos','ml','oz'].includes(unit);
+  const foodName = currentIngFoodBase?.name;
+  const servings = foodName && foodServings[foodName];
+  const servingRow = document.getElementById('ingServingRow');
+  const servingSel = document.getElementById('ingServingSelect');
+
+  if (nonGram && servings && servings.length) {
+    const filtered = servings.filter(s => {
+      // Match servings that contain the unit keyword
+      const u = unit.toLowerCase();
+      return s.serving_name.toLowerCase().includes(u) || u === 'unidades' || u === 'piezas' || u === 'rebanadas';
+    });
+    const toShow = filtered.length ? filtered : servings;
+    servingSel.innerHTML = '<option value="">— elegí una porción —</option>' +
+      toShow.map(s => `<option value="${s.grams}">${s.serving_name} (${s.grams}g)</option>`).join('');
+    servingRow.style.display = 'block';
+  } else {
+    servingRow.style.display = 'none';
+  }
+  recalcIngMacros();
+}
+
+function onIngServingSelect(grams) {
+  if (!grams || !currentIngFoodBase) return;
+  // Set qty to the grams of the serving, unit to gramos, then recalc
+  document.getElementById('ingQty').value = grams;
+  document.getElementById('ingUnit').value = 'gramos';
+  document.getElementById('ingServingRow').style.display = 'none';
+  recalcIngMacros();
+}
+
+// ── Recalc ingredient macros preview ──
+function recalcIngMacros() {
+  const base = currentIngFoodBase || currentIngDishBase;
+  if (!base) return;
+  const qty = parseFraction(document.getElementById('ingQty').value) || 0;
+  if (!qty) { document.getElementById('ingMacroPreview').style.display = 'none'; return; }
+
+  let cal, p, c, f;
+  if (currentIngDishBase) {
+    // Sub-dish: scale by portions (1 porcion = full dish macros)
+    const ratio = qty;
+    cal = base.cal * ratio; p = base.p * ratio; c = base.c * ratio; f = base.f * ratio;
+  } else {
+    // Food: scale by grams ratio
+    const ratio = qty / base.qty;
+    cal = base.cal * ratio; p = base.p * ratio; c = base.c * ratio; f = base.f * ratio;
+  }
+
+  document.getElementById('ipCal').textContent  = Math.round(cal);
+  document.getElementById('ipProt').textContent = p.toFixed(1);
+  document.getElementById('ipCarb').textContent = c.toFixed(1);
+  document.getElementById('ipFat').textContent  = f.toFixed(1);
+  document.getElementById('ingMacroPreview').style.display = 'block';
+}
+
+// ── Add ingredient to staging ──
+function addIngredientToDish() {
+  const base = currentIngFoodBase || currentIngDishBase;
+  if (!base) { showToast('Seleccioná un alimento o platillo', true); return; }
+  const qty = parseFraction(document.getElementById('ingQty').value) || 0;
+  if (!qty) { showToast('Ingresá una cantidad', true); return; }
+  const unit = document.getElementById('ingUnit').value;
+
+  let cal, p, c, f, fib = 0;
+  if (currentIngDishBase) {
+    cal = base.cal * qty; p = base.p * qty; c = base.c * qty; f = base.f * qty;
+  } else {
+    const ratio = qty / base.qty;
+    cal = base.cal * ratio; p = base.p * ratio; c = base.c * ratio; f = base.f * ratio;
+    fib = (base.fib || 0) * ratio;
+  }
+
+  const ing = {
+    ingredient_type: currentIngDishBase ? 'dish' : (customFoods.find(cf => cf.name === base.name) ? 'food_custom' : 'food_global'),
+    food_name: currentIngFoodBase ? base.name : null,
+    sub_dish_id: currentIngDishBase ? base.id : null,
+    sub_dish_name: currentIngDishBase ? base.name : null,
+    quantity: qty, unit,
+    calories: Math.round(cal * 10) / 10,
+    protein_g: Math.round(p * 10) / 10,
+    carbs_g: Math.round(c * 10) / 10,
+    fat_g: Math.round(f * 10) / 10,
+    fiber_g: Math.round(fib * 10) / 10,
+    _displayName: currentIngDishBase ? `🍽️ ${base.name}` : base.name,
+  };
+
+  currentDishIngredients.push(ing);
+  renderDishIngredients();
+  updateDishTotals();
+  resetIngForm();
+  showToast('Ingrediente agregado');
+}
+
+function removeIngredient(idx) {
+  currentDishIngredients.splice(idx, 1);
+  renderDishIngredients();
+  updateDishTotals();
+}
+
+function renderDishIngredients() {
+  const list = document.getElementById('dishIngredientsList');
+  if (!currentDishIngredients.length) { list.innerHTML = ''; return; }
+  list.innerHTML = currentDishIngredients.map((ing, i) => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-display);font-size:14px;color:var(--text)">${ing._displayName}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${ing.quantity} ${ing.unit} · ${Math.round(ing.calories)} kcal · P:${ing.protein_g}g C:${ing.carbs_g}g G:${ing.fat_g}g</div>
+      </div>
+      <button onclick="removeIngredient(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;opacity:0.7">✕</button>
+    </div>`).join('');
+}
+
+function updateDishTotals() {
+  const totCal  = currentDishIngredients.reduce((s, i) => s + (i.calories  || 0), 0);
+  const totProt = currentDishIngredients.reduce((s, i) => s + (i.protein_g || 0), 0);
+  const totCarb = currentDishIngredients.reduce((s, i) => s + (i.carbs_g   || 0), 0);
+  const totFat  = currentDishIngredients.reduce((s, i) => s + (i.fat_g     || 0), 0);
+  document.getElementById('dtCal').textContent  = Math.round(totCal);
+  document.getElementById('dtProt').textContent = totProt.toFixed(1);
+  document.getElementById('dtCarb').textContent = totCarb.toFixed(1);
+  document.getElementById('dtFat').textContent  = totFat.toFixed(1);
+  document.getElementById('dishTotalsCard').style.display = currentDishIngredients.length ? 'flex' : 'none';
+}
+
+function resetIngForm() {
+  currentIngFoodBase = null; currentIngDishBase = null;
+  document.getElementById('ingFoodName').value = '';
+  document.getElementById('ingQty').value = '';
+  document.getElementById('ingQtyRow').style.display = 'none';
+  document.getElementById('ingServingRow').style.display = 'none';
+  document.getElementById('ingMacroPreview').style.display = 'none';
+  document.getElementById('ingDishSelect').value = '';
+}
+
+// ── Save dish ──
+async function saveDish() {
+  const name = document.getElementById('dishName').value.trim();
+  const notes = document.getElementById('dishNotes').value.trim();
+  if (!name) { showToast('Poné un nombre al platillo', true); return; }
+  if (!currentDishIngredients.length) { showToast('Agregá al menos un ingrediente', true); return; }
+
+  // Insert dish
+  const { data: dish, error: dishErr } = await sb.from('dishes')
+    .insert({ user_id: currentUser.id, name, notes })
+    .select().single();
+  if (dishErr) { showToast('Error al guardar', true); return; }
+
+  // Insert ingredients
+  const ings = currentDishIngredients.map((ing, i) => ({
+    dish_id: dish.id, user_id: currentUser.id,
+    ingredient_type: ing.ingredient_type,
+    food_name: ing.food_name,
+    sub_dish_id: ing.sub_dish_id,
+    sub_dish_name: ing.sub_dish_name,
+    quantity: ing.quantity, unit: ing.unit,
+    calories: ing.calories, protein_g: ing.protein_g,
+    carbs_g: ing.carbs_g, fat_g: ing.fat_g, fiber_g: ing.fiber_g,
+    sort_order: i,
+  }));
+
+  const { error: ingErr } = await sb.from('dish_ingredients').insert(ings);
+  if (ingErr) { showToast('Error al guardar ingredientes', true); return; }
+
+  showToast(`✓ "${name}" guardado`);
+  await loadDishes();
+  renderDishesList();
+  cancelDishBuilder();
+}
+
+// ── Delete dish ──
+async function deleteDish(id) {
+  const dish = dishes.find(d => d.id === id);
+  if (!confirm(`¿Eliminar "${dish?.name}"?`)) return;
+  await sb.from('dishes').delete().eq('id', id).eq('user_id', currentUser.id);
+  dishes = dishes.filter(d => d.id !== id);
+  renderDishesList();
+  showToast('Platillo eliminado');
 }
 
 // ══ Init theme on load ══
