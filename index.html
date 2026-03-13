@@ -977,11 +977,7 @@ select { cursor: pointer; }
       <div class="section-label" style="margin-top:4px">Metas de hidratación diaria</div>
       <div class="card">
         <div class="settings-row"><div><div class="settings-label">Agua (ml)</div></div><input class="settings-input" type="number" id="goalWater" placeholder="2000" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Café (ud)</div></div><input class="settings-input" type="number" id="goalCoffee" placeholder="2" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Té (ud)</div></div><input class="settings-input" type="number" id="goalTea" placeholder="2" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Isotónica (ml)</div></div><input class="settings-input" type="number" id="goalIsotonic" placeholder="500" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Jugo (ml)</div></div><input class="settings-input" type="number" id="goalJuice" placeholder="250" inputmode="numeric"></div>
-        <div class="settings-row"><div><div class="settings-label">Alcohol (ud)</div></div><input class="settings-input" type="number" id="goalAlcohol" placeholder="1" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Hidratante (ml)</div></div><input class="settings-input" type="number" id="goalIsotonic" placeholder="500" inputmode="numeric"></div>
       </div>
       <button class="save-settings-btn" onclick="saveSettings()">Guardar metas</button>
     </div>
@@ -1646,35 +1642,55 @@ function renderToday() {
     progSection.style.display = 'none';
   }
 
-  // Hydration summary
+  // Hydration summary + progress bars
   const hydSection = document.getElementById('homeHydSection');
   const hydCards = document.getElementById('homeHydCards');
   if (todayHyd.length) {
     hydSection.style.display = 'block';
+
+    // Totals per drink type
     const hydTotals = {};
     todayHyd.forEach(e => {
       if (!hydTotals[e.drinkId]) hydTotals[e.drinkId] = { icon: e.drinkIcon, label: e.drinkLabel, amount: 0, unit: e.unit };
       hydTotals[e.drinkId].amount += e.amount;
     });
-    hydCards.innerHTML = '<div class="hyd-summary">' +
-      Object.values(hydTotals).map(h => `
-        <div class="hyd-card">
-          <span class="hyd-card-icon">${h.icon}</span>
-          <div class="hyd-card-info">
-            <span class="hyd-card-val">${h.unit==='volume' ? (h.amount>=1000?`${(h.amount/1000).toFixed(1)}L`:`${h.amount}ml`) : `${h.amount} ud`}</span>
-            <span class="hyd-card-label">${h.label}</span>
-          </div>
-        </div>`).join('') + '</div>';
+
+    // Build progress bars same style as nutrition
+    const hydGoals = {
+      water:      { label: '💧 Agua',       goal: settings.goalWater,    unit: 'ml' },
+      hidratante: { label: '🏋️ Hidratante', goal: settings.goalIsotonic, unit: 'ml' },
+    };
+
+    const bars = Object.entries(hydTotals).map(([id, h]) => {
+      const meta = hydGoals[id];
+      const displayVal = h.unit === 'volume'
+        ? (h.amount >= 1000 ? `${(h.amount/1000).toFixed(1)}L` : `${h.amount}ml`)
+        : `${h.amount} ud`;
+      const goal = meta?.goal || 0;
+      const pct = goal ? Math.min((h.amount / goal) * 100, 110) : 0;
+      const over = pct > 100;
+      return `<div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">${meta?.label || h.icon + ' ' + h.label}</span>
+          <span class="progress-value">${displayVal}${goal ? ` / ${goal >= 1000 ? (goal/1000).toFixed(1)+'L' : goal+'ml'}` : ''}</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill${over?' over':''}" style="width:${pct || 100}%;background:${over?'var(--warn)':'#4a90d9'}${!goal?';opacity:0.4':''}"></div>
+        </div>
+      </div>`;
+    });
+
+    hydCards.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${bars.join('')}</div>`;
   } else {
     hydSection.style.display = 'none';
   }
 
-  // Today list
+  // Today list — descending order (latest first)
   const list = document.getElementById('homeTodayList');
   const allToday = [
     ...todayEntries.map(e => ({ ...e, _type: 'food', _time: e.logged_at })),
     ...todayHyd.map(e => ({ ...e, _type: 'hyd', _time: e.logged_at }))
-  ].sort((a, b) => new Date(a._time) - new Date(b._time));
+  ].sort((a, b) => new Date(b._time) - new Date(a._time));
 
   if (!allToday.length) {
     list.innerHTML = '<div class="empty"><div class="empty-icon">🥗</div><div class="empty-text">Aún no hay entradas hoy.<br>¡Registrá tu primera comida!</div></div>';
@@ -1904,12 +1920,10 @@ async function loadSettings() {
     settings = {
       goalCal: data.goal_cal || 0, goalProtein: data.goal_protein || 0,
       goalCarbs: data.goal_carbs || 0, goalFat: data.goal_fat || 0,
-      goalWater: data.goal_water || 0, goalCoffee: data.goal_coffee || 0,
-      goalTea: data.goal_tea || 0, goalIsotonic: data.goal_isotonic || 0,
-      goalJuice: data.goal_juice || 0, goalAlcohol: data.goal_alcohol || 0,
+      goalWater: data.goal_water || 0, goalIsotonic: data.goal_isotonic || 0,
     };
   }
-  ['Cal','Protein','Carbs','Fat','Water','Coffee','Tea','Isotonic','Juice','Alcohol'].forEach(k => {
+  ['Cal','Protein','Carbs','Fat','Water','Isotonic'].forEach(k => {
     const el = document.getElementById('goal' + k);
     if (el && settings['goal' + k]) el.value = settings['goal' + k];
   });
@@ -1921,18 +1935,12 @@ async function saveSettings() {
   settings.goalCarbs    = parseInt(document.getElementById('goalCarbs').value)    || 0;
   settings.goalFat      = parseInt(document.getElementById('goalFat').value)      || 0;
   settings.goalWater    = parseInt(document.getElementById('goalWater').value)    || 0;
-  settings.goalCoffee   = parseInt(document.getElementById('goalCoffee').value)   || 0;
-  settings.goalTea      = parseInt(document.getElementById('goalTea').value)      || 0;
   settings.goalIsotonic = parseInt(document.getElementById('goalIsotonic').value) || 0;
-  settings.goalJuice    = parseInt(document.getElementById('goalJuice').value)    || 0;
-  settings.goalAlcohol  = parseInt(document.getElementById('goalAlcohol').value)  || 0;
   const { error } = await sb.from('profiles').upsert({
     id: currentUser.id,
     goal_cal: settings.goalCal, goal_protein: settings.goalProtein,
     goal_carbs: settings.goalCarbs, goal_fat: settings.goalFat,
-    goal_water: settings.goalWater, goal_coffee: settings.goalCoffee,
-    goal_tea: settings.goalTea, goal_isotonic: settings.goalIsotonic,
-    goal_juice: settings.goalJuice, goal_alcohol: settings.goalAlcohol,
+    goal_water: settings.goalWater, goal_isotonic: settings.goalIsotonic,
   });
   if (error) { showToast('Error al guardar', true); return; }
   showToast('Metas guardadas ✓');
@@ -1950,12 +1958,8 @@ async function clearAllData() {
 
 // ══ Hydration ══
 const DRINK_TYPES = [
-  { id: 'water',    label: 'Agua',      icon: '💧', unit: 'volume' },
-  { id: 'coffee',   label: 'Café',      icon: '☕', unit: 'count'  },
-  { id: 'tea',      label: 'Té',        icon: '🍵', unit: 'count'  },
-  { id: 'isotonic', label: 'Isotónica', icon: '🏋️', unit: 'volume' },
-  { id: 'juice',    label: 'Jugo',      icon: '🥤', unit: 'volume' },
-  { id: 'alcohol',  label: 'Alcohol',   icon: '🍺', unit: 'count'  },
+  { id: 'water',     label: 'Agua',       icon: '💧', unit: 'volume' },
+  { id: 'hidratante',label: 'Hidratante', icon: '🏋️', unit: 'volume' },
 ];
 let selectedDrink = DRINK_TYPES[0];
 let hydCount = 1;
