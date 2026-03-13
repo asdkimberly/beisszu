@@ -1320,7 +1320,7 @@
         const confirm = document.getElementById('authPasswordConfirm').value;
         if (password !== confirm) { showAuthError('Las contraseñas no coinciden'); btn.textContent = 'Crear cuenta'; btn.disabled = false; return; }
         if (password.length < 6) { showAuthError('La contraseña debe tener al menos 6 caracteres'); btn.textContent = 'Crear cuenta'; btn.disabled = false; return; }
-        const { error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+        const { error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: 'https://asdkimberly.github.io/beisszu/' } });
         if (error) throw error;
         showAuthError('¡Cuenta creada! Revisá tu email para confirmar.', true);
       }
