@@ -777,11 +777,6 @@ select { cursor: pointer; }
       <div class="card" id="homeProgressBars"></div>
     </div>
 
-    <div id="homeHydSection" style="display:none">
-      <div class="section-label">Hidratación de hoy</div>
-      <div id="homeHydCards"></div>
-    </div>
-
     <div>
       <div class="section-label">Entradas de hoy</div>
       <div id="homeTodayList">
@@ -896,7 +891,7 @@ select { cursor: pointer; }
     <div id="subHyd" style="display:none">
       <div class="card">
         <div class="section-label">Tipo de bebida</div>
-        <div class="drink-grid" id="drinkTypeGrid"></div>
+        <div class="drink-grid" id="drinkTypeGrid" style="grid-template-columns:1fr 1fr"></div>
       </div>
       <div class="card" style="margin-top:12px">
         <div id="hydAmountRow">
@@ -1613,25 +1608,52 @@ function renderToday() {
   document.getElementById('todayCarbs').textContent = totCarb.toFixed(1);
   document.getElementById('todayFat').textContent  = totFat.toFixed(1);
 
-  // Progress bars
+  // Progress bars — nutrition + hydration together
   const progSection = document.getElementById('homeProgressSection');
   const progBars = document.getElementById('homeProgressBars');
-  const hasGoals = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat;
-  if (hasGoals) {
+
+  // Hydration totals
+  const hydTotals = {};
+  todayHyd.forEach(e => {
+    if (!hydTotals[e.drinkId]) hydTotals[e.drinkId] = { icon: e.drinkIcon, label: e.drinkLabel, amount: 0, unit: e.unit };
+    hydTotals[e.drinkId].amount += e.amount;
+  });
+  const waterAmt     = hydTotals['water']?.amount     || 0;
+  const hidratanteAmt = hydTotals['hidratante']?.amount || 0;
+
+  const hasNutrGoals = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat;
+  const hasHydGoals  = settings.goalWater || settings.goalIsotonic;
+
+  if (hasNutrGoals || hasHydGoals) {
     progSection.style.display = 'block';
-    const bars = [
-      { label: 'Calorías', val: totCal,  goal: settings.goalCal,     unit: 'kcal', color: 'var(--accent)' },
+
+    const nutrBars = [
+      { label: 'Calorías', val: totCal,  goal: settings.goalCal,     unit: 'kcal', color: 'var(--accent)'  },
       { label: 'Proteína', val: totProt, goal: settings.goalProtein,  unit: 'g',    color: 'var(--accent2)' },
-      { label: 'Carbos',   val: totCarb, goal: settings.goalCarbs,    unit: 'g',    color: '#5bc0de' },
-      { label: 'Grasas',   val: totFat,  goal: settings.goalFat,      unit: 'g',    color: '#e07840' },
+      { label: 'Carbos',   val: totCarb, goal: settings.goalCarbs,    unit: 'g',    color: '#5bc0de'        },
+      { label: 'Grasas',   val: totFat,  goal: settings.goalFat,      unit: 'g',    color: '#e07840'        },
     ].filter(b => b.goal);
-    progBars.innerHTML = bars.map(b => {
+
+    const hydBars = [
+      { label: '💧 Agua',       val: waterAmt,      goal: settings.goalWater,    unit: 'ml', color: '#4a90d9' },
+      { label: '🏋️ Hidratante', val: hidratanteAmt, goal: settings.goalIsotonic, unit: 'ml', color: '#5bc0de' },
+    ].filter(b => b.goal);
+
+    const allBars = [...nutrBars, ...hydBars];
+
+    progBars.innerHTML = allBars.map(b => {
       const pct = Math.min((b.val / b.goal) * 100, 110);
       const over = pct > 100;
+      const displayVal = b.unit === 'ml'
+        ? (b.val >= 1000 ? `${(b.val/1000).toFixed(1)}L` : `${Math.round(b.val)}ml`)
+        : Math.round(b.val);
+      const displayGoal = b.unit === 'ml'
+        ? (b.goal >= 1000 ? `${(b.goal/1000).toFixed(1)}L` : `${b.goal}ml`)
+        : `${b.goal} ${b.unit}`;
       return `<div class="progress-item">
         <div class="progress-header">
           <span class="progress-label">${b.label}</span>
-          <span class="progress-value">${Math.round(b.val)} / ${b.goal} ${b.unit}</span>
+          <span class="progress-value">${displayVal} / ${displayGoal}</span>
         </div>
         <div class="progress-bar">
           <div class="progress-fill${over?' over':''}" style="width:${pct}%;background:${over?'var(--warn)':b.color}"></div>
@@ -1640,49 +1662,6 @@ function renderToday() {
     }).join('');
   } else {
     progSection.style.display = 'none';
-  }
-
-  // Hydration summary + progress bars
-  const hydSection = document.getElementById('homeHydSection');
-  const hydCards = document.getElementById('homeHydCards');
-  if (todayHyd.length) {
-    hydSection.style.display = 'block';
-
-    // Totals per drink type
-    const hydTotals = {};
-    todayHyd.forEach(e => {
-      if (!hydTotals[e.drinkId]) hydTotals[e.drinkId] = { icon: e.drinkIcon, label: e.drinkLabel, amount: 0, unit: e.unit };
-      hydTotals[e.drinkId].amount += e.amount;
-    });
-
-    // Build progress bars same style as nutrition
-    const hydGoals = {
-      water:      { label: '💧 Agua',       goal: settings.goalWater,    unit: 'ml' },
-      hidratante: { label: '🏋️ Hidratante', goal: settings.goalIsotonic, unit: 'ml' },
-    };
-
-    const bars = Object.entries(hydTotals).map(([id, h]) => {
-      const meta = hydGoals[id];
-      const displayVal = h.unit === 'volume'
-        ? (h.amount >= 1000 ? `${(h.amount/1000).toFixed(1)}L` : `${h.amount}ml`)
-        : `${h.amount} ud`;
-      const goal = meta?.goal || 0;
-      const pct = goal ? Math.min((h.amount / goal) * 100, 110) : 0;
-      const over = pct > 100;
-      return `<div class="progress-item">
-        <div class="progress-header">
-          <span class="progress-label">${meta?.label || h.icon + ' ' + h.label}</span>
-          <span class="progress-value">${displayVal}${goal ? ` / ${goal >= 1000 ? (goal/1000).toFixed(1)+'L' : goal+'ml'}` : ''}</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill${over?' over':''}" style="width:${pct || 100}%;background:${over?'var(--warn)':'#4a90d9'}${!goal?';opacity:0.4':''}"></div>
-        </div>
-      </div>`;
-    });
-
-    hydCards.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${bars.join('')}</div>`;
-  } else {
-    hydSection.style.display = 'none';
   }
 
   // Today list — descending order (latest first)
