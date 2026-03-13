@@ -1451,14 +1451,14 @@ function onFoodInput(val) {
   if (!val.trim()) { dd.classList.remove('show'); return; }
   const q = val.toLowerCase();
   const allDb = [...customFoods, ...foodsDb];
-  // Also include dishes as selectable items
+  // Include dishes as selectable items — search on raw name, display with emoji
   const dishItems = dishes.map(d => {
     const ings = d.dish_ingredients || [];
     const cal  = ings.reduce((s,i) => s+(i.calories||0), 0);
     const p    = ings.reduce((s,i) => s+(i.protein_g||0), 0);
     const c    = ings.reduce((s,i) => s+(i.carbs_g||0), 0);
     const f    = ings.reduce((s,i) => s+(i.fat_g||0), 0);
-    return { name: `🍽️ ${d.name}`, qty: 1, unit: 'porción', cal, p, c, f, fib: 0, _isDish: true };
+    return { name: d.name, displayName: `🍽️ ${d.name}`, qty: 1, unit: 'porción', cal: Math.round(cal), p: Math.round(p*10)/10, c: Math.round(c*10)/10, f: Math.round(f*10)/10, fib: 0, _isDish: true };
   });
   const dbMatches = [...allDb, ...dishItems].filter(f => f.name.toLowerCase().includes(q)).slice(0, 6);
   const pastNames = [...new Set(entries.map(e => e.food_name))];
@@ -1469,7 +1469,7 @@ function onFoodInput(val) {
   if (!all.length) { dd.classList.remove('show'); return; }
   dd.innerHTML = all.map(f => `
     <div class="food-option" onmousedown="selectFood(${JSON.stringify(f).replace(/"/g,'&quot;')})">
-      <div class="food-option-name">${f.name}</div>
+      <div class="food-option-name">${f.displayName || f.name}</div>
       <div class="food-option-meta">
         ${f._past
           ? '<span style="color:var(--accent2)">⏱ Reciente</span>'
@@ -1480,7 +1480,7 @@ function onFoodInput(val) {
 }
 
 function selectFood(food) {
-  document.getElementById('foodName').value = food.name;
+  document.getElementById('foodName').value = food.displayName || food.name;
   document.getElementById('foodDropdown').classList.remove('show');
   if (food._past) { selectedFoodBase = null; return; }
   selectedFoodBase = { qty: food.qty, cal: food.cal, p: food.p, c: food.c, f: food.f, fib: food.fib || 0 };
@@ -2066,10 +2066,15 @@ let foodServings = {};           // { food_name: [{ serving_name, grams }] }
 
 // ── Load dishes ──
 async function loadDishes() {
-  const { data } = await sb.from('dishes').select(`
-    *, dish_ingredients (*)
-  `).eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  dishes = data || [];
+  const { data, error } = await sb.from('dishes')
+    .select('*, dish_ingredients(*)')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('loadDishes error:', error); dishes = []; return; }
+  dishes = (data || []).map(d => ({
+    ...d,
+    dish_ingredients: (d.dish_ingredients || []).filter(i => i.dish_id === d.id)
+  }));
 }
 
 // ── Load food servings ──
