@@ -822,16 +822,61 @@
     padding: 4px 0 8px;
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<div class="app">
+<!-- ══ AUTH SCREEN ══ -->
+<div id="authScreen" style="display:none;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:20px">
+  <div style="text-align:center;margin-bottom:8px">
+    <div style="font-family:var(--font-display);font-size:28px;font-weight:300;color:var(--accent)">Beiß zu</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">registro de nutrición e hidratación</div>
+  </div>
+
+  <!-- Toggle -->
+  <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px;gap:4px;width:100%;max-width:320px">
+    <button id="tabLogin" onclick="showAuthTab('login')" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--accent);color:var(--bg);font-family:var(--font-mono);font-size:13px;cursor:pointer">Iniciar sesión</button>
+    <button id="tabRegister" onclick="showAuthTab('register')" style="flex:1;padding:8px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-family:var(--font-mono);font-size:13px;cursor:pointer">Registrarse</button>
+  </div>
+
+  <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px">
+    <div id="registerName" style="display:none">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Nombre</div>
+      <input id="authName" type="text" placeholder="Tu nombre" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-mono);font-size:14px">
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Email</div>
+      <input id="authEmail" type="email" placeholder="tu@email.com" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-mono);font-size:14px">
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Contraseña</div>
+      <div style="position:relative">
+        <input id="authPassword" type="password" placeholder="••••••••" style="width:100%;padding:12px;padding-right:42px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-mono);font-size:14px">
+        <button type="button" onclick="togglePwd('authPassword', this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;line-height:1;color:var(--muted)">👁</button>
+      </div>
+    </div>
+    <div id="registerConfirm" style="display:none">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Repetir contraseña</div>
+      <div style="position:relative">
+        <input id="authPasswordConfirm" type="password" placeholder="••••••••" style="width:100%;padding:12px;padding-right:42px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-mono);font-size:14px">
+        <button type="button" onclick="togglePwd('authPasswordConfirm', this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;line-height:1;color:var(--muted)">👁</button>
+      </div>
+    </div>
+    <div id="authError" style="display:none;font-size:12px;color:var(--warn);text-align:center"></div>
+    <button id="authBtn" onclick="handleAuth()" style="width:100%;padding:14px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-family:var(--font-mono);font-size:14px;font-weight:500;cursor:pointer">Iniciar sesión</button>
+  </div>
+</div>
+
+<div class="app" id="appScreen" style="display:none">
 
   <div class="header">
     <div class="logo">
       <div class="logo-dot">🥗</div>
       <div class="logo-text">Beiß<span> zu</span></div>
     </div>
-    <div class="time-badge" id="timeBadge">--:--</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="time-badge" id="timeBadge">--:--</div>
+      <button onclick="handleLogout()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:4px 10px;font-family:var(--font-mono);font-size:11px;cursor:pointer">salir</button>
+    </div>
   </div>
 
   <div class="tabs">
@@ -847,11 +892,7 @@
   <div class="page" id="page-log">
 
     <div class="offline-banner" id="offlineBanner">
-      <span>⚡</span> Sin conexión — se sincronizará al reconectarse
-    </div>
-    <div class="queue-badge" id="queueBadge">
-      <span id="queueText">📦 2 entradas pendientes de sincronización</span>
-      <button class="sync-btn" onclick="syncQueue()">Sync</button>
+      <span>⚡</span> Sin conexión
     </div>
 
     <div class="card">
@@ -1115,23 +1156,6 @@
 
   <!-- ══ SETTINGS PAGE ══ -->
   <div class="page" id="page-settings">
-    <div class="section-label">Conexión con Google Sheets</div>
-    <div class="card">
-      <div class="settings-row">
-        <div>
-          <div class="settings-label">URL del Web App Script</div>
-          <div class="settings-sub">La URL de tu Google Apps Script desplegado</div>
-        </div>
-      </div>
-      <input class="settings-input" style="width:100%;margin-bottom:8px" type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/…/exec">
-      <div class="settings-row" style="margin-top:4px">
-        <div>
-          <div class="settings-label">Token secreto</div>
-          <div class="settings-sub">Una contraseña para proteger tu endpoint</div>
-        </div>
-      </div>
-      <input class="settings-input" style="width:100%" type="password" id="scriptToken" placeholder="Ej. miTokenSecreto123" autocomplete="off">
-    </div>
 
     <div class="section-label">Metas de nutrición diaria (opcional)</div>
     <div class="card">
@@ -1187,7 +1211,7 @@
 
     <div class="card" style="margin-top:4px">
       <button onclick="clearAllData()" style="background:rgba(224,120,64,0.1);border:1px solid rgba(224,120,64,0.3);color:var(--warn);border-radius:10px;padding:12px;font-family:var(--font-mono);font-size:12px;cursor:pointer;width:100%">
-        🗑 Borrar todos los datos locales
+        🗑 Borrar todos mis datos
       </button>
     </div>
   </div>
@@ -1231,85 +1255,121 @@
   </div> <!-- end page-hydration -->
 
 </div> <!-- end app wrapper -->
+</div> <!-- end appScreen -->
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
+  // ── Supabase ───────────────────────────────────────────────────────
+  const SUPA_URL = 'https://nkhecfkqpqqqpxleqoec.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5raGVjZmtxcHFxcXB4bGVxb2VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjAwNDgsImV4cCI6MjA4ODk5NjA0OH0.NLAXuUaZw_uz5XtQh4g0e9xhPF2wz3I7sbNmOtFhXws';
+  const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
   // ── State ──────────────────────────────────────────────────────────
+  let currentUser = null;
   let selectedMeal = null;
   let selectedOrigin = "Casa";
-  let foodsDb = []; // loaded from foods.json — read only
-  let customFoods = JSON.parse(localStorage.getItem('nf_custom_foods') || '[]'); // user additions
+  let foodsDb = [];
+  let customFoods = [];
+  let entries = [];
+  let hydEntries = [];
+  let settings = {};
 
-  const DEFAULT_FOODS = [
-    { name: 'Pechuga de pollo cocida',     qty: 100, unit: 'gramos',    cal: 165, p: 31,  c: 0,   f: 3.6, fib: 0   },
-    { name: 'Arroz blanco cocido',          qty: 100, unit: 'gramos',    cal: 130, p: 2.7, c: 28,  f: 0.3, fib: 0.4 },
-    { name: 'Frijoles negros cocidos',      qty: 100, unit: 'gramos',    cal: 132, p: 8.9, c: 24,  f: 0.5, fib: 8.7 },
-    { name: 'Gallo pinto',                  qty: 200, unit: 'gramos',    cal: 260, p: 9,   c: 48,  f: 2,   fib: 4   },
-    { name: 'Huevo entero',                 qty: 1,   unit: 'unidades',  cal: 70,  p: 6,   c: 0.5, f: 5,   fib: 0   },
-    { name: 'Huevo (clara)',                qty: 1,   unit: 'unidades',  cal: 17,  p: 3.6, c: 0.2, f: 0,   fib: 0   },
-    { name: 'Aguacate',                     qty: 100, unit: 'gramos',    cal: 160, p: 2,   c: 9,   f: 15,  fib: 7   },
-    { name: 'Plátano maduro',               qty: 1,   unit: 'unidades',  cal: 105, p: 1.3, c: 27,  f: 0.4, fib: 3.1 },
-    { name: 'Plátano verde cocido',         qty: 100, unit: 'gramos',    cal: 116, p: 1.3, c: 31,  f: 0.2, fib: 2.3 },
-    { name: 'Tortilla de maíz',             qty: 1,   unit: 'unidades',  cal: 58,  p: 1.5, c: 12,  f: 0.7, fib: 1.4 },
-    { name: 'Pan integral (rebanada)',      qty: 1,   unit: 'rebanadas', cal: 80,  p: 4,   c: 15,  f: 1,   fib: 2   },
-    { name: 'Yogur griego natural',         qty: 150, unit: 'gramos',    cal: 100, p: 17,  c: 6,   f: 0.7, fib: 0   },
-    { name: 'Leche entera',                 qty: 240, unit: 'ml',        cal: 150, p: 8,   c: 12,  f: 8,   fib: 0   },
-    { name: 'Leche descremada',             qty: 240, unit: 'ml',        cal: 90,  p: 9,   c: 12,  f: 0.5, fib: 0   },
-    { name: 'Queso blanco',                 qty: 30,  unit: 'gramos',    cal: 80,  p: 6,   c: 1,   f: 6,   fib: 0   },
-    { name: 'Atún en agua (lata)',          qty: 85,  unit: 'gramos',    cal: 100, p: 22,  c: 0,   f: 1,   fib: 0   },
-    { name: 'Salmón al horno',              qty: 100, unit: 'gramos',    cal: 206, p: 20,  c: 0,   f: 13,  fib: 0   },
-    { name: 'Carne molida (90% magra)',     qty: 100, unit: 'gramos',    cal: 176, p: 20,  c: 0,   f: 10,  fib: 0   },
-    { name: 'Avena en hojuelas',            qty: 40,  unit: 'gramos',    cal: 150, p: 5,   c: 27,  f: 2.5, fib: 4   },
-    { name: 'Banana',                       qty: 1,   unit: 'unidades',  cal: 89,  p: 1.1, c: 23,  f: 0.3, fib: 2.6 },
-    { name: 'Manzana',                      qty: 1,   unit: 'unidades',  cal: 80,  p: 0.4, c: 21,  f: 0.3, fib: 3.7 },
-    { name: 'Papaya',                       qty: 150, unit: 'gramos',    cal: 60,  p: 0.9, c: 15,  f: 0.4, fib: 2.3 },
-    { name: 'Piña',                         qty: 150, unit: 'gramos',    cal: 75,  p: 0.8, c: 20,  f: 0.2, fib: 1.7 },
-    { name: 'Ensalada verde (sin aderezo)', qty: 100, unit: 'gramos',    cal: 20,  p: 1.5, c: 3,   f: 0.3, fib: 1.5 },
-    { name: 'Brócoli cocido',               qty: 100, unit: 'gramos',    cal: 35,  p: 2.4, c: 7,   f: 0.4, fib: 2.6 },
-    { name: 'Zanahoria',                    qty: 100, unit: 'gramos',    cal: 41,  p: 0.9, c: 10,  f: 0.2, fib: 2.8 },
-    { name: 'Papa cocida',                  qty: 150, unit: 'gramos',    cal: 130, p: 3,   c: 30,  f: 0.2, fib: 2.4 },
-    { name: 'Pasta cocida',                 qty: 150, unit: 'gramos',    cal: 220, p: 8,   c: 43,  f: 1.3, fib: 2.5 },
-    { name: 'Aceite de oliva',              qty: 1,   unit: 'tbsp',      cal: 119, p: 0,   c: 0,   f: 14,  fib: 0   },
-    { name: 'Mantequilla de maní',          qty: 2,   unit: 'tbsp',      cal: 188, p: 8,   c: 6,   f: 16,  fib: 2   },
-    { name: 'Almendras',                    qty: 30,  unit: 'gramos',    cal: 173, p: 6,   c: 6,   f: 15,  fib: 3.5 },
-    { name: 'Proteína en polvo (whey)',     qty: 30,  unit: 'gramos',    cal: 120, p: 24,  c: 3,   f: 2,   fib: 0   },
-    { name: 'Café negro',                   qty: 240, unit: 'ml',        cal: 5,   p: 0.3, c: 0,   f: 0,   fib: 0   },
-    { name: 'Jugo de naranja natural',      qty: 240, unit: 'ml',        cal: 112, p: 1.7, c: 26,  f: 0.5, fib: 0.5 },
-  ];
-
-  async function loadFoodsDb() {
-    try {
-      const url = settings.scriptUrl;
-      if (!url) throw new Error('no url');
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('fetch failed');
-      foodsDb = await res.json();
-    } catch (e) {
-      foodsDb = DEFAULT_FOODS;
-    }
-    buildSuggestions();
-    renderFoodsList();
+  // ── Auth UI ────────────────────────────────────────────────────────
+  function togglePwd(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    btn.textContent = isHidden ? '🙈' : '👁';
   }
 
-  let entries = JSON.parse(localStorage.getItem('nf_entries') || '[]');
-  let queue = JSON.parse(localStorage.getItem('nf_queue') || '[]');
-  let settings = JSON.parse(localStorage.getItem('nf_settings') || '{}');
+  function showAuthTab(tab) {
+    const isLogin = tab === 'login';
+    document.getElementById('tabLogin').style.background = isLogin ? 'var(--accent)' : 'transparent';
+    document.getElementById('tabLogin').style.color = isLogin ? 'var(--bg)' : 'var(--muted)';
+    document.getElementById('tabRegister').style.background = isLogin ? 'transparent' : 'var(--accent)';
+    document.getElementById('tabRegister').style.color = isLogin ? 'var(--muted)' : 'var(--bg)';
+    document.getElementById('registerName').style.display = isLogin ? 'none' : 'block';
+    document.getElementById('registerConfirm').style.display = isLogin ? 'none' : 'block';
+    document.getElementById('authPasswordConfirm').value = '';
+    document.getElementById('authBtn').textContent = isLogin ? 'Iniciar sesión' : 'Crear cuenta';
+    document.getElementById('authError').style.display = 'none';
+  }
 
-  // ── Init ──────────────────────────────────────────────────────────
-  function init() {
+  async function handleAuth() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const name = document.getElementById('authName').value.trim();
+    const isLogin = document.getElementById('authBtn').textContent === 'Iniciar sesión';
+    const errEl = document.getElementById('authError');
+    errEl.style.display = 'none';
+
+    if (!email || !password) { showAuthError('Completá todos los campos'); return; }
+
+    const btn = document.getElementById('authBtn');
+    btn.textContent = '...';
+    btn.disabled = true;
+
+    try {
+      if (isLogin) {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } else {
+        if (!name) { showAuthError('Ingresá tu nombre'); btn.textContent = 'Crear cuenta'; btn.disabled = false; return; }
+        const confirm = document.getElementById('authPasswordConfirm').value;
+        if (password !== confirm) { showAuthError('Las contraseñas no coinciden'); btn.textContent = 'Crear cuenta'; btn.disabled = false; return; }
+        if (password.length < 6) { showAuthError('La contraseña debe tener al menos 6 caracteres'); btn.textContent = 'Crear cuenta'; btn.disabled = false; return; }
+        const { error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+        if (error) throw error;
+        showAuthError('¡Cuenta creada! Revisá tu email para confirmar.', true);
+      }
+    } catch (e) {
+      showAuthError(e.message);
+    }
+    btn.textContent = isLogin ? 'Iniciar sesión' : 'Crear cuenta';
+    btn.disabled = false;
+  }
+
+  function showAuthError(msg, isSuccess = false) {
+    const el = document.getElementById('authError');
+    el.textContent = msg;
+    el.style.color = isSuccess ? 'var(--accent)' : 'var(--warn)';
+    el.style.display = 'block';
+  }
+
+  async function handleLogout() {
+    await sb.auth.signOut();
+  }
+
+  // ── App init ───────────────────────────────────────────────────────
+  async function initApp(user) {
+    currentUser = user;
+    await Promise.all([loadSettings(), loadEntries(), loadHydration(), loadFoodsDb()]);
     updateClock();
     setInterval(updateClock, 30000);
     checkOnline();
-    window.addEventListener('online', () => { checkOnline(); syncQueue(); });
+    window.addEventListener('online', checkOnline);
     window.addEventListener('offline', checkOnline);
-    loadSettings();
-    updateQueueBadge();
-    renderHistory();
     renderToday();
-    loadFoodsDb(); // carga alimentos desde Apps Script URL (settings) y llama buildSuggestions()
+    renderHistory();
+    autoSelectMeal();
   }
+
+  // ── Auth state listener ────────────────────────────────────────────
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display = 'block';
+      initApp(session.user);
+    } else {
+      document.getElementById('authScreen').style.display = 'flex';
+      document.getElementById('appScreen').style.display = 'none';
+      currentUser = null;
+      entries = []; hydEntries = []; settings = {};
+    }
+  });
+
 
   function updateClock() {
     const now = new Date();
@@ -1384,24 +1444,24 @@
   }
 
   // ── Submit ────────────────────────────────────────────────────────
-  function submitEntry() {
+  async function submitEntry() {
     const foodName = document.getElementById('foodName').value.trim();
     const quantity = document.getElementById('quantity').value;
     const calories = document.getElementById('calories').value;
-    const protein = document.getElementById('protein').value;
-    const carbs = document.getElementById('carbs').value;
-    const fat = document.getElementById('fat').value;
+    const protein  = document.getElementById('protein').value;
+    const carbs    = document.getElementById('carbs').value;
+    const fat      = document.getElementById('fat').value;
 
     if (!selectedMeal) { showToast('Selecciona un tipo de comida', true); return; }
     if (!foodName) { showToast('Ingresa el nombre del alimento', true); return; }
     if (!calories && !protein && !carbs && !fat) { showToast('Agrega al menos calorías o macros', true); return; }
 
     const entry = {
-      id: Date.now(),
+      user_id: currentUser.id,
       log_date: getTodayDate(),
       meal_type: selectedMeal,
       food_name: foodName,
-      quantity: parseFloat(quantity) || '',
+      quantity: parseFloat(quantity) || null,
       unit: document.getElementById('unit').value,
       calories: parseFloat(calories) || Math.round((parseFloat(protein)||0)*4 + (parseFloat(carbs)||0)*4 + (parseFloat(fat)||0)*9),
       protein_g: parseFloat(protein) || 0,
@@ -1410,77 +1470,37 @@
       fiber_g: parseFloat(document.getElementById('fiber').value) || 0,
       sodium_mg: parseFloat(document.getElementById('sodium').value) || 0,
       notes: document.getElementById('notes').value.trim(),
-      origin: selectedOrigin
+      origin: selectedOrigin,
     };
 
-    // Save locally
-    entries.push(entry);
-    localStorage.setItem('nf_entries', JSON.stringify(entries));
+    const { data, error } = await sb.from('food_log').insert(entry).select().single();
+    if (error) { showToast('Error al guardar', true); return; }
 
-    // Send to Sheets or queue
-    if (navigator.onLine && settings.scriptUrl) {
-      sendToSheets(entry);
-    } else if (settings.scriptUrl) {
-      queue.push(entry);
-      localStorage.setItem('nf_queue', JSON.stringify(queue));
-      updateQueueBadge();
-      showToast('Sin conexión — se sincronizará después ⚡');
-    } else {
-      showToast('✓ Guardado localmente');
-    }
-
+    entries.push({ ...entry, id: data.id, logged_at: data.logged_at });
     addToSuggestions(foodName);
     resetForm();
     renderToday();
+    showToast('✓ Entrada registrada');
   }
 
-  async function sendToSheets(entry) {
-    try {
-      await fetch(settings.scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...entry, token: settings.scriptToken || '' })
-      });
-      showToast('✓ Registrado en Google Sheets');
-    } catch (e) {
-      queue.push(entry);
-      localStorage.setItem('nf_queue', JSON.stringify(queue));
-      updateQueueBadge();
-      showToast('Guardado sin conexión — se sincronizará después', false);
-    }
+  async function loadEntries() {
+    const today = getTodayDate();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const { data } = await sb.from('food_log')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .gte('log_date', thirtyDaysAgo.toISOString().split('T')[0])
+      .order('logged_at', { ascending: true });
+    entries = data || [];
   }
 
-  async function syncQueue() {
-    if (!queue.length || !settings.scriptUrl) return;
-    const toSync = [...queue];
-    queue = [];
-    localStorage.setItem('nf_queue', JSON.stringify(queue));
-    updateQueueBadge();
-    for (const entry of toSync) {
-      try {
-        await fetch(settings.scriptUrl, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...entry, token: settings.scriptToken || '' })
-        });
-      } catch (e) {
-        queue.push(entry);
-      }
-    }
-    localStorage.setItem('nf_queue', JSON.stringify(queue));
-    updateQueueBadge();
-    if (!queue.length) showToast('✓ Todo sincronizado con Google Sheets');
-  }
-
-  function updateQueueBadge() {
-    const badge = document.getElementById('queueBadge');
-    if (queue.length > 0) {
-      badge.classList.add('show');
-      document.getElementById('queueText').textContent = `📦 ${queue.length} entrada${queue.length > 1 ? 's' : ''} pendiente${queue.length > 1 ? 's' : ''} de sincronización`;
-    } else {
-      badge.classList.remove('show');
-    }
+  async function deleteEntry(id) {
+    const { error } = await sb.from('food_log').delete().eq('id', id).eq('user_id', currentUser.id);
+    if (error) { showToast('Error al eliminar', true); return; }
+    entries = entries.filter(e => e.id !== id);
+    renderToday();
+    renderHistory();
   }
 
   // ── Reset ─────────────────────────────────────────────────────────
@@ -1814,7 +1834,18 @@
     return parseFloat(num.toFixed(3)).toString();
   }
 
-  function saveNewFood() {
+  async function loadFoodsDb() {
+    const [{ data: foods }, { data: custom }] = await Promise.all([
+      sb.from('foods').select('*').order('name'),
+      sb.from('custom_foods').select('*').eq('user_id', currentUser.id).order('name')
+    ]);
+    foodsDb = (foods || []).map(f => ({ ...f, p: f.p, c: f.c, f: f.f }));
+    customFoods = (custom || []).map(f => ({ ...f, p: f.p, c: f.c, f: f.f }));
+    buildSuggestions();
+    renderFoodsList();
+  }
+
+  async function saveNewFood() {
     const name = document.getElementById('newFoodName').value.trim();
     const qty  = parseFraction(document.getElementById('newFoodQty').value) || 100;
     const unit = document.getElementById('newFoodUnit').value;
@@ -1825,23 +1856,29 @@
     const fib  = parseFloat(document.getElementById('newFoodFib').value)  || 0;
     if (!name) { showToast('Ingresa el nombre del alimento', true); return; }
     if (!cal && !p && !c && !f) { showToast('Agrega al menos un valor nutricional', true); return; }
-    customFoods.push({ name, qty, unit, cal, p, c, f, fib });
-    localStorage.setItem('nf_custom_foods', JSON.stringify(customFoods));
+
+    const { data, error } = await sb.from('custom_foods')
+      .insert({ user_id: currentUser.id, name, qty, unit, cal, p, c, f, fib })
+      .select().single();
+    if (error) { showToast('Error al guardar', true); return; }
+
+    customFoods.push({ ...data, p: data.p, c: data.c, f: data.f });
     ['newFoodName','newFoodQty','newFoodCal','newFoodP','newFoodC','newFoodF','newFoodFib']
       .forEach(id => document.getElementById(id).value = '');
     renderFoodsList();
     showToast('✓ Alimento guardado');
   }
 
-  function deleteFood(idx) {
-    if (!confirm(`¿Eliminar "${customFoods[idx].name}"?`)) return;
+  async function deleteFood(idx) {
+    const food = customFoods[idx];
+    if (!confirm(`¿Eliminar "${food.name}"?`)) return;
+    const { error } = await sb.from('custom_foods').delete().eq('id', food.id).eq('user_id', currentUser.id);
+    if (error) { showToast('Error al eliminar', true); return; }
     customFoods.splice(idx, 1);
-    localStorage.setItem('nf_custom_foods', JSON.stringify(customFoods));
     renderFoodsList();
   }
 
   function editFood(idx) {
-    // Close any other open edit forms first
     document.querySelectorAll('.food-list-item.editing').forEach(el => {
       const i = parseInt(el.dataset.idx);
       if (i !== idx) renderFoodItem(el, i, false);
@@ -1855,13 +1892,14 @@
     renderFoodItem(item, idx, false);
   }
 
-  function saveEdit(idx) {
+  async function saveEdit(idx) {
+    const food = customFoods[idx];
     const item = document.querySelector(`.food-list-item[data-idx="${idx}"]`);
     const name = item.querySelector('.ef-name').value.trim();
     if (!name) { showToast('El nombre no puede estar vacío', true); return; }
-    customFoods[idx] = {
+    const updated = {
       name,
-      qty:  parseFraction(item.querySelector('.ef-qty').value) || customFoods[idx].qty,
+      qty:  parseFraction(item.querySelector('.ef-qty').value) || food.qty,
       unit: item.querySelector('.ef-unit').value,
       cal:  parseFloat(item.querySelector('.ef-cal').value)  || 0,
       p:    parseFloat(item.querySelector('.ef-p').value)    || 0,
@@ -1869,7 +1907,9 @@
       f:    parseFloat(item.querySelector('.ef-f').value)    || 0,
       fib:  parseFloat(item.querySelector('.ef-fib').value)  || 0,
     };
-    localStorage.setItem('nf_custom_foods', JSON.stringify(customFoods));
+    const { error } = await sb.from('custom_foods').update(updated).eq('id', food.id).eq('user_id', currentUser.id);
+    if (error) { showToast('Error al actualizar', true); return; }
+    customFoods[idx] = { ...food, ...updated };
     renderFoodsList();
     showToast('✓ Alimento actualizado');
   }
@@ -2011,52 +2051,66 @@
   }
 
   // ── Settings ──────────────────────────────────────────────────────
-  function loadSettings() {
-    if (settings.scriptUrl) document.getElementById('scriptUrl').value = settings.scriptUrl;
-    if (settings.scriptToken) document.getElementById('scriptToken').value = settings.scriptToken;
-    if (settings.goalCal) document.getElementById('goalCal').value = settings.goalCal;
-    if (settings.goalProtein) document.getElementById('goalProtein').value = settings.goalProtein;
-    if (settings.goalCarbs) document.getElementById('goalCarbs').value = settings.goalCarbs;
-    if (settings.goalFat) document.getElementById('goalFat').value = settings.goalFat;
-    if (settings.goalWater) document.getElementById('goalWater').value = settings.goalWater;
-    if (settings.goalCoffee) document.getElementById('goalCoffee').value = settings.goalCoffee;
-    if (settings.goalTea) document.getElementById('goalTea').value = settings.goalTea;
-    if (settings.goalIsotonic) document.getElementById('goalIsotonic').value = settings.goalIsotonic;
-    if (settings.goalJuice) document.getElementById('goalJuice').value = settings.goalJuice;
-    if (settings.goalAlcohol) document.getElementById('goalAlcohol').value = settings.goalAlcohol;
+  async function loadSettings() {
+    const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    if (data) {
+      settings = {
+        goalCal: data.goal_cal || 0,
+        goalProtein: data.goal_protein || 0,
+        goalCarbs: data.goal_carbs || 0,
+        goalFat: data.goal_fat || 0,
+        goalWater: data.goal_water || 0,
+        goalCoffee: data.goal_coffee || 0,
+        goalTea: data.goal_tea || 0,
+        goalIsotonic: data.goal_isotonic || 0,
+        goalJuice: data.goal_juice || 0,
+        goalAlcohol: data.goal_alcohol || 0,
+      };
+    }
+    // Populate settings UI
+    ['Cal','Protein','Carbs','Fat','Water','Coffee','Tea','Isotonic','Juice','Alcohol'].forEach(k => {
+      const el = document.getElementById('goal' + k);
+      if (el && settings['goal' + k]) el.value = settings['goal' + k];
+    });
   }
 
-  function saveSettings() {
-    settings.scriptUrl = document.getElementById('scriptUrl').value.trim();
-    settings.scriptToken = document.getElementById('scriptToken').value.trim();
-    settings.goalCal = parseInt(document.getElementById('goalCal').value) || 0;
-    settings.goalProtein = parseInt(document.getElementById('goalProtein').value) || 0;
-    settings.goalCarbs = parseInt(document.getElementById('goalCarbs').value) || 0;
-    settings.goalFat = parseInt(document.getElementById('goalFat').value) || 0;
-    settings.goalWater = parseInt(document.getElementById('goalWater').value) || 0;
-    settings.goalCoffee = parseInt(document.getElementById('goalCoffee').value) || 0;
-    settings.goalTea = parseInt(document.getElementById('goalTea').value) || 0;
+  async function saveSettings() {
+    settings.goalCal      = parseInt(document.getElementById('goalCal').value) || 0;
+    settings.goalProtein  = parseInt(document.getElementById('goalProtein').value) || 0;
+    settings.goalCarbs    = parseInt(document.getElementById('goalCarbs').value) || 0;
+    settings.goalFat      = parseInt(document.getElementById('goalFat').value) || 0;
+    settings.goalWater    = parseInt(document.getElementById('goalWater').value) || 0;
+    settings.goalCoffee   = parseInt(document.getElementById('goalCoffee').value) || 0;
+    settings.goalTea      = parseInt(document.getElementById('goalTea').value) || 0;
     settings.goalIsotonic = parseInt(document.getElementById('goalIsotonic').value) || 0;
-    settings.goalJuice = parseInt(document.getElementById('goalJuice').value) || 0;
-    settings.goalAlcohol = parseInt(document.getElementById('goalAlcohol').value) || 0;
-    localStorage.setItem('nf_settings', JSON.stringify(settings));
+    settings.goalJuice    = parseInt(document.getElementById('goalJuice').value) || 0;
+    settings.goalAlcohol  = parseInt(document.getElementById('goalAlcohol').value) || 0;
+
+    const { error } = await sb.from('profiles').upsert({
+      id: currentUser.id,
+      goal_cal: settings.goalCal,
+      goal_protein: settings.goalProtein,
+      goal_carbs: settings.goalCarbs,
+      goal_fat: settings.goalFat,
+      goal_water: settings.goalWater,
+      goal_coffee: settings.goalCoffee,
+      goal_tea: settings.goalTea,
+      goal_isotonic: settings.goalIsotonic,
+      goal_juice: settings.goalJuice,
+      goal_alcohol: settings.goalAlcohol,
+    });
+    if (error) { showToast('Error al guardar ajustes', true); return; }
     showToast('Ajustes guardados ✓');
-    loadFoodsDb(); // recarga alimentos si cambió el URL
+    renderToday();
   }
 
-  function clearAllData() {
-    if (!confirm('¿Borrar todas las entradas locales? Esto no elimina los datos en Google Sheets.')) return;
-    entries = []; queue = [];
-    localStorage.removeItem('nf_entries');
-    localStorage.removeItem('nf_queue');
-    renderToday(); renderHistory(); updateQueueBadge();
-    showToast('Datos locales eliminados');
-  }
-
-  // ── Copy script ───────────────────────────────────────────────────
-  function copyScript() {
-    const code = document.querySelector('[onclick="copyScript()"]').textContent.trim();
-    navigator.clipboard.writeText(code).then(() => showToast('Código de Apps Script copiado ✓'));
+  async function clearAllData() {
+    if (!confirm('¿Borrar todas tus entradas? Esta acción no se puede deshacer.')) return;
+    await sb.from('food_log').delete().eq('user_id', currentUser.id);
+    await sb.from('hydration_log').delete().eq('user_id', currentUser.id);
+    entries = []; hydEntries = [];
+    renderToday(); renderHistory();
+    showToast('Datos eliminados');
   }
 
   // ── Toast ─────────────────────────────────────────────────────────
@@ -2089,7 +2143,7 @@
   ];
   let selectedDrink = DRINK_TYPES[0];
   let hydCount = 1;
-  let hydEntries = JSON.parse(localStorage.getItem('nf_hydration') || '[]');
+
 
   function initHydration() {
     const grid = document.getElementById('drinkTypeGrid');
@@ -2127,7 +2181,7 @@
     input.value = (parseFloat(input.value) || 0) + ml;
   }
 
-  function logHydration() {
+  async function logHydration() {
     const notes = document.getElementById('hydNotes').value.trim();
     let amount, display;
     if (selectedDrink.unit === 'volume') {
@@ -2138,58 +2192,70 @@
       amount = hydCount;
       display = `${amount} ud.`;
     }
+
     const entry = {
-      id: Date.now(),
-      date: getTodayDate(),
-      drinkId: selectedDrink.id,
-      drinkLabel: selectedDrink.label,
-      drinkIcon: selectedDrink.icon,
+      user_id: currentUser.id,
+      log_date: getTodayDate(),
+      drink_id: selectedDrink.id,
+      drink_label: selectedDrink.label,
+      drink_icon: selectedDrink.icon,
       unit: selectedDrink.unit,
       amount,
       display,
       notes,
-      time: new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
     };
-    hydEntries.push(entry);
-    localStorage.setItem('nf_hydration', JSON.stringify(hydEntries));
+
+    const { data, error } = await sb.from('hydration_log').insert(entry).select().single();
+    if (error) { showToast('Error al guardar', true); return; }
+
+    hydEntries.push({
+      ...entry,
+      id: data.id,
+      logged_at: data.logged_at,
+      date: entry.log_date,
+      drinkId: entry.drink_id,
+      drinkLabel: entry.drink_label,
+      drinkIcon: entry.drink_icon,
+      time: new Date(data.logged_at).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
+    });
+
     document.getElementById('hydCustomAmt').value = '';
     document.getElementById('hydNotes').value = '';
     hydCount = 1;
     document.getElementById('hydCountDisplay').textContent = 1;
     showToast(`${selectedDrink.icon} Registrado`);
-    renderHydration();
     renderToday();
-
-    // Sync to Sheets
-    if (settings.scriptUrl) {
-      const sheetsEntry = {
-        entry_type: 'hydration',
-        log_date: entry.date,
-        drinkId: entry.drinkId,
-        drinkLabel: entry.drinkLabel,
-        amount: entry.amount,
-        unit: entry.unit,
-        display: entry.display,
-        notes: entry.notes,
-        logged_at: new Date().toISOString(),
-        token: settings.scriptToken || ''
-      };
-      sendToSheets(sheetsEntry);
-    }
   }
 
-  function deleteHydEntry(id) {
+  async function loadHydration() {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const { data } = await sb.from('hydration_log')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .gte('log_date', thirtyDaysAgo.toISOString().split('T')[0])
+      .order('logged_at', { ascending: true });
+    hydEntries = (data || []).map(e => ({
+      ...e,
+      date: e.log_date,
+      drinkId: e.drink_id,
+      drinkLabel: e.drink_label,
+      drinkIcon: e.drink_icon,
+      time: new Date(e.logged_at).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
+    }));
+  }
+
+  async function deleteHydEntry(id) {
+    const { error } = await sb.from('hydration_log').delete().eq('id', id).eq('user_id', currentUser.id);
+    if (error) { showToast('Error al eliminar', true); return; }
     hydEntries = hydEntries.filter(e => e.id !== id);
-    localStorage.setItem('nf_hydration', JSON.stringify(hydEntries));
-    renderHydration();
     renderToday();
   }
 
   function renderHydration() {
-    // Summary and entries now live in renderToday — nothing to render here
+    // Summary and entries now live in renderToday
   }
 
-  init();
 </script>
 </body>
 </html>
