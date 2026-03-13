@@ -2121,19 +2121,51 @@ function renderDishesList() {
     const totProt = ings.reduce((s, i) => s + (i.protein_g || 0), 0);
     const totCarb = ings.reduce((s, i) => s + (i.carbs_g   || 0), 0);
     const totFat  = ings.reduce((s, i) => s + (i.fat_g     || 0), 0);
-    return `<div class="food-list-item">
-      <div class="food-list-row">
+
+    const ingRows = ings.map(i => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;color:var(--text)">${i.food_name || i.sub_dish_name || '—'}</div>
+          <div style="font-size:11px;color:var(--muted)">${i.quantity} ${i.unit} · P:${i.protein_g}g C:${i.carbs_g}g G:${i.fat_g}g</div>
+        </div>
+        <div style="font-size:13px;color:var(--accent);font-weight:500;white-space:nowrap;margin-left:12px">${Math.round(i.calories)} kcal</div>
+      </div>`).join('');
+
+    const totalsRow = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div><div style="font-size:16px;font-weight:300;color:var(--accent);font-family:var(--font-display)">${Math.round(totCal)}</div><div style="font-size:10px;color:var(--muted)">kcal</div></div>
+        <div><div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totProt.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">prot g</div></div>
+        <div><div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totCarb.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">carb g</div></div>
+        <div><div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totFat.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">gras g</div></div>
+      </div>`;
+
+    return `<div class="food-list-item" id="dish-item-${d.id}">
+      <div class="food-list-row" onclick="toggleDishExpand(${d.id})" style="cursor:pointer">
         <div style="flex:1;min-width:0">
           <div class="food-list-name">🍽️ ${d.name}</div>
-          <div class="food-list-meta">${ings.length} ingrediente${ings.length !== 1 ? 's' : ''} · P:${totProt.toFixed(1)}g C:${totCarb.toFixed(1)}g G:${totFat.toFixed(1)}g</div>
+          <div class="food-list-meta">${ings.length} ingrediente${ings.length !== 1 ? 's' : ''} · ${Math.round(totCal)} kcal</div>
         </div>
-        <div class="food-list-cal">${Math.round(totCal)} kcal</div>
-        <div class="food-list-actions">
-          <button class="food-delete-btn" onclick="deleteDish(${d.id})">🗑</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="food-list-cal">${Math.round(totCal)} kcal</div>
+          <span id="dish-chevron-${d.id}" style="color:var(--muted);font-size:12px;transition:transform 0.2s">▼</span>
+          <button class="food-delete-btn" onclick="event.stopPropagation();deleteDish(${d.id})">🗑</button>
         </div>
+      </div>
+      <div id="dish-expand-${d.id}" style="display:none;margin-top:8px">
+        ${ingRows}
+        ${totalsRow}
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Toggle dish expand ──
+function toggleDishExpand(id) {
+  const expand  = document.getElementById(`dish-expand-${id}`);
+  const chevron = document.getElementById(`dish-chevron-${id}`);
+  const isOpen  = expand.style.display !== 'none';
+  expand.style.display  = isOpen ? 'none' : 'block';
+  chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 // ── Show / hide builder ──
