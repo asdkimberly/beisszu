@@ -1600,7 +1600,7 @@ function selectFood(food) {
   document.getElementById('foodName').value = food.displayName || food.name;
   document.getElementById('foodDropdown').classList.remove('show');
   if (food._past) { selectedFoodBase = null; return; }
-  selectedFoodBase = { name: food.name, qty: food.qty, cal: food.cal, p: food.p, c: food.c, f: food.f, fib: food.fib || 0 };
+  selectedFoodBase = { name: food.name, qty: food.qty, unit: food.unit, cal: food.cal, p: food.p, c: food.c, f: food.f, fib: food.fib || 0 };
   document.getElementById('quantity').value = food.qty;
   document.getElementById('unit').value = food.unit;
   document.getElementById('calories').value = food.cal;
