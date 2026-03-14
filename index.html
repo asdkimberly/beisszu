@@ -11,6 +11,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@200;300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* ══════════════════════════════════════════
    DARK MODE (default)
@@ -1169,12 +1172,85 @@ select { cursor: pointer; }
   </div>
 
   <!-- BOTTOM NAV -->
-  <nav class="bottom-nav">
+  <!-- ══ PAGE: ANÁLISIS ══ -->
+  <div class="page" id="page-stats">
+
+    <!-- Header controls -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <!-- Range toggle -->
+      <div class="sub-tabs" style="flex:1">
+        <button class="sub-tab active" id="statsRange7" onclick="setStatsRange(7)">7 días</button>
+        <button class="sub-tab" id="statsRange30" onclick="setStatsRange(30)">30 días</button>
+      </div>
+      <!-- Charts toggle -->
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--muted)">Gráficos</span>
+        <div id="chartsToggle" onclick="toggleCharts()" style="width:40px;height:22px;border-radius:11px;background:var(--accent);cursor:pointer;position:relative;transition:background 0.2s">
+          <div id="chartsToggleKnob" style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;left:20px;transition:left 0.2s"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ① Resumen del período -->
+    <div class="card" id="statsSummary">
+      <div class="section-label" style="margin-bottom:4px">Resumen del período</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px" id="statsSummaryGrid"></div>
+    </div>
+
+    <!-- ② Consistencia de metas -->
+    <div class="card" id="statsConsistency" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Consistencia de metas</div>
+      <div id="statsConsistencyContent"></div>
+    </div>
+
+    <!-- ③ Tendencia de macros (Chart) -->
+    <div class="card" id="statsTrendCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Tendencia de calorías</div>
+      <canvas id="chartTrend" height="180"></canvas>
+    </div>
+
+    <!-- ④ Distribución por comida -->
+    <div class="card" id="statsMealCard">
+      <div class="section-label" style="margin-bottom:8px">Calorías por tipo de comida</div>
+      <div id="statsMealContent"></div>
+      <canvas id="chartMeal" height="180" style="display:none"></canvas>
+    </div>
+
+    <!-- ⑤ Hidratación -->
+    <div class="card" id="statsHydCard">
+      <div class="section-label" style="margin-bottom:8px">Hidratación promedio</div>
+      <div id="statsHydContent"></div>
+      <canvas id="chartHyd" height="140" style="display:none"></canvas>
+    </div>
+
+    <!-- ⑥ Alimentos más frecuentes -->
+    <div class="card">
+      <div class="section-label" style="margin-bottom:8px">Alimentos más frecuentes</div>
+      <div id="statsTopFoods"></div>
+    </div>
+
+    <!-- Generar informe -->
+    <div style="padding-bottom:8px">
+      <div class="field" style="margin-bottom:10px">
+        <label>Notas para el nutricionista (opcional)</label>
+        <textarea id="reportNotes" placeholder="Ej: he estado con más estrés esta semana, tomé antibióticos…" style="resize:none;height:72px;font-size:13px"></textarea>
+      </div>
+      <button class="btn-primary" onclick="generatePDF()" id="btnGeneratePDF">
+        📄 Descargar informe PDF
+      </button>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
     <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
       <span class="nav-icon">🏠</span>Inicio
     </button>
     <button class="nav-btn" id="nav-log" onclick="switchTab('log')">
       <span class="nav-icon">✏️</span>Registrar
+    </button>
+    <button class="nav-btn" id="nav-stats" onclick="switchTab('stats')">
+      <span class="nav-icon">📊</span>Análisis
     </button>
     <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
       <span class="nav-icon">📋</span>Historial
@@ -1374,6 +1450,7 @@ function switchTab(name) {
   if (name === 'home') { renderToday(); }
   if (name === 'history') { renderHistory(); }
   if (name === 'profile') { renderFoodsList(); showProfileSection('metas'); }
+  if (name === 'stats') { renderStats(); }
 }
 
 async function showProfileSection(sec) {
@@ -2484,6 +2561,602 @@ async function deleteDish(id) {
   dishes = dishes.filter(d => d.id !== id);
   renderDishesList();
   showToast('Platillo eliminado');
+}
+
+// ══════════════════════════════════════════
+// ANALYTICS
+// ══════════════════════════════════════════
+let statsRange = 7;
+let showCharts = true;
+let chartTrendInstance = null;
+let chartMealInstance = null;
+let chartHydInstance = null;
+
+function setStatsRange(days) {
+  statsRange = days;
+  document.getElementById('statsRange7').classList.toggle('active', days === 7);
+  document.getElementById('statsRange30').classList.toggle('active', days === 30);
+  renderStats();
+}
+
+function toggleCharts() {
+  showCharts = !showCharts;
+  const knob = document.getElementById('chartsToggleKnob');
+  const toggle = document.getElementById('chartsToggle');
+  knob.style.left = showCharts ? '20px' : '2px';
+  toggle.style.background = showCharts ? 'var(--accent)' : 'var(--border)';
+  renderStats();
+}
+
+// ── Get date range entries ──
+function getStatsEntries() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - statsRange);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  return {
+    food: entries.filter(e => e.log_date >= cutoffStr),
+    hyd:  hydEntries.filter(e => e.date >= cutoffStr),
+  };
+}
+
+// ── Main render ──
+async function renderStats() {
+  // Fetch from Supabase to ensure full range data (may exceed in-memory 30d)
+  if (statsRange === 30) {
+    await refreshStatsData();
+  }
+  const { food, hyd } = getStatsEntries();
+  renderStatsSummary(food, hyd);
+  renderStatsConsistency(food, hyd);
+  renderStatsMeal(food);
+  renderStatsHyd(hyd);
+  renderStatsTopFoods(food);
+  if (showCharts) renderChartTrend(food);
+}
+
+// ── Refresh data for full 30d range ──
+async function refreshStatsData() {
+  const days = statsRange;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const [{ data: fData }, { data: hData }] = await Promise.all([
+    sb.from('food_log').select('*').eq('user_id', currentUser.id).gte('log_date', cutoffStr).order('logged_at'),
+    sb.from('hydration_log').select('*').eq('user_id', currentUser.id).gte('log_date', cutoffStr).order('logged_at'),
+  ]);
+  if (fData) entries = fData;
+  if (hData) hydEntries = (hData).map(e => ({
+    ...e, date: e.log_date, drinkId: e.drink_id,
+    drinkLabel: e.drink_label, drinkIcon: e.drink_icon,
+  }));
+}
+
+// ── ① Summary cards ──
+function renderStatsSummary(food, hyd) {
+  if (!food.length) {
+    document.getElementById('statsSummaryGrid').innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:span 2">Sin datos en este período.</div>';
+    return;
+  }
+  // Group by date to get daily averages
+  const byDate = {};
+  food.forEach(e => {
+    if (!byDate[e.log_date]) byDate[e.log_date] = { cal:0, p:0, c:0, f:0 };
+    byDate[e.log_date].cal += e.calories  || 0;
+    byDate[e.log_date].p   += e.protein_g || 0;
+    byDate[e.log_date].c   += e.carbs_g   || 0;
+    byDate[e.log_date].f   += e.fat_g     || 0;
+  });
+  const days = Object.values(byDate);
+  const n = days.length;
+  const avgCal  = days.reduce((s,d)=>s+d.cal,0)/n;
+  const avgProt = days.reduce((s,d)=>s+d.p,0)/n;
+  const avgCarb = days.reduce((s,d)=>s+d.c,0)/n;
+  const avgFat  = days.reduce((s,d)=>s+d.f,0)/n;
+
+  // Water avg
+  const waterByDate = {};
+  hyd.filter(e=>e.drinkId==='water').forEach(e => {
+    waterByDate[e.date] = (waterByDate[e.date]||0) + e.amount;
+  });
+  const waterDays = Object.values(waterByDate);
+  const avgWater = waterDays.length ? waterDays.reduce((s,v)=>s+v,0)/waterDays.length : 0;
+
+  const cards = [
+    { label:'Cal promedio/día', value: Math.round(avgCal), unit:'kcal', goal: settings.goalCal, color:'var(--accent)' },
+    { label:'Proteína promedio', value: avgProt.toFixed(1), unit:'g/día', goal: settings.goalProtein, color:'var(--accent2)' },
+    { label:'Carbos promedio',  value: avgCarb.toFixed(1), unit:'g/día', goal: settings.goalCarbs, color:'#5bc0de' },
+    { label:'Grasas promedio',  value: avgFat.toFixed(1),  unit:'g/día', goal: settings.goalFat, color:'#e07840' },
+    { label:'Agua promedio/día', value: avgWater>=1000?`${(avgWater/1000).toFixed(1)}L`:Math.round(avgWater)+'ml', unit:'', goal: null, color:'#4a90d9' },
+    { label:'Días registrados', value: n, unit:`de ${statsRange}`, goal: null, color:'var(--muted)' },
+  ];
+
+  document.getElementById('statsSummaryGrid').innerHTML = cards.map(c => {
+    const pct = c.goal ? Math.min((parseFloat(c.value)/c.goal)*100,100) : null;
+    return `<div class="summary-card">
+      <div class="summary-card-label">${c.label}</div>
+      <div class="summary-card-value" style="color:${c.color};font-size:20px">${c.value}</div>
+      <div class="summary-card-unit">${c.unit}${c.goal?` · meta: ${c.goal}`:''}</div>
+      ${pct !== null ? `<div class="progress-bar" style="margin-top:6px"><div class="progress-fill" style="width:${pct}%;background:${c.color}"></div></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── ② Consistency ──
+function renderStatsConsistency(food, hyd) {
+  const sec = document.getElementById('statsConsistency');
+  const hasGoals = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat || settings.goalWater;
+  if (!hasGoals || !food.length) { sec.style.display='none'; return; }
+  sec.style.display = 'block';
+
+  const byDate = {};
+  food.forEach(e => {
+    if (!byDate[e.log_date]) byDate[e.log_date] = { cal:0, p:0, c:0, f:0 };
+    byDate[e.log_date].cal += e.calories||0;
+    byDate[e.log_date].p   += e.protein_g||0;
+    byDate[e.log_date].c   += e.carbs_g||0;
+    byDate[e.log_date].f   += e.fat_g||0;
+  });
+  const waterByDate = {};
+  hyd.filter(e=>e.drinkId==='water').forEach(e => {
+    waterByDate[e.date] = (waterByDate[e.date]||0) + e.amount;
+  });
+
+  const n = Object.keys(byDate).length || 1;
+  const metrics = [
+    { label:'Calorías', key:'cal', goal: settings.goalCal, tolerance: 0.1 },
+    { label:'Proteína', key:'p',   goal: settings.goalProtein, tolerance: 0.1 },
+    { label:'Carbos',   key:'c',   goal: settings.goalCarbs, tolerance: 0.15 },
+    { label:'Grasas',   key:'f',   goal: settings.goalFat, tolerance: 0.15 },
+  ].filter(m => m.goal);
+
+  const waterDays = Object.values(waterByDate).filter(v => v >= (settings.goalWater||0)).length;
+
+  const rows = metrics.map(m => {
+    const met = Object.values(byDate).filter(d => {
+      const v = d[m.key];
+      return v >= m.goal*(1-m.tolerance) && v <= m.goal*(1+m.tolerance);
+    }).length;
+    const pct = Math.round((met/n)*100);
+    const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
+    return `<div class="progress-item">
+      <div class="progress-header">
+        <span class="progress-label">${m.label}</span>
+        <span class="progress-value" style="color:${color}">${met}/${n} días (${pct}%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  });
+
+  if (settings.goalWater) {
+    const pct = Math.round((waterDays/statsRange)*100);
+    const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
+    rows.push(`<div class="progress-item">
+      <div class="progress-header">
+        <span class="progress-label">💧 Agua</span>
+        <span class="progress-value" style="color:${color}">${waterDays}/${statsRange} días (${pct}%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`);
+  }
+
+  document.getElementById('statsConsistencyContent').innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${rows.join('')}</div>`;
+}
+
+// ── ③ Trend chart ──
+function renderChartTrend(food) {
+  const card = document.getElementById('statsTrendCard');
+  if (!showCharts || !food.length) { card.style.display='none'; return; }
+  card.style.display = 'block';
+
+  // Build daily cal array for last N days
+  const today = new Date();
+  const labels = [];
+  const calData = [];
+  const goalLine = [];
+  for (let i = statsRange-1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate()-i);
+    const dateStr = d.toISOString().split('T')[0];
+    const shortLabel = d.toLocaleDateString('es-CR',{day:'numeric',month:'short'});
+    labels.push(shortLabel);
+    const dayCal = food.filter(e=>e.log_date===dateStr).reduce((s,e)=>s+(e.calories||0),0);
+    calData.push(Math.round(dayCal));
+    goalLine.push(settings.goalCal || null);
+  }
+
+  if (chartTrendInstance) { chartTrendInstance.destroy(); chartTrendInstance = null; }
+  const ctx = document.getElementById('chartTrend').getContext('2d');
+  const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDarkMode ? '#7a8460' : '#7a8460';
+
+  chartTrendInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Calorías',
+          data: calData,
+          backgroundColor: 'rgba(168,192,96,0.6)',
+          borderColor: 'rgba(168,192,96,1)',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        ...(settings.goalCal ? [{
+          label: 'Meta',
+          data: goalLine,
+          type: 'line',
+          borderColor: 'rgba(224,120,64,0.8)',
+          borderDash: [5,4],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+        }] : []),
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor } },
+      },
+    },
+  });
+}
+
+// ── ④ Meal distribution ──
+function renderStatsMeal(food) {
+  if (!food.length) {
+    document.getElementById('statsMealContent').innerHTML = '<div style="color:var(--muted);font-size:13px">Sin datos.</div>';
+    return;
+  }
+  const meals = {};
+  food.forEach(e => {
+    meals[e.meal_type] = (meals[e.meal_type]||0) + (e.calories||0);
+  });
+  const total = Object.values(meals).reduce((s,v)=>s+v,0) || 1;
+  const mealColors = {
+    'Desayuno':'#a8c060','Snack Mañana':'#d4a840','Almuerzo':'#4a90d9',
+    'Snack Tarde':'#e07840','Cena':'#9b59b6','Extra':'#7a8460'
+  };
+
+  const sorted = Object.entries(meals).sort((a,b)=>b[1]-a[1]);
+
+  if (showCharts) {
+    document.getElementById('statsMealContent').style.display = 'none';
+    const canvas = document.getElementById('chartMeal');
+    canvas.style.display = 'block';
+    if (chartMealInstance) { chartMealInstance.destroy(); chartMealInstance = null; }
+    const ctx = canvas.getContext('2d');
+    chartMealInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: sorted.map(([k])=>k),
+        datasets: [{ data: sorted.map(([,v])=>Math.round(v)), backgroundColor: sorted.map(([k])=>mealColors[k]||'#7a8460'), borderWidth: 0 }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position:'bottom', labels:{ color:'#7a8460', font:{size:11}, padding:12 } },
+        },
+        cutout: '60%',
+      },
+    });
+  } else {
+    document.getElementById('chartMeal').style.display = 'none';
+    document.getElementById('statsMealContent').style.display = 'block';
+    document.getElementById('statsMealContent').innerHTML = sorted.map(([meal, cal]) => {
+      const pct = Math.round((cal/total)*100);
+      return `<div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">${meal}</span>
+          <span class="progress-value">${Math.round(cal)} kcal · ${pct}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${mealColors[meal]||'var(--muted)'}"></div></div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ── ⑤ Hydration ──
+function renderStatsHyd(hyd) {
+  const waterEntries = hyd.filter(e=>e.drinkId==='water');
+  const hidEntries   = hyd.filter(e=>e.drinkId==='hidratante');
+
+  const waterByDate = {};
+  waterEntries.forEach(e => { waterByDate[e.date]=(waterByDate[e.date]||0)+e.amount; });
+  const hidByDate = {};
+  hidEntries.forEach(e => { hidByDate[e.date]=(hidByDate[e.date]||0)+e.amount; });
+
+  const waterVals = Object.values(waterByDate);
+  const hidVals   = Object.values(hidByDate);
+  const avgWater  = waterVals.length ? Math.round(waterVals.reduce((s,v)=>s+v,0)/statsRange) : 0;
+  const avgHid    = hidVals.length   ? Math.round(hidVals.reduce((s,v)=>s+v,0)/statsRange) : 0;
+
+  const hydContent = document.getElementById('statsHydContent');
+  const hydCanvas  = document.getElementById('chartHyd');
+
+  const items = [
+    { label:'💧 Agua',       avg: avgWater, goal: settings.goalWater,    color:'#4a90d9' },
+    { label:'🏋️ Hidratante', avg: avgHid,   goal: settings.goalIsotonic, color:'#5bc0de' },
+  ].filter(i => i.avg > 0 || i.goal > 0);
+
+  if (!items.length) {
+    hydContent.innerHTML = '<div style="color:var(--muted);font-size:13px">Sin datos de hidratación.</div>';
+    hydCanvas.style.display = 'none';
+    return;
+  }
+
+  if (showCharts && waterVals.length) {
+    hydContent.style.display = 'none';
+    hydCanvas.style.display = 'block';
+    if (chartHydInstance) { chartHydInstance.destroy(); chartHydInstance = null; }
+    // Daily water over time
+    const today = new Date();
+    const labels = [];
+    const waterData = [];
+    for (let i=statsRange-1;i>=0;i--) {
+      const d = new Date(today); d.setDate(d.getDate()-i);
+      const ds = d.toISOString().split('T')[0];
+      labels.push(d.toLocaleDateString('es-CR',{day:'numeric',month:'short'}));
+      waterData.push(waterByDate[ds]||0);
+    }
+    const ctx = hydCanvas.getContext('2d');
+    chartHydInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label:'Agua ml', data:waterData, borderColor:'#4a90d9', backgroundColor:'rgba(74,144,217,0.1)', fill:true, tension:0.3, pointRadius:3 },
+          ...(settings.goalWater?[{ label:'Meta', data:Array(labels.length).fill(settings.goalWater), borderColor:'rgba(224,120,64,0.7)', borderDash:[5,4], borderWidth:2, pointRadius:0, fill:false }]:[]),
+        ],
+      },
+      options: {
+        responsive:true,
+        plugins:{ legend:{ display:false } },
+        scales:{
+          x:{ ticks:{ color:'#7a8460', font:{size:10} }, grid:{ color:'rgba(255,255,255,0.06)' } },
+          y:{ ticks:{ color:'#7a8460', font:{size:10} }, grid:{ color:'rgba(255,255,255,0.06)' } },
+        },
+      },
+    });
+  } else {
+    hydCanvas.style.display = 'none';
+    hydContent.style.display = 'block';
+    hydContent.innerHTML = items.map(i => {
+      const pct = i.goal ? Math.min(Math.round((i.avg/i.goal)*100),110) : 0;
+      const display = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
+      return `<div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">${i.label} — promedio/día</span>
+          <span class="progress-value">${display(i.avg)}${i.goal?` / ${display(i.goal)}`:''}</span>
+        </div>
+        ${i.goal?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${i.color}"></div></div>`:''}
+      </div>`;
+    }).join('');
+  }
+}
+
+// ── ⑥ Top foods ──
+function renderStatsTopFoods(food) {
+  if (!food.length) {
+    document.getElementById('statsTopFoods').innerHTML = '<div style="color:var(--muted);font-size:13px">Sin datos.</div>';
+    return;
+  }
+  const freq = {};
+  food.forEach(e => {
+    if (!freq[e.food_name]) freq[e.food_name] = { count:0, totalCal:0 };
+    freq[e.food_name].count++;
+    freq[e.food_name].totalCal += e.calories||0;
+  });
+  const sorted = Object.entries(freq).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
+  const maxCount = sorted[0]?.[1].count || 1;
+
+  document.getElementById('statsTopFoods').innerHTML = sorted.map(([name, data]) => {
+    const pct = Math.round((data.count/maxCount)*100);
+    const avgCal = Math.round(data.totalCal/data.count);
+    return `<div class="progress-item">
+      <div class="progress-header">
+        <span class="progress-label" style="font-size:13px">${name}</span>
+        <span class="progress-value">${data.count}x · ~${avgCal} kcal</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:var(--accent)"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── PDF Generation ──
+async function generatePDF() {
+  const btn = document.getElementById('btnGeneratePDF');
+  btn.textContent = '⏳ Generando…';
+  btn.disabled = true;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W = 210; const margin = 15;
+  let y = margin;
+
+  const accent = [108, 144, 60];
+  const dark   = [30, 36, 20];
+  const muted  = [120, 130, 96];
+  const light  = [245, 247, 240];
+
+  // ── Header ──
+  doc.setFillColor(...accent);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.text('Beiß zu', margin, 12);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.text('Informe de nutrición e hidratación', margin, 19);
+  const now = new Date();
+  doc.text(`Generado: ${now.toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'})}`, W-margin, 19, {align:'right'});
+  y = 36;
+
+  // ── Patient info ──
+  doc.setTextColor(...dark);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text(`Usuario: ${currentUser.user_metadata?.full_name || currentUser.email}`, margin, y);
+  y += 6;
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...muted);
+  doc.text(`Período analizado: últimos ${statsRange} días`, margin, y);
+  y += 10;
+
+  // ── Notes ──
+  const notes = document.getElementById('reportNotes').value.trim();
+  if (notes) {
+    doc.setFillColor(...light);
+    doc.roundedRect(margin, y, W-margin*2, 16, 2, 2, 'F');
+    doc.setTextColor(...dark);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    doc.text('Notas del paciente:', margin+4, y+5);
+    doc.setFont('helvetica','normal');
+    const noteLines = doc.splitTextToSize(notes, W-margin*2-8);
+    doc.text(noteLines, margin+4, y+10);
+    y += 20;
+  }
+
+  // ── Section helper ──
+  function sectionTitle(title) {
+    y += 4;
+    doc.setFillColor(...accent);
+    doc.rect(margin, y, 3, 5, 'F');
+    doc.setTextColor(...dark);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.text(title, margin+6, y+4);
+    y += 10;
+  }
+
+  function tableRow(label, val, highlight=false) {
+    if (highlight) doc.setFillColor(235,242,220);
+    else doc.setFillColor(250,251,248);
+    doc.roundedRect(margin, y, W-margin*2, 7, 1, 1, 'F');
+    doc.setTextColor(...dark);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','normal');
+    doc.text(label, margin+4, y+5);
+    doc.setFont('helvetica','bold');
+    doc.text(String(val), W-margin-4, y+5, {align:'right'});
+    y += 8;
+  }
+
+  // ── Summary ──
+  const { food, hyd } = getStatsEntries();
+  const byDate = {};
+  food.forEach(e => {
+    if (!byDate[e.log_date]) byDate[e.log_date]={cal:0,p:0,c:0,f:0};
+    byDate[e.log_date].cal += e.calories||0;
+    byDate[e.log_date].p   += e.protein_g||0;
+    byDate[e.log_date].c   += e.carbs_g||0;
+    byDate[e.log_date].f   += e.fat_g||0;
+  });
+  const days = Object.values(byDate);
+  const n = days.length || 1;
+  const avgCal  = Math.round(days.reduce((s,d)=>s+d.cal,0)/n);
+  const avgProt = (days.reduce((s,d)=>s+d.p,0)/n).toFixed(1);
+  const avgCarb = (days.reduce((s,d)=>s+d.c,0)/n).toFixed(1);
+  const avgFat  = (days.reduce((s,d)=>s+d.f,0)/n).toFixed(1);
+
+  sectionTitle('① Promedios diarios de nutrición');
+  tableRow('Días con registro', `${n} de ${statsRange}`);
+  tableRow('Calorías promedio/día', `${avgCal} kcal${settings.goalCal ? ' (meta: '+settings.goalCal+')' : ''}`, true);
+  tableRow('Proteína promedio/día', `${avgProt} g${settings.goalProtein ? ' (meta: '+settings.goalProtein+'g)' : ''}`);
+  tableRow('Carbohidratos promedio/día', `${avgCarb} g${settings.goalCarbs ? ' (meta: '+settings.goalCarbs+'g)' : ''}`, true);
+  tableRow('Grasas promedio/día', `${avgFat} g${settings.goalFat ? ' (meta: '+settings.goalFat+'g)' : ''}`);
+
+  // ── Consistency ──
+  sectionTitle('② Consistencia de metas');
+  const metrics = [
+    { label:'Calorías', key:'cal', goal:settings.goalCal },
+    { label:'Proteína', key:'p',   goal:settings.goalProtein },
+    { label:'Carbos',   key:'c',   goal:settings.goalCarbs },
+    { label:'Grasas',   key:'f',   goal:settings.goalFat },
+  ].filter(m => m.goal);
+
+  if (metrics.length) {
+    metrics.forEach((m,i) => {
+      const met = days.filter(d => d[m.key] >= m.goal*0.9 && d[m.key] <= m.goal*1.1).length;
+      const pct = Math.round((met/n)*100);
+      tableRow(`Meta de ${m.label}`, `${met}/${n} días (${pct}%)`, i%2===0);
+    });
+  } else {
+    tableRow('Sin metas configuradas', '—');
+  }
+
+  // ── Meal distribution ──
+  sectionTitle('③ Distribución de calorías por comida');
+  const meals = {};
+  food.forEach(e => { meals[e.meal_type]=(meals[e.meal_type]||0)+(e.calories||0); });
+  const totalCal = Object.values(meals).reduce((s,v)=>s+v,0)||1;
+  Object.entries(meals).sort((a,b)=>b[1]-a[1]).forEach(([meal, cal],i) => {
+    tableRow(meal, `${Math.round(cal)} kcal (${Math.round((cal/totalCal)*100)}%)`, i%2===0);
+  });
+
+  // ── Hydration ──
+  sectionTitle('④ Hidratación');
+  const waterByDate2 = {};
+  hyd.filter(e=>e.drinkId==='water').forEach(e=>{ waterByDate2[e.date]=(waterByDate2[e.date]||0)+e.amount; });
+  const waterVals = Object.values(waterByDate2);
+  const avgWater = waterVals.length ? Math.round(waterVals.reduce((s,v)=>s+v,0)/statsRange) : 0;
+  const waterGoalDays = waterVals.filter(v=>v>=(settings.goalWater||Infinity)).length;
+  const disp = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
+  tableRow('Agua promedio/día', `${disp(avgWater)}${settings.goalWater?' (meta: '+disp(settings.goalWater)+')':''}`, true);
+  if (settings.goalWater) tableRow('Días alcanzando meta de agua', `${waterGoalDays}/${statsRange}`);
+
+  // ── Top foods ──
+  sectionTitle('⑤ Alimentos más frecuentes');
+  const freq = {};
+  food.forEach(e => {
+    if (!freq[e.food_name]) freq[e.food_name]={count:0,totalCal:0};
+    freq[e.food_name].count++;
+    freq[e.food_name].totalCal+=e.calories||0;
+  });
+  Object.entries(freq).sort((a,b)=>b[1].count-a[1].count).slice(0,8).forEach(([name,data],i) => {
+    tableRow(name, `${data.count}x · ~${Math.round(data.totalCal/data.count)} kcal promedio`, i%2===0);
+  });
+
+  // ── Charts (if enabled) ──
+  if (showCharts) {
+    const trendCanvas = document.getElementById('chartTrend');
+    const mealCanvas  = document.getElementById('chartMeal');
+    if (trendCanvas && chartTrendInstance) {
+      doc.addPage();
+      y = margin;
+      sectionTitle('Gráficos');
+      const trendImg = trendCanvas.toDataURL('image/png');
+      doc.addImage(trendImg, 'PNG', margin, y, W-margin*2, 70);
+      y += 76;
+      if (chartMealInstance) {
+        const mealImg = mealCanvas.toDataURL('image/png');
+        doc.addImage(mealImg, 'PNG', margin+(W-margin*2)/4, y, (W-margin*2)/2, 70);
+      }
+    }
+  }
+
+  // ── Footer ──
+  const pages = doc.getNumberOfPages();
+  for (let i=1;i<=pages;i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(...muted);
+    doc.text(`Beiß zu · Informe nutricional · Página ${i} de ${pages}`, W/2, 290, {align:'center'});
+  }
+
+  const fname = `beisszu_informe_${now.toISOString().split('T')[0]}.pdf`;
+  doc.save(fname);
+
+  btn.textContent = '📄 Descargar informe PDF';
+  btn.disabled = false;
+  showToast('✓ Informe descargado');
 }
 
 // ══ Init theme on load ══
