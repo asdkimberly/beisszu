@@ -1254,10 +1254,11 @@ select { cursor: pointer; }
       <div id="statsTopFoods"></div>
     </div>
 
-    <!-- ⑦ Suplementos -->
-    <div class="card" id="statsSuppCard" style="display:none">
-      <div class="section-label" style="margin-bottom:8px">Consistencia de suplementos</div>
-      <div id="statsSuppContent"></div>
+    <!-- ⑦ Origen de comidas -->
+    <div class="card" id="statsOriginCard">
+      <div class="section-label" style="margin-bottom:8px">Origen de comidas</div>
+      <div id="statsOriginContent"></div>
+      <canvas id="chartOrigin" height="180" style="display:none"></canvas>
     </div>
 
     <!-- Generar informe -->
@@ -2740,15 +2741,14 @@ function renderHomeSuppChecklist() {
   }).join('');
 }
 
-// ── Render supplements stats in Análisis ──
+// ── ⑦ Supplements consistency — appended into consistency card ──
 async function renderStatsSupp() {
-  const card = document.getElementById('statsSuppCard');
-  const content = document.getElementById('statsSuppContent');
-  if (!supplements.length) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
-
+  if (!supplements.length) return;
   const logs = await loadSuppLogRange();
-  content.innerHTML = supplements.map(s => {
+  const content = document.getElementById('statsConsistencyContent');
+  if (!content) return;
+
+  const suppRows = supplements.map(s => {
     const taken = logs.filter(l => l.supplement_id === s.id).length;
     const pct = Math.round((taken / statsRange) * 100);
     const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
@@ -2760,6 +2760,9 @@ async function renderStatsSupp() {
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
     </div>`;
   }).join('');
+
+  // Append to existing consistency content
+  content.innerHTML += suppRows;
 }
 
 // ══════════════════════════════════════════
@@ -2801,6 +2804,7 @@ async function renderStats() {
   renderStatsMeal(food);
   renderStatsHyd(hyd);
   renderStatsTopFoods(food);
+  renderStatsOrigin(food);
   renderChartTrend(food);
   await renderStatsSupp();
 }
@@ -3354,19 +3358,15 @@ async function generatePDF() {
   tableRow('Agua promedio/día', `${disp(avgWater)}${settings.goalWater?' (meta: '+disp(settings.goalWater)+')':''}`, true);
   if (settings.goalWater) tableRow('Días alcanzando meta de agua', `${waterGoalDays}/${statsRange}`);
 
-  // ── Supplements ──
+  // ── Supplements (via consistency section) ──
   if (supplements.length) {
     sectionTitle('⑤ Consistencia de suplementos');
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-statsRange);
-    const cutoffStr = cutoff.toISOString().split('T')[0];
-    for (let i=0; i<supplements.length; i++) {
-      const s = supplements[i];
-      const { data } = await sb.from('supplement_log').select('log_date')
-        .eq('user_id', currentUser.id).eq('supplement_id', s.id).gte('log_date', cutoffStr);
-      const taken = (data||[]).length;
+    const suppLogs = await loadSuppLogRange();
+    supplements.forEach((s, i) => {
+      const taken = suppLogs.filter(l => l.supplement_id === s.id).length;
       const pct = Math.round((taken/statsRange)*100);
       tableRow(`💊 ${s.name}`, `${taken}/${statsRange} días (${pct}%)`, i%2===0);
-    }
+    });
   }
 
   // ── Top foods ──
@@ -3381,36 +3381,42 @@ async function generatePDF() {
     tableRow(name, `${data.count}x · ~${Math.round(data.totalCal/data.count)} kcal promedio`, i%2===0);
   });
 
-  // ── Supplements ──
-  if (supplements.length) {
-    sectionTitle('⑦ Consistencia de suplementos');
-    const suppLogs = await loadSuppLogRange();
-    supplements.forEach((s, i) => {
-      const taken = suppLogs.filter(l => l.supplement_id === s.id).length;
-      const pct = Math.round((taken/statsRange)*100);
-      tableRow(`💊 ${s.name}`, `${taken}/${statsRange} días (${pct}%)`, i%2===0);
-    });
-  }
+  // ── Origin ──
+  sectionTitle('⑦ Origen de comidas');
+  const casaEntries  = food.filter(e => e.origin === 'Casa');
+  const fueraEntries = food.filter(e => e.origin === 'Fuera');
+  const casaCal  = Math.round(casaEntries.reduce((s,e)=>s+(e.calories||0),0));
+  const fueraCal = Math.round(fueraEntries.reduce((s,e)=>s+(e.calories||0),0));
+  const origTotal = casaCal + fueraCal || 1;
+  tableRow('🏠 Casa',  `${casaEntries.length} entradas · ${casaCal} kcal (${Math.round((casaCal/origTotal)*100)}%)`, true);
+  tableRow('🌍 Fuera', `${fueraEntries.length} entradas · ${fueraCal} kcal (${Math.round((fueraCal/origTotal)*100)}%)`);
 
   // ── Charts ──
-  const trendCanvas = document.getElementById('chartTrend');
-  const mealCanvas  = document.getElementById('chartMeal');
-  const hydCanvas   = document.getElementById('chartHyd');
+  const trendCanvas  = document.getElementById('chartTrend');
+  const mealCanvas   = document.getElementById('chartMeal');
+  const hydCanvas    = document.getElementById('chartHyd');
+  const originCanvas = document.getElementById('chartOrigin');
   if (trendCanvas && chartTrendInstance) {
     doc.addPage();
     y = margin;
     sectionTitle('Gráficos');
     const trendImg = trendCanvas.toDataURL('image/png');
-    doc.addImage(trendImg, 'PNG', margin, y, W-margin*2, 65);
-    y += 72;
+    doc.addImage(trendImg, 'PNG', margin, y, W-margin*2, 60);
+    y += 68;
     if (chartMealInstance) {
       const mealImg = mealCanvas.toDataURL('image/png');
-      doc.addImage(mealImg, 'PNG', margin+(W-margin*2)/4, y, (W-margin*2)/2, 65);
-      y += 72;
+      doc.addImage(mealImg, 'PNG', margin+(W-margin*2)/4, y, (W-margin*2)/2, 60);
+      y += 68;
     }
     if (chartHydInstance && hydCanvas) {
       const hydImg = hydCanvas.toDataURL('image/png');
-      doc.addImage(hydImg, 'PNG', margin, y, W-margin*2, 65);
+      doc.addImage(hydImg, 'PNG', margin, y, W-margin*2, 60);
+      y += 68;
+    }
+    if (chartOriginInstance && originCanvas) {
+      if (y > 220) { doc.addPage(); y = margin; }
+      const originImg = originCanvas.toDataURL('image/png');
+      doc.addImage(originImg, 'PNG', margin+(W-margin*2)/4, y, (W-margin*2)/2, 60);
     }
   }
 
@@ -3429,6 +3435,72 @@ async function generatePDF() {
   btn.textContent = '📄 Descargar informe PDF';
   btn.disabled = false;
   showToast('✓ Informe descargado');
+}
+
+// ── ⑦ Origin chart (Casa vs Fuera) ──
+let chartOriginInstance = null;
+
+function renderStatsOrigin(food) {
+  const card = document.getElementById('statsOriginCard');
+  const content = document.getElementById('statsOriginContent');
+  const canvas = document.getElementById('chartOrigin');
+  if (!food.length) { card.style.display = 'none'; return; }
+
+  const casaEntries  = food.filter(e => e.origin === 'Casa');
+  const fueraEntries = food.filter(e => e.origin === 'Fuera');
+  const casaCal  = Math.round(casaEntries.reduce((s,e)=>s+(e.calories||0), 0));
+  const fueraCal = Math.round(fueraEntries.reduce((s,e)=>s+(e.calories||0), 0));
+  const total = casaCal + fueraCal || 1;
+  const casaPct  = Math.round((casaCal/total)*100);
+  const fueraPct = Math.round((fueraCal/total)*100);
+
+  // Stats below chart
+  content.style.display = 'block';
+  content.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">🏠 Casa</div>
+        <div style="font-size:22px;font-weight:300;color:var(--accent);font-family:var(--font-display);margin-top:4px">${casaPct}%</div>
+        <div style="font-size:11px;color:var(--muted)">${casaEntries.length} entradas · ${casaCal} kcal</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">🌍 Fuera</div>
+        <div style="font-size:22px;font-weight:300;color:var(--accent2);font-family:var(--font-display);margin-top:4px">${fueraPct}%</div>
+        <div style="font-size:11px;color:var(--muted)">${fueraEntries.length} entradas · ${fueraCal} kcal</div>
+      </div>
+    </div>`;
+
+  // Doughnut chart
+  canvas.style.display = 'block';
+  if (chartOriginInstance) { chartOriginInstance.destroy(); chartOriginInstance = null; }
+  const ctx = canvas.getContext('2d');
+  chartOriginInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['🏠 Casa', '🌍 Fuera'],
+      datasets: [{
+        data: [casaCal, fueraCal],
+        backgroundColor: ['rgba(168,192,96,0.8)', 'rgba(212,168,64,0.8)'],
+        borderColor: ['rgba(168,192,96,1)', 'rgba(212,168,64,1)'],
+        borderWidth: 1,
+      }],
+    },
+    options: {
+      responsive: true,
+      cutout: '60%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#7a8460', font: { size: 12 }, padding: 16 },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.raw} kcal (${Math.round((ctx.raw/total)*100)}%)`,
+          },
+        },
+      },
+    },
+  });
 }
 
 // ══ Init theme on load ══
