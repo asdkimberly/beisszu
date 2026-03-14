@@ -2748,11 +2748,14 @@ async function renderStatsSupp() {
   const content = document.getElementById('statsConsistencyContent');
   if (!content) return;
 
+  // Remove any previously appended supplement rows to avoid duplicates
+  content.querySelectorAll('.supp-row').forEach(el => el.remove());
+
   const suppRows = supplements.map(s => {
     const taken = logs.filter(l => l.supplement_id === s.id).length;
     const pct = Math.round((taken / statsRange) * 100);
     const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
-    return `<div class="progress-item">
+    return `<div class="progress-item supp-row">
       <div class="progress-header">
         <span class="progress-label">💊 ${s.name}</span>
         <span class="progress-value" style="color:${color}">${taken}/${statsRange} días (${pct}%)</span>
@@ -2761,7 +2764,6 @@ async function renderStatsSupp() {
     </div>`;
   }).join('');
 
-  // Append to existing consistency content
   content.innerHTML += suppRows;
 }
 
