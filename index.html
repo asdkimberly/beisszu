@@ -2741,32 +2741,6 @@ function renderHomeSuppChecklist() {
   }).join('');
 }
 
-// ── ⑦ Supplements consistency — appended into consistency card ──
-async function renderStatsSupp() {
-  if (!supplements.length) return;
-  const logs = await loadSuppLogRange();
-  const content = document.getElementById('statsConsistencyContent');
-  if (!content) return;
-
-  // Remove any previously appended supplement rows to avoid duplicates
-  content.querySelectorAll('.supp-row').forEach(el => el.remove());
-
-  const suppRows = supplements.map(s => {
-    const taken = logs.filter(l => l.supplement_id === s.id).length;
-    const pct = Math.round((taken / statsRange) * 100);
-    const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
-    return `<div class="progress-item supp-row">
-      <div class="progress-header">
-        <span class="progress-label">💊 ${s.name}</span>
-        <span class="progress-value" style="color:${color}">${taken}/${statsRange} días (${pct}%)</span>
-      </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
-    </div>`;
-  }).join('');
-
-  content.innerHTML += suppRows;
-}
-
 // ══════════════════════════════════════════
 // ANALYTICS
 // ══════════════════════════════════════════
@@ -2796,19 +2770,15 @@ function getStatsEntries() {
 
 // ── Main render ──
 async function renderStats() {
-  // Fetch from Supabase to ensure full range data
-  if (statsRange === 30) {
-    await refreshStatsData();
-  }
+  if (statsRange === 30) await refreshStatsData();
   const { food, hyd } = getStatsEntries();
   renderStatsSummary(food, hyd);
-  await renderStatsConsistency(food, hyd);
+  await renderStatsConsistency(food, hyd); // includes supplements
   renderStatsMeal(food);
   renderStatsHyd(hyd);
   renderStatsTopFoods(food);
   renderStatsOrigin(food);
   renderChartTrend(food);
-  await renderStatsSupp();
 }
 
 // ── Refresh data for full 30d range ──
@@ -2978,6 +2948,23 @@ async function renderStatsConsistency(food, hyd) {
       </div>`;
     }));
     rows.push(...suppRows);
+  }
+
+  // ── Supplement rows ──
+  if (supplements.length) {
+    const suppLogs = await loadSuppLogRange();
+    supplements.forEach(s => {
+      const taken = suppLogs.filter(l => l.supplement_id === s.id).length;
+      const pct = Math.round((taken / statsRange) * 100);
+      const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
+      rows.push(`<div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">💊 ${s.name}</span>
+          <span class="progress-value" style="color:${color}">${taken}/${statsRange} días (${pct}%)</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`);
+    });
   }
 
   document.getElementById('statsConsistencyContent').innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${rows.join('')}</div>`;
