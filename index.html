@@ -1245,7 +1245,7 @@ select { cursor: pointer; }
     <div class="card" id="statsHydCard">
       <div class="section-label" style="margin-bottom:8px">Hidratación promedio</div>
       <div id="statsHydContent"></div>
-      <canvas id="chartHyd" height="140" style="display:none"></canvas>
+      <canvas id="chartHyd" height="180" style="display:none"></canvas>
     </div>
 
     <!-- ⑥ Alimentos más frecuentes -->
@@ -2844,7 +2844,7 @@ function renderStatsSummary(food, hyd) {
   const avgCarb = days.reduce((s,d)=>s+d.c,0)/n;
   const avgFat  = days.reduce((s,d)=>s+d.f,0)/n;
 
-  // Water + hidratante avg
+  // Water + hidratante avg — divide by days that had ANY hydration entry
   const hydByDate = {};
   hyd.forEach(e => {
     if (e.drinkId === 'water' || e.drinkId === 'hidratante') {
@@ -2852,24 +2852,39 @@ function renderStatsSummary(food, hyd) {
     }
   });
   const hydDayVals = Object.values(hydByDate);
-  const avgHydTotal = hydDayVals.length ? Math.round(hydDayVals.reduce((s,v)=>s+v,0)/statsRange) : 0;
+  // Use statsRange as denominator so avg reflects habit over full period
+  const totalHyd = hydDayVals.reduce((s,v)=>s+v, 0);
+  const avgHydTotal = hydDayVals.length ? Math.round(totalHyd / hydDayVals.length) : 0;
   const goalHydTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
 
+  // Raw numeric values for progress bar calculations
+  const rawVals = {
+    cal:  Math.round(avgCal),
+    prot: parseFloat(avgProt.toFixed(1)),
+    carb: parseFloat(avgCarb.toFixed(1)),
+    fat:  parseFloat(avgFat.toFixed(1)),
+    hyd:  avgHydTotal,
+  };
+
+  const hydDisplay = avgHydTotal >= 1000 ? `${(avgHydTotal/1000).toFixed(1)}L` : `${avgHydTotal}ml`;
+  const goalHydDisplay = goalHydTotal >= 1000 ? `${(goalHydTotal/1000).toFixed(1)}L` : `${goalHydTotal}ml`;
+
   const cards = [
-    { label:'Cal promedio/día', value: Math.round(avgCal), unit:'kcal', goal: settings.goalCal, color:'var(--accent)' },
-    { label:'Proteína promedio', value: avgProt.toFixed(1), unit:'g/día', goal: settings.goalProtein, color:'var(--accent2)' },
-    { label:'Carbos promedio',  value: avgCarb.toFixed(1), unit:'g/día', goal: settings.goalCarbs, color:'#5bc0de' },
-    { label:'Grasas promedio',  value: avgFat.toFixed(1),  unit:'g/día', goal: settings.goalFat, color:'#e07840' },
-    { label:'Hidratación/día',  value: avgHydTotal>=1000?`${(avgHydTotal/1000).toFixed(1)}L`:`${avgHydTotal}ml`, unit:'agua + hidratante', goal: goalHydTotal||null, color:'#4a90d9' },
-    { label:'Días registrados', value: n, unit:`de ${statsRange}`, goal: null, color:'var(--muted)' },
+    { label:'Cal promedio/día', rawVal: rawVals.cal,  display: rawVals.cal,              unit:'kcal',           goal: settings.goalCal,     color:'var(--accent)'  },
+    { label:'Proteína promedio', rawVal: rawVals.prot, display: rawVals.prot,             unit:'g/día',          goal: settings.goalProtein, color:'var(--accent2)' },
+    { label:'Carbos promedio',   rawVal: rawVals.carb, display: rawVals.carb,             unit:'g/día',          goal: settings.goalCarbs,   color:'#5bc0de'        },
+    { label:'Grasas promedio',   rawVal: rawVals.fat,  display: rawVals.fat,              unit:'g/día',          goal: settings.goalFat,     color:'#e07840'        },
+    { label:'Hidratación/día',   rawVal: rawVals.hyd,  display: hydDisplay,               unit:'agua + hidratante', goal: goalHydTotal||null, goalDisplay: goalHydDisplay, color:'#4a90d9' },
+    { label:'Días registrados',  rawVal: n,            display: n,                        unit:`de ${statsRange}`, goal: null,               color:'var(--muted)'   },
   ];
 
   document.getElementById('statsSummaryGrid').innerHTML = cards.map(c => {
-    const pct = c.goal ? Math.min((parseFloat(c.value)/c.goal)*100,100) : null;
+    const pct = c.goal ? Math.min((c.rawVal / c.goal) * 100, 100) : null;
+    const goalLabel = c.goalDisplay ? c.goalDisplay : c.goal;
     return `<div class="summary-card">
       <div class="summary-card-label">${c.label}</div>
-      <div class="summary-card-value" style="color:${c.color};font-size:20px">${c.value}</div>
-      <div class="summary-card-unit">${c.unit}${c.goal?` · meta: ${c.goal}`:''}</div>
+      <div class="summary-card-value" style="color:${c.color};font-size:20px">${c.display}</div>
+      <div class="summary-card-unit">${c.unit}${c.goal ? ` · meta: ${goalLabel}` : ''}</div>
       ${pct !== null ? `<div class="progress-bar" style="margin-top:6px"><div class="progress-fill" style="width:${pct}%;background:${c.color}"></div></div>` : ''}
     </div>`;
   }).join('');
