@@ -1623,17 +1623,18 @@ function onUnitChange() {
   // Hide serving row — conversion is invisible to user
   document.getElementById('servingRow').style.display = 'none';
 
-  if (isGramBased) {
+  // Only look up conversion if the selected unit differs from the food's base unit
+  if (unit === selectedFoodBase.unit) {
+    // Same unit as base — no conversion needed, ever
+    selectedFoodBase._servingGrams = null;
+  } else if (isGramBased) {
+    // Switching back to a gram-based unit — no conversion needed
     selectedFoodBase._servingGrams = null;
   } else {
-    // Look up exact unit in food_servings conversion table
+    // Different non-gram unit — look up conversion table
     const servings = foodServings[selectedFoodBase.name] || [];
     const match = servings.find(s => s.serving_name === unit);
-    if (match) {
-      selectedFoodBase._servingGrams = match.grams;
-    } else {
-      selectedFoodBase._servingGrams = null;
-    }
+    selectedFoodBase._servingGrams = match ? match.grams : null;
   }
   recalcByQty();
 }
@@ -2423,13 +2424,17 @@ function onIngUnitChange() {
   const unit = document.getElementById('ingUnit').value;
   const isGramBased = ['gramos','ml','oz'].includes(unit);
 
-  // Hide serving row — conversion is invisible to user
   document.getElementById('ingServingRow').style.display = 'none';
 
-  if (isGramBased) {
-    if (currentIngFoodBase) currentIngFoodBase._servingGrams = null;
-  } else {
-    if (currentIngFoodBase) {
+  if (currentIngFoodBase) {
+    if (unit === currentIngFoodBase.unit) {
+      // Same unit as base — no conversion needed
+      currentIngFoodBase._servingGrams = null;
+    } else if (isGramBased) {
+      // Switching to gram-based — no conversion needed
+      currentIngFoodBase._servingGrams = null;
+    } else {
+      // Different non-gram unit — look up conversion table
       const servings = foodServings[currentIngFoodBase.name] || [];
       const match = servings.find(s => s.serving_name === unit);
       currentIngFoodBase._servingGrams = match ? match.grams : null;
