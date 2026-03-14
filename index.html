@@ -2926,16 +2926,13 @@ async function renderStatsConsistency(food, hyd) {
     : 0;
 
   const rows = metrics.map(m => {
-    const met = Object.values(byDate).filter(d => {
-      const v = d[m.key];
-      return v >= m.goal*(1-m.tolerance) && v <= m.goal*(1+m.tolerance);
-    }).length;
-    const pct = Math.round((met/n)*100);
+    const met = Object.values(byDate).filter(d => d[m.key] >= m.goal * (1 - m.tolerance)).length;
+    const pct = Math.round((met/statsRange)*100);
     const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
     return `<div class="progress-item">
       <div class="progress-header">
         <span class="progress-label">${m.label}</span>
-        <span class="progress-value" style="color:${color}">${met}/${n} días (${pct}%)</span>
+        <span class="progress-value" style="color:${color}">${met}/${statsRange} días (${pct}%)</span>
       </div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
     </div>`;
