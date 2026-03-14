@@ -780,6 +780,11 @@ select { cursor: pointer; }
       <div class="card" id="homeProgressBars"></div>
     </div>
 
+    <div id="homeSuppSection" style="display:none">
+      <div class="section-label">Suplementos de hoy</div>
+      <div class="card" id="homeSuppChecklist"></div>
+    </div>
+
     <div>
       <div class="section-label">Entradas de hoy</div>
       <div id="homeTodayList">
@@ -799,6 +804,7 @@ select { cursor: pointer; }
     <div class="sub-tabs">
       <button class="sub-tab active" id="subTabFood" onclick="switchSubTab('food')">🥗 Alimentación</button>
       <button class="sub-tab" id="subTabHyd" onclick="switchSubTab('hyd')">💧 Hidratación</button>
+      <button class="sub-tab" id="subTabSupp" onclick="switchSubTab('supp')">💊 Suplementos</button>
     </div>
 
     <!-- FOOD FORM -->
@@ -935,6 +941,22 @@ select { cursor: pointer; }
         <button class="btn-primary" onclick="logHydration()">💧 Registrar bebida</button>
       </div>
     </div>
+
+    <!-- SUPPLEMENTS FORM -->
+    <div id="subSupp" style="display:none">
+
+      <!-- Today's checklist -->
+      <div class="card">
+        <div class="section-label" style="margin-bottom:4px">Suplementos de hoy</div>
+        <div id="suppChecklist">
+          <div class="empty" style="padding:20px 0">
+            <div class="empty-icon" style="font-size:28px">💊</div>
+            <div class="empty-text">No tenés suplementos configurados aún.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
   <!-- ══ PAGE: HISTORIAL ══ -->
@@ -988,6 +1010,16 @@ select { cursor: pointer; }
         <div class="settings-row"><div><div class="settings-label">Hidratante (ml)</div></div><input class="settings-input" type="number" id="goalIsotonic" placeholder="500" inputmode="numeric"></div>
       </div>
       <button class="save-settings-btn" onclick="saveSettings()">Guardar metas</button>
+
+      <div class="section-label" style="margin-top:4px">Mis suplementos</div>
+      <div class="card">
+        <div style="display:flex;gap:8px">
+          <input type="text" id="newSuppName" placeholder="Ej: Creatina, Vitamina D…" style="flex:1">
+          <input type="text" id="newSuppNotes" placeholder="Notas (opcional)" style="flex:1">
+          <button onclick="addSupplement()" style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:12px 16px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Agregar</button>
+        </div>
+        <div id="suppList" style="display:flex;flex-direction:column;gap:8px;margin-top:4px"></div>
+      </div>
     </div>
 
     <!-- ── SECCIÓN: PLATILLOS ── -->
@@ -1182,13 +1214,6 @@ select { cursor: pointer; }
         <button class="sub-tab active" id="statsRange7" onclick="setStatsRange(7)">7 días</button>
         <button class="sub-tab" id="statsRange30" onclick="setStatsRange(30)">30 días</button>
       </div>
-      <!-- Charts toggle -->
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:var(--muted)">Gráficos</span>
-        <div id="chartsToggle" onclick="toggleCharts()" style="width:40px;height:22px;border-radius:11px;background:var(--accent);cursor:pointer;position:relative;transition:background 0.2s">
-          <div id="chartsToggleKnob" style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;left:20px;transition:left 0.2s"></div>
-        </div>
-      </div>
     </div>
 
     <!-- ① Resumen del período -->
@@ -1211,7 +1236,7 @@ select { cursor: pointer; }
 
     <!-- ④ Distribución por comida -->
     <div class="card" id="statsMealCard">
-      <div class="section-label" style="margin-bottom:8px">Calorías por tipo de comida</div>
+      <div class="section-label" style="margin-bottom:8px">Calorías por tiempo de comida</div>
       <div id="statsMealContent"></div>
       <canvas id="chartMeal" height="180" style="display:none"></canvas>
     </div>
@@ -1227,6 +1252,12 @@ select { cursor: pointer; }
     <div class="card">
       <div class="section-label" style="margin-bottom:8px">Alimentos más frecuentes</div>
       <div id="statsTopFoods"></div>
+    </div>
+
+    <!-- ⑦ Suplementos -->
+    <div class="card" id="statsSuppCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Consistencia de suplementos</div>
+      <div id="statsSuppContent"></div>
     </div>
 
     <!-- Generar informe -->
@@ -1427,7 +1458,7 @@ async function initApp(user) {
   // Profile info
   document.getElementById('profileName').textContent = user.user_metadata?.full_name || 'Usuario';
   document.getElementById('profileEmail').textContent = user.email;
-  await Promise.all([loadSettings(), loadEntries(), loadHydration(), loadFoodsDb(), loadDishes(), loadFoodServings()]);
+  await Promise.all([loadSettings(), loadEntries(), loadHydration(), loadFoodsDb(), loadDishes(), loadFoodServings(), loadSupplements()]);
   updateClock();
   setInterval(updateClock, 30000);
   checkOnline();
@@ -1459,6 +1490,7 @@ async function showProfileSection(sec) {
     document.getElementById('qbtn-' + s).classList.toggle('active', s === sec);
   });
   if (sec === 'alimentos') renderFoodsList();
+  if (sec === 'metas') renderSuppList();
   if (sec === 'platillos') {
     const list = document.getElementById('dishesList');
     if (list) list.innerHTML = '<div class="empty"><div class="empty-icon" style="font-size:24px">⏳</div><div class="empty-text">Cargando platillos…</div></div>';
@@ -1468,11 +1500,11 @@ async function showProfileSection(sec) {
 }
 
 function switchSubTab(tab) {
-  const isFood = tab === 'food';
-  document.getElementById('subTabFood').classList.toggle('active', isFood);
-  document.getElementById('subTabHyd').classList.toggle('active', !isFood);
-  document.getElementById('subFood').style.display = isFood ? 'block' : 'none';
-  document.getElementById('subHyd').style.display = isFood ? 'none' : 'block';
+  ['food','hyd','supp'].forEach(t => {
+    document.getElementById('subTab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+    document.getElementById('sub' + t.charAt(0).toUpperCase() + t.slice(1)).style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'supp') renderSuppChecklist();
 }
 
 // ══ Clock ══
@@ -1815,6 +1847,7 @@ function renderToday() {
     return;
   }
   list.innerHTML = allToday.map(e => e._type === 'food' ? makeLogItem(e) : makeHydLogItem(e)).join('');
+  renderHomeSuppChecklist();
 }
 
 // ══ Render History ══
@@ -2185,6 +2218,8 @@ function showToast(msg, isError = false) {
 // PLATILLOS
 // ══════════════════════════════════════════
 let dishes = [];
+let supplements = [];
+let supplementLog = []; // today's logged supplement ids
 let currentDishIngredients = []; // staging area while building
 let currentIngFoodBase = null;   // selected food base for ingredient
 let currentIngDishBase = null;   // selected sub-dish for ingredient
@@ -2564,10 +2599,176 @@ async function deleteDish(id) {
 }
 
 // ══════════════════════════════════════════
+// SUPLEMENTOS
+// ══════════════════════════════════════════
+let supplements = [];
+let suppLog = []; // today's logged supplements
+
+// ── Load ──
+async function loadSupplements() {
+  const today = getTodayDate();
+  const [{ data: suppData }, { data: logData }] = await Promise.all([
+    sb.from('supplements').select('*').eq('user_id', currentUser.id).eq('active', true).order('sort_order'),
+    sb.from('supplement_log').select('*').eq('user_id', currentUser.id).eq('log_date', today),
+  ]);
+  supplements = suppData || [];
+  suppLog = logData || [];
+}
+
+// ── Load supplement log for stats range ──
+async function loadSuppLogRange() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - statsRange);
+  const { data } = await sb.from('supplement_log')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .gte('log_date', cutoff.toISOString().split('T')[0])
+    .order('log_date');
+  return data || [];
+}
+
+// ── Add supplement ──
+async function addSupplement() {
+  const name = document.getElementById('newSuppName').value.trim();
+  const notes = document.getElementById('newSuppNotes').value.trim();
+  if (!name) { showToast('Ingresá el nombre del suplemento', true); return; }
+  const { data, error } = await sb.from('supplements')
+    .insert({ user_id: currentUser.id, name, notes, sort_order: supplements.length })
+    .select().single();
+  if (error) { showToast('Error al guardar', true); return; }
+  supplements.push(data);
+  document.getElementById('newSuppName').value = '';
+  document.getElementById('newSuppNotes').value = '';
+  renderSuppList();
+  renderSuppChecklist();
+  renderHomeSuppChecklist();
+  showToast(`✓ "${name}" agregado`);
+}
+
+// ── Delete supplement ──
+async function deleteSupplement(id) {
+  const s = supplements.find(s => s.id === id);
+  if (!confirm(`¿Eliminar "${s?.name}"?`)) return;
+  await sb.from('supplements').delete().eq('id', id).eq('user_id', currentUser.id);
+  supplements = supplements.filter(s => s.id !== id);
+  renderSuppList();
+  renderSuppChecklist();
+  renderHomeSuppChecklist();
+}
+
+// ── Toggle supplement taken today ──
+async function toggleSupp(suppId) {
+  const today = getTodayDate();
+  const supp = supplements.find(s => s.id === suppId);
+  const alreadyLogged = suppLog.find(l => l.supplement_id === suppId);
+
+  if (alreadyLogged) {
+    // Un-check — delete log entry
+    await sb.from('supplement_log').delete().eq('id', alreadyLogged.id).eq('user_id', currentUser.id);
+    suppLog = suppLog.filter(l => l.id !== alreadyLogged.id);
+  } else {
+    // Check — insert log entry
+    const { data, error } = await sb.from('supplement_log')
+      .insert({ user_id: currentUser.id, supplement_id: suppId, supplement_name: supp.name, log_date: today })
+      .select().single();
+    if (error) { showToast('Error al registrar', true); return; }
+    suppLog.push(data);
+  }
+
+  renderSuppChecklist();
+  renderHomeSuppChecklist();
+}
+
+// ── Render supplement list in Perfil ──
+function renderSuppList() {
+  const list = document.getElementById('suppList');
+  if (!list) return;
+  if (!supplements.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:4px 0">No hay suplementos aún.</div>';
+    return;
+  }
+  list.innerHTML = supplements.map(s => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-size:14px;color:var(--text);font-family:var(--font-display)">💊 ${s.name}</div>
+        ${s.notes ? `<div style="font-size:11px;color:var(--muted)">${s.notes}</div>` : ''}
+      </div>
+      <button onclick="deleteSupplement(${s.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;opacity:0.7">🗑</button>
+    </div>`).join('');
+}
+
+// ── Render checklist in Registrar > Suplementos ──
+function renderSuppChecklist() {
+  const list = document.getElementById('suppChecklist');
+  if (!list) return;
+  if (!supplements.length) {
+    list.innerHTML = `<div class="empty" style="padding:20px 0">
+      <div class="empty-icon" style="font-size:28px">💊</div>
+      <div class="empty-text">No tenés suplementos configurados.<br>Andá a Perfil → Metas para agregar.</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = supplements.map(s => {
+    const taken = suppLog.some(l => l.supplement_id === s.id);
+    return `<div onclick="toggleSupp(${s.id})" style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.18s" id="suppItem-${s.id}">
+      <div style="width:26px;height:26px;border-radius:50%;border:2px solid ${taken?'var(--accent)':'var(--border)'};background:${taken?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0">
+        ${taken ? '<span style="color:#0e110a;font-size:14px;font-weight:700">✓</span>' : ''}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-family:var(--font-display);color:${taken?'var(--text2)':'var(--text)'};text-decoration:${taken?'line-through':'none'}">${s.name}</div>
+        ${s.notes ? `<div style="font-size:11px;color:var(--muted)">${s.notes}</div>` : ''}
+      </div>
+      <div style="font-size:12px;color:${taken?'var(--accent)':'var(--muted)'}">${taken?'✓ Tomado':'Pendiente'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render checklist in Inicio ──
+function renderHomeSuppChecklist() {
+  const section = document.getElementById('homeSuppSection');
+  const list = document.getElementById('homeSuppChecklist');
+  if (!section || !list) return;
+  if (!supplements.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = supplements.map(s => {
+    const taken = suppLog.some(l => l.supplement_id === s.id);
+    return `<div onclick="toggleSupp(${s.id})" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer" id="homeSuppItem-${s.id}">
+      <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${taken?'var(--accent)':'var(--border)'};background:${taken?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">
+        ${taken ? '<span style="color:#0e110a;font-size:13px;font-weight:700">✓</span>' : ''}
+      </div>
+      <div style="flex:1;font-family:var(--font-display);font-size:14px;color:${taken?'var(--text2)':'var(--text)'};text-decoration:${taken?'line-through':'none'}">${s.name}</div>
+      <div style="font-size:11px;color:${taken?'var(--accent)':'var(--muted)'}">${taken?'Tomado':'Pendiente'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Render supplements stats in Análisis ──
+async function renderStatsSupp() {
+  const card = document.getElementById('statsSuppCard');
+  const content = document.getElementById('statsSuppContent');
+  if (!supplements.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const logs = await loadSuppLogRange();
+  content.innerHTML = supplements.map(s => {
+    const taken = logs.filter(l => l.supplement_id === s.id).length;
+    const pct = Math.round((taken / statsRange) * 100);
+    const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
+    return `<div class="progress-item">
+      <div class="progress-header">
+        <span class="progress-label">💊 ${s.name}</span>
+        <span class="progress-value" style="color:${color}">${taken}/${statsRange} días (${pct}%)</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
 // ANALYTICS
 // ══════════════════════════════════════════
 let statsRange = 7;
-let showCharts = true;
+const showCharts = true; // always show charts
 let chartTrendInstance = null;
 let chartMealInstance = null;
 let chartHydInstance = null;
@@ -2576,15 +2777,6 @@ function setStatsRange(days) {
   statsRange = days;
   document.getElementById('statsRange7').classList.toggle('active', days === 7);
   document.getElementById('statsRange30').classList.toggle('active', days === 30);
-  renderStats();
-}
-
-function toggleCharts() {
-  showCharts = !showCharts;
-  const knob = document.getElementById('chartsToggleKnob');
-  const toggle = document.getElementById('chartsToggle');
-  knob.style.left = showCharts ? '20px' : '2px';
-  toggle.style.background = showCharts ? 'var(--accent)' : 'var(--border)';
   renderStats();
 }
 
@@ -2601,17 +2793,18 @@ function getStatsEntries() {
 
 // ── Main render ──
 async function renderStats() {
-  // Fetch from Supabase to ensure full range data (may exceed in-memory 30d)
+  // Fetch from Supabase to ensure full range data
   if (statsRange === 30) {
     await refreshStatsData();
   }
   const { food, hyd } = getStatsEntries();
   renderStatsSummary(food, hyd);
-  renderStatsConsistency(food, hyd);
+  await renderStatsConsistency(food, hyd);
   renderStatsMeal(food);
   renderStatsHyd(hyd);
   renderStatsTopFoods(food);
-  if (showCharts) renderChartTrend(food);
+  renderChartTrend(food);
+  await renderStatsSupp();
 }
 
 // ── Refresh data for full 30d range ──
@@ -2653,20 +2846,23 @@ function renderStatsSummary(food, hyd) {
   const avgCarb = days.reduce((s,d)=>s+d.c,0)/n;
   const avgFat  = days.reduce((s,d)=>s+d.f,0)/n;
 
-  // Water avg
-  const waterByDate = {};
-  hyd.filter(e=>e.drinkId==='water').forEach(e => {
-    waterByDate[e.date] = (waterByDate[e.date]||0) + e.amount;
+  // Water + hidratante avg
+  const hydByDate = {};
+  hyd.forEach(e => {
+    if (e.drinkId === 'water' || e.drinkId === 'hidratante') {
+      hydByDate[e.date] = (hydByDate[e.date]||0) + e.amount;
+    }
   });
-  const waterDays = Object.values(waterByDate);
-  const avgWater = waterDays.length ? waterDays.reduce((s,v)=>s+v,0)/waterDays.length : 0;
+  const hydDayVals = Object.values(hydByDate);
+  const avgHydTotal = hydDayVals.length ? Math.round(hydDayVals.reduce((s,v)=>s+v,0)/statsRange) : 0;
+  const goalHydTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
 
   const cards = [
     { label:'Cal promedio/día', value: Math.round(avgCal), unit:'kcal', goal: settings.goalCal, color:'var(--accent)' },
     { label:'Proteína promedio', value: avgProt.toFixed(1), unit:'g/día', goal: settings.goalProtein, color:'var(--accent2)' },
     { label:'Carbos promedio',  value: avgCarb.toFixed(1), unit:'g/día', goal: settings.goalCarbs, color:'#5bc0de' },
     { label:'Grasas promedio',  value: avgFat.toFixed(1),  unit:'g/día', goal: settings.goalFat, color:'#e07840' },
-    { label:'Agua promedio/día', value: avgWater>=1000?`${(avgWater/1000).toFixed(1)}L`:Math.round(avgWater)+'ml', unit:'', goal: null, color:'#4a90d9' },
+    { label:'Hidratación/día',  value: avgHydTotal>=1000?`${(avgHydTotal/1000).toFixed(1)}L`:`${avgHydTotal}ml`, unit:'agua + hidratante', goal: goalHydTotal||null, color:'#4a90d9' },
     { label:'Días registrados', value: n, unit:`de ${statsRange}`, goal: null, color:'var(--muted)' },
   ];
 
@@ -2682,9 +2878,9 @@ function renderStatsSummary(food, hyd) {
 }
 
 // ── ② Consistency ──
-function renderStatsConsistency(food, hyd) {
+async function renderStatsConsistency(food, hyd) {
   const sec = document.getElementById('statsConsistency');
-  const hasGoals = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat || settings.goalWater;
+  const hasGoals = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat || settings.goalWater || settings.goalIsotonic;
   if (!hasGoals || !food.length) { sec.style.display='none'; return; }
   sec.style.display = 'block';
 
@@ -2696,9 +2892,11 @@ function renderStatsConsistency(food, hyd) {
     byDate[e.log_date].c   += e.carbs_g||0;
     byDate[e.log_date].f   += e.fat_g||0;
   });
-  const waterByDate = {};
-  hyd.filter(e=>e.drinkId==='water').forEach(e => {
-    waterByDate[e.date] = (waterByDate[e.date]||0) + e.amount;
+
+  // Combined hydration (water + hidratante) per day
+  const hydCombinedByDate = {};
+  hyd.filter(e => e.drinkId==='water' || e.drinkId==='hidratante').forEach(e => {
+    hydCombinedByDate[e.date] = (hydCombinedByDate[e.date]||0) + e.amount;
   });
 
   const n = Object.keys(byDate).length || 1;
@@ -2709,7 +2907,10 @@ function renderStatsConsistency(food, hyd) {
     { label:'Grasas',   key:'f',   goal: settings.goalFat, tolerance: 0.15 },
   ].filter(m => m.goal);
 
-  const waterDays = Object.values(waterByDate).filter(v => v >= (settings.goalWater||0)).length;
+  const goalHydTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
+  const hydDays = goalHydTotal
+    ? Object.values(hydCombinedByDate).filter(v => v >= goalHydTotal * 0.9).length
+    : 0;
 
   const rows = metrics.map(m => {
     const met = Object.values(byDate).filter(d => {
@@ -2727,16 +2928,40 @@ function renderStatsConsistency(food, hyd) {
     </div>`;
   });
 
-  if (settings.goalWater) {
-    const pct = Math.round((waterDays/statsRange)*100);
+  if (goalHydTotal) {
+    const pct = Math.round((hydDays/statsRange)*100);
     const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
     rows.push(`<div class="progress-item">
       <div class="progress-header">
-        <span class="progress-label">💧 Agua</span>
-        <span class="progress-value" style="color:${color}">${waterDays}/${statsRange} días (${pct}%)</span>
+        <span class="progress-label">💧 Hidratación (agua + hidratante)</span>
+        <span class="progress-value" style="color:${color}">${hydDays}/${statsRange} días (${pct}%)</span>
       </div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
     </div>`);
+  }
+
+  // Supplement consistency
+  if (supplements.length) {
+    const suppRows = await Promise.all(supplements.map(async s => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - statsRange);
+      const { data } = await sb.from('supplement_log')
+        .select('log_date')
+        .eq('user_id', currentUser.id)
+        .eq('supplement_id', s.id)
+        .gte('log_date', cutoff.toISOString().split('T')[0]);
+      const taken = (data || []).length;
+      const pct = Math.round((taken / statsRange) * 100);
+      const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
+      return `<div class="progress-item">
+        <div class="progress-header">
+          <span class="progress-label">💊 ${s.name}</span>
+          <span class="progress-value" style="color:${color}">${taken}/${statsRange} días (${pct}%)</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+    }));
+    rows.push(...suppRows);
   }
 
   document.getElementById('statsConsistencyContent').innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${rows.join('')}</div>`;
@@ -2862,81 +3087,88 @@ function renderStatsMeal(food) {
 
 // ── ⑤ Hydration ──
 function renderStatsHyd(hyd) {
-  const waterEntries = hyd.filter(e=>e.drinkId==='water');
-  const hidEntries   = hyd.filter(e=>e.drinkId==='hidratante');
+  const waterEntries    = hyd.filter(e => e.drinkId === 'water');
+  const hidEntries      = hyd.filter(e => e.drinkId === 'hidratante');
 
   const waterByDate = {};
-  waterEntries.forEach(e => { waterByDate[e.date]=(waterByDate[e.date]||0)+e.amount; });
+  waterEntries.forEach(e => { waterByDate[e.date] = (waterByDate[e.date]||0) + e.amount; });
   const hidByDate = {};
-  hidEntries.forEach(e => { hidByDate[e.date]=(hidByDate[e.date]||0)+e.amount; });
+  hidEntries.forEach(e => { hidByDate[e.date] = (hidByDate[e.date]||0) + e.amount; });
 
-  const waterVals = Object.values(waterByDate);
-  const hidVals   = Object.values(hidByDate);
-  const avgWater  = waterVals.length ? Math.round(waterVals.reduce((s,v)=>s+v,0)/statsRange) : 0;
-  const avgHid    = hidVals.length   ? Math.round(hidVals.reduce((s,v)=>s+v,0)/statsRange) : 0;
+  // Combined per day
+  const allDates = new Set([...Object.keys(waterByDate), ...Object.keys(hidByDate)]);
+  const combinedByDate = {};
+  allDates.forEach(d => { combinedByDate[d] = (waterByDate[d]||0) + (hidByDate[d]||0); });
+
+  const avgWater  = Object.keys(waterByDate).length ? Math.round(Object.values(waterByDate).reduce((s,v)=>s+v,0)/statsRange) : 0;
+  const avgHid    = Object.keys(hidByDate).length   ? Math.round(Object.values(hidByDate).reduce((s,v)=>s+v,0)/statsRange)   : 0;
+  const avgTotal  = avgWater + avgHid;
 
   const hydContent = document.getElementById('statsHydContent');
   const hydCanvas  = document.getElementById('chartHyd');
 
-  const items = [
-    { label:'💧 Agua',       avg: avgWater, goal: settings.goalWater,    color:'#4a90d9' },
-    { label:'🏋️ Hidratante', avg: avgHid,   goal: settings.goalIsotonic, color:'#5bc0de' },
-  ].filter(i => i.avg > 0 || i.goal > 0);
-
-  if (!items.length) {
+  if (!avgTotal && !settings.goalWater && !settings.goalIsotonic) {
     hydContent.innerHTML = '<div style="color:var(--muted);font-size:13px">Sin datos de hidratación.</div>';
     hydCanvas.style.display = 'none';
     return;
   }
 
-  if (showCharts && waterVals.length) {
-    hydContent.style.display = 'none';
-    hydCanvas.style.display = 'block';
-    if (chartHydInstance) { chartHydInstance.destroy(); chartHydInstance = null; }
-    // Daily water over time
-    const today = new Date();
-    const labels = [];
-    const waterData = [];
-    for (let i=statsRange-1;i>=0;i--) {
-      const d = new Date(today); d.setDate(d.getDate()-i);
-      const ds = d.toISOString().split('T')[0];
-      labels.push(d.toLocaleDateString('es-CR',{day:'numeric',month:'short'}));
-      waterData.push(waterByDate[ds]||0);
-    }
-    const ctx = hydCanvas.getContext('2d');
-    chartHydInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          { label:'Agua ml', data:waterData, borderColor:'#4a90d9', backgroundColor:'rgba(74,144,217,0.1)', fill:true, tension:0.3, pointRadius:3 },
-          ...(settings.goalWater?[{ label:'Meta', data:Array(labels.length).fill(settings.goalWater), borderColor:'rgba(224,120,64,0.7)', borderDash:[5,4], borderWidth:2, pointRadius:0, fill:false }]:[]),
-        ],
-      },
-      options: {
-        responsive:true,
-        plugins:{ legend:{ display:false } },
-        scales:{
-          x:{ ticks:{ color:'#7a8460', font:{size:10} }, grid:{ color:'rgba(255,255,255,0.06)' } },
-          y:{ ticks:{ color:'#7a8460', font:{size:10} }, grid:{ color:'rgba(255,255,255,0.06)' } },
+  const goalTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
+  const disp = v => v >= 1000 ? `${(v/1000).toFixed(1)}L` : `${v}ml`;
+
+  // Always show chart
+  hydContent.style.display = 'none';
+  hydCanvas.style.display = 'block';
+
+  if (chartHydInstance) { chartHydInstance.destroy(); chartHydInstance = null; }
+
+  const today = new Date();
+  const labels = [];
+  const waterData = [];
+  const hidData = [];
+  for (let i = statsRange-1; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const ds = d.toISOString().split('T')[0];
+    labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
+    waterData.push(waterByDate[ds]||0);
+    hidData.push(hidByDate[ds]||0);
+  }
+
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = '#7a8460';
+
+  const ctx = hydCanvas.getContext('2d');
+  chartHydInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'💧 Agua', data: waterData, backgroundColor:'rgba(74,144,217,0.7)', borderRadius:3, stack:'hyd' },
+        { label:'🏋️ Hidratante', data: hidData, backgroundColor:'rgba(91,192,222,0.7)', borderRadius:3, stack:'hyd' },
+        ...(goalTotal ? [{
+          label:'Meta', data: Array(labels.length).fill(goalTotal),
+          type:'line', borderColor:'rgba(224,120,64,0.8)', borderDash:[5,4],
+          borderWidth:2, pointRadius:0, fill:false, stack: undefined,
+        }] : []),
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:'bottom', labels:{ color: textColor, font:{size:11}, padding:10 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${disp(ctx.raw)}`,
+          },
         },
       },
-    });
-  } else {
-    hydCanvas.style.display = 'none';
-    hydContent.style.display = 'block';
-    hydContent.innerHTML = items.map(i => {
-      const pct = i.goal ? Math.min(Math.round((i.avg/i.goal)*100),110) : 0;
-      const display = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
-      return `<div class="progress-item">
-        <div class="progress-header">
-          <span class="progress-label">${i.label} — promedio/día</span>
-          <span class="progress-value">${display(i.avg)}${i.goal?` / ${display(i.goal)}`:''}</span>
-        </div>
-        ${i.goal?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${i.color}"></div></div>`:''}
-      </div>`;
-    }).join('');
-  }
+      scales: {
+        x: { stacked:true, ticks:{ color:textColor, font:{size:10} }, grid:{ color:gridColor } },
+        y: { stacked:true, ticks:{ color:textColor, font:{size:10}, callback: v => disp(v) }, grid:{ color:gridColor } },
+      },
+    },
+  });
 }
 
 // ── ⑥ Top foods ──
@@ -3112,8 +3344,23 @@ async function generatePDF() {
   tableRow('Agua promedio/día', `${disp(avgWater)}${settings.goalWater?' (meta: '+disp(settings.goalWater)+')':''}`, true);
   if (settings.goalWater) tableRow('Días alcanzando meta de agua', `${waterGoalDays}/${statsRange}`);
 
+  // ── Supplements ──
+  if (supplements.length) {
+    sectionTitle('⑤ Consistencia de suplementos');
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-statsRange);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    for (let i=0; i<supplements.length; i++) {
+      const s = supplements[i];
+      const { data } = await sb.from('supplement_log').select('log_date')
+        .eq('user_id', currentUser.id).eq('supplement_id', s.id).gte('log_date', cutoffStr);
+      const taken = (data||[]).length;
+      const pct = Math.round((taken/statsRange)*100);
+      tableRow(`💊 ${s.name}`, `${taken}/${statsRange} días (${pct}%)`, i%2===0);
+    }
+  }
+
   // ── Top foods ──
-  sectionTitle('⑤ Alimentos más frecuentes');
+  sectionTitle('⑥ Alimentos más frecuentes');
   const freq = {};
   food.forEach(e => {
     if (!freq[e.food_name]) freq[e.food_name]={count:0,totalCal:0};
@@ -3124,21 +3371,36 @@ async function generatePDF() {
     tableRow(name, `${data.count}x · ~${Math.round(data.totalCal/data.count)} kcal promedio`, i%2===0);
   });
 
-  // ── Charts (if enabled) ──
-  if (showCharts) {
-    const trendCanvas = document.getElementById('chartTrend');
-    const mealCanvas  = document.getElementById('chartMeal');
-    if (trendCanvas && chartTrendInstance) {
-      doc.addPage();
-      y = margin;
-      sectionTitle('Gráficos');
-      const trendImg = trendCanvas.toDataURL('image/png');
-      doc.addImage(trendImg, 'PNG', margin, y, W-margin*2, 70);
-      y += 76;
-      if (chartMealInstance) {
-        const mealImg = mealCanvas.toDataURL('image/png');
-        doc.addImage(mealImg, 'PNG', margin+(W-margin*2)/4, y, (W-margin*2)/2, 70);
-      }
+  // ── Supplements ──
+  if (supplements.length) {
+    sectionTitle('⑦ Consistencia de suplementos');
+    const suppLogs = await loadSuppLogRange();
+    supplements.forEach((s, i) => {
+      const taken = suppLogs.filter(l => l.supplement_id === s.id).length;
+      const pct = Math.round((taken/statsRange)*100);
+      tableRow(`💊 ${s.name}`, `${taken}/${statsRange} días (${pct}%)`, i%2===0);
+    });
+  }
+
+  // ── Charts ──
+  const trendCanvas = document.getElementById('chartTrend');
+  const mealCanvas  = document.getElementById('chartMeal');
+  const hydCanvas   = document.getElementById('chartHyd');
+  if (trendCanvas && chartTrendInstance) {
+    doc.addPage();
+    y = margin;
+    sectionTitle('Gráficos');
+    const trendImg = trendCanvas.toDataURL('image/png');
+    doc.addImage(trendImg, 'PNG', margin, y, W-margin*2, 65);
+    y += 72;
+    if (chartMealInstance) {
+      const mealImg = mealCanvas.toDataURL('image/png');
+      doc.addImage(mealImg, 'PNG', margin+(W-margin*2)/4, y, (W-margin*2)/2, 65);
+      y += 72;
+    }
+    if (chartHydInstance && hydCanvas) {
+      const hydImg = hydCanvas.toDataURL('image/png');
+      doc.addImage(hydImg, 'PNG', margin, y, W-margin*2, 65);
     }
   }
 
@@ -3157,6 +3419,123 @@ async function generatePDF() {
   btn.textContent = '📄 Descargar informe PDF';
   btn.disabled = false;
   showToast('✓ Informe descargado');
+}
+
+// ══════════════════════════════════════════
+// SUPLEMENTOS
+// ══════════════════════════════════════════
+
+async function loadSupplements() {
+  const today = getTodayDate();
+  const [{ data: suppData }, { data: logData }] = await Promise.all([
+    sb.from('supplements').select('*').eq('user_id', currentUser.id).eq('active', true).order('sort_order').order('created_at'),
+    sb.from('supplement_log').select('*').eq('user_id', currentUser.id).eq('log_date', today),
+  ]);
+  supplements = suppData || [];
+  supplementLog = (logData || []).map(l => l.supplement_id);
+  renderSuppList();
+  renderSuppChecklist();
+}
+
+// ── Render management list in Profile ──
+function renderSuppList() {
+  const list = document.getElementById('suppList');
+  if (!list) return;
+  if (!supplements.length) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:8px 0">Agregá tu primer suplemento arriba.</div>';
+    return;
+  }
+  list.innerHTML = supplements.map(s => `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <span style="font-size:18px">💊</span>
+      <div style="flex:1;font-family:var(--font-display);font-size:14px;color:var(--text)">${s.name}</div>
+      <button onclick="deleteSupplement(${s.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;opacity:0.7">🗑</button>
+    </div>`).join('');
+}
+
+// ── Render today's checklist in Registrar ──
+function renderSuppChecklist() {
+  const list = document.getElementById('suppChecklist');
+  if (!list) return;
+  if (!supplements.length) {
+    list.innerHTML = `<div class="empty" style="padding:20px 0">
+      <div class="empty-icon" style="font-size:28px">💊</div>
+      <div class="empty-text">No tenés suplementos configurados aún.<br>Agregálos en <strong>Perfil → Metas</strong>.</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = supplements.map(s => {
+    const checked = supplementLog.includes(s.id);
+    return `<div onclick="toggleSupplement(${s.id})" style="display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.15s" id="supp-row-${s.id}">
+      <div style="width:28px;height:28px;border-radius:50%;border:2px solid ${checked?'var(--accent)':'var(--border)'};background:${checked?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0" id="supp-check-${s.id}">
+        ${checked?'<span style="color:#0e110a;font-size:14px;font-weight:700">✓</span>':''}
+      </div>
+      <div style="flex:1">
+        <div style="font-family:var(--font-display);font-size:15px;color:${checked?'var(--accent)':'var(--text)'};transition:color 0.2s" id="supp-name-${s.id}">${s.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${checked?'✓ Tomado hoy':'Pendiente'}</div>
+      </div>
+      <span style="font-size:20px">${checked?'💊':'○'}</span>
+    </div>`;
+  }).join('') + `<div style="font-size:11px;color:var(--muted);text-align:center;padding:12px 0 4px">
+    ${supplementLog.length} de ${supplements.length} tomados hoy
+  </div>`;
+}
+
+// ── Toggle supplement check ──
+async function toggleSupplement(suppId) {
+  const isChecked = supplementLog.includes(suppId);
+  const today = getTodayDate();
+
+  if (isChecked) {
+    // Uncheck — delete log entry
+    await sb.from('supplement_log')
+      .delete()
+      .eq('user_id', currentUser.id)
+      .eq('supplement_id', suppId)
+      .eq('log_date', today);
+    supplementLog = supplementLog.filter(id => id !== suppId);
+    showToast('Suplemento desmarcado');
+  } else {
+    // Check — insert log entry
+    const supp = supplements.find(s => s.id === suppId);
+    const { error } = await sb.from('supplement_log').insert({
+      user_id: currentUser.id,
+      supplement_id: suppId,
+      supplement_name: supp.name,
+      log_date: today,
+    });
+    if (error && error.code !== '23505') { showToast('Error al guardar', true); return; }
+    if (!supplementLog.includes(suppId)) supplementLog.push(suppId);
+    showToast(`💊 ${supp.name} registrado`);
+  }
+  renderSuppChecklist();
+}
+
+// ── Add supplement ──
+async function addSupplement() {
+  const name = document.getElementById('newSuppName').value.trim();
+  if (!name) { showToast('Escribí el nombre del suplemento', true); return; }
+  const { data, error } = await sb.from('supplements')
+    .insert({ user_id: currentUser.id, name, sort_order: supplements.length })
+    .select().single();
+  if (error) { showToast('Error al guardar', true); return; }
+  supplements.push(data);
+  document.getElementById('newSuppName').value = '';
+  renderSuppList();
+  showToast(`✓ ${name} agregado`);
+}
+
+// ── Delete supplement ──
+async function deleteSupplement(id) {
+  const supp = supplements.find(s => s.id === id);
+  if (!confirm(`¿Eliminar "${supp?.name}"?`)) return;
+  await sb.from('supplements').delete().eq('id', id).eq('user_id', currentUser.id);
+  supplements = supplements.filter(s => s.id !== id);
+  supplementLog = supplementLog.filter(sid => sid !== id);
+  renderSuppList();
+  renderSuppChecklist();
+  showToast('Suplemento eliminado');
 }
 
 // ══ Init theme on load ══
