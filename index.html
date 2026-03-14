@@ -835,16 +835,26 @@ select { cursor: pointer; }
         <div class="two-col">
           <div class="field">
             <label>Cantidad</label>
-            <input type="number" id="quantity" placeholder="100" inputmode="decimal" min="0" oninput="recalcByQty()">
+            <input type="text" id="quantity" placeholder="100" inputmode="decimal" min="0" oninput="recalcByQty()">
           </div>
           <div class="field">
             <label>Unidad</label>
-            <select id="unit">
+            <select id="unit" onchange="onUnitChange()">
               <option>gramos</option><option>ml</option><option>oz</option>
               <option>tazas</option><option>cdas</option><option>cditas</option>
               <option>unidades</option><option>rebanadas</option><option>piezas</option>
             </select>
           </div>
+        </div>
+        <!-- Serving selector — aparece cuando la unidad no es gramos/ml/oz -->
+        <div id="servingRow" style="display:none">
+          <div class="field">
+            <label>Porción de referencia</label>
+            <select id="servingSelect" onchange="onServingSelect(this.value)">
+              <option value="">— elegí una porción —</option>
+            </select>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Seleccioná la porción más cercana a lo que comiste. Podés ajustar la cantidad arriba.</div>
         </div>
         <div class="cal-display">
           <div class="cal-number" id="calDisplay">0</div>
@@ -1479,7 +1489,7 @@ function selectFood(food) {
   document.getElementById('foodName').value = food.displayName || food.name;
   document.getElementById('foodDropdown').classList.remove('show');
   if (food._past) { selectedFoodBase = null; return; }
-  selectedFoodBase = { qty: food.qty, cal: food.cal, p: food.p, c: food.c, f: food.f, fib: food.fib || 0 };
+  selectedFoodBase = { name: food.name, qty: food.qty, cal: food.cal, p: food.p, c: food.c, f: food.f, fib: food.fib || 0 };
   document.getElementById('quantity').value = food.qty;
   document.getElementById('unit').value = food.unit;
   document.getElementById('calories').value = food.cal;
@@ -1491,11 +1501,62 @@ function selectFood(food) {
   document.getElementById('autofillBadge').style.display = 'flex';
 }
 
+// ── Unit change → show serving selector ──
+function onUnitChange() {
+  if (!selectedFoodBase) return;
+  const unit = document.getElementById('unit').value;
+  const nonGram = !['gramos','ml','oz'].includes(unit);
+  const servings = foodServings[selectedFoodBase.name] || [];
+  const servingRow = document.getElementById('servingRow');
+  const servingSel = document.getElementById('servingSelect');
+
+  if (nonGram && servings.length) {
+    // Filter servings matching the selected unit, fallback to all
+    const keyword = unit.toLowerCase().replace('s',''); // tazas→taza, cdas→cda
+    const filtered = servings.filter(s => s.serving_name.toLowerCase().includes(keyword));
+    const toShow = filtered.length ? filtered : servings;
+    servingSel.innerHTML = '<option value="">— elegí una porción —</option>' +
+      toShow.map(s => `<option value="${s.grams}" data-name="${s.serving_name}">${s.serving_name} (${s.grams}g)</option>`).join('');
+    servingRow.style.display = 'block';
+    // Auto-select first option and recalc
+    if (toShow.length) {
+      servingSel.selectedIndex = 1;
+      onServingSelect(toShow[0].grams, toShow[0].serving_name);
+    }
+  } else {
+    servingRow.style.display = 'none';
+    recalcByQty();
+  }
+}
+
+// ── Serving selected → set grams as base, recalc ──
+function onServingSelect(grams, servingName) {
+  if (!grams || !selectedFoodBase) return;
+  // Store selected serving grams as the new reference
+  selectedFoodBase._servingGrams = parseFloat(grams);
+  selectedFoodBase._servingName = servingName;
+  // Set quantity to 1 (one serving) and recalc
+  const qtyInput = document.getElementById('quantity');
+  if (!qtyInput.value || qtyInput.value == selectedFoodBase.qty) {
+    qtyInput.value = 1;
+  }
+  recalcByQty();
+}
+
 function recalcByQty() {
   if (!selectedFoodBase) return;
-  const newQty = parseFloat(document.getElementById('quantity').value);
-  if (!newQty || !selectedFoodBase.qty) return;
-  const ratio = newQty / selectedFoodBase.qty;
+  const newQty = parseFraction(document.getElementById('quantity').value);
+  if (!newQty) return;
+
+  let ratio;
+  if (selectedFoodBase._servingGrams) {
+    // Non-gram unit: qty × servingGrams / baseQty
+    ratio = (newQty * selectedFoodBase._servingGrams) / selectedFoodBase.qty;
+  } else {
+    // Gram-based: direct ratio
+    ratio = newQty / selectedFoodBase.qty;
+  }
+
   document.getElementById('calories').value = Math.round(selectedFoodBase.cal * ratio * 10) / 10;
   document.getElementById('protein').value  = Math.round(selectedFoodBase.p   * ratio * 10) / 10;
   document.getElementById('carbs').value    = Math.round(selectedFoodBase.c   * ratio * 10) / 10;
@@ -1586,6 +1647,7 @@ async function deleteEntry(id) {
 function resetForm() {
   ['foodName','quantity','calories','protein','carbs','fat','fiber','notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('autofillBadge').style.display = 'none';
+  document.getElementById('servingRow').style.display = 'none';
   selectedFoodBase = null;
   selectOrigin('Casa');
   updateCalDisplay();
