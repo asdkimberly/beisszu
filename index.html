@@ -1612,39 +1612,36 @@ function selectFood(food) {
   document.getElementById('autofillBadge').style.display = 'flex';
 }
 
-// ── Unit change → show serving selector if non-gram unit ──
+// ── Unit change → find grams_per_unit and recalc silently ──
 function onUnitChange() {
   if (!selectedFoodBase) return;
   const unit = document.getElementById('unit').value;
   const isGramBased = ['gramos', 'ml', 'oz'].includes(unit);
-  const servings = foodServings[selectedFoodBase.name] || [];
-  const servingRow = document.getElementById('servingRow');
-  const servingSel = document.getElementById('servingSelect');
 
-  if (!isGramBased && servings.length) {
-    // Show all servings for this food — user picks the closest one
-    servingSel.innerHTML = '<option value="">— elegí una porción de referencia —</option>' +
-      servings.map(s => `<option value="${s.grams}">${s.serving_name} = ${s.grams}g</option>`).join('');
-    servingRow.style.display = 'block';
-    // Clear _servingGrams so recalc doesn't use stale value until user picks
+  // Hide serving row — conversion is invisible to user
+  document.getElementById('servingRow').style.display = 'none';
+
+  if (isGramBased) {
     selectedFoodBase._servingGrams = null;
   } else {
-    // Gram-based unit: hide selector, clear serving, recalc directly
-    servingRow.style.display = 'none';
-    selectedFoodBase._servingGrams = null;
-    recalcByQty();
+    // Look up exact unit in food_servings conversion table
+    const servings = foodServings[selectedFoodBase.name] || [];
+    const match = servings.find(s => s.serving_name === unit);
+    if (match) {
+      selectedFoodBase._servingGrams = match.grams;
+    } else {
+      selectedFoodBase._servingGrams = null;
+    }
   }
+  recalcByQty();
 }
 
-// ── User picks a serving → store grams per 1 unit, recalc ──
+// ── Serving select — kept for backward compat but hidden ──
 function onServingSelect(gramsStr) {
   if (!gramsStr || !selectedFoodBase) return;
   selectedFoodBase._servingGrams = parseFloat(gramsStr);
-  // Default quantity to 1 serving when user first picks
   const qtyInput = document.getElementById('quantity');
-  if (!qtyInput.value || parseFloat(qtyInput.value) === 0) {
-    qtyInput.value = 1;
-  }
+  if (!qtyInput.value || parseFloat(qtyInput.value) === 0) qtyInput.value = 1;
   recalcByQty();
 }
 
@@ -2424,33 +2421,27 @@ function onIngDishSelect(id) {
 function onIngUnitChange() {
   const unit = document.getElementById('ingUnit').value;
   const isGramBased = ['gramos','ml','oz'].includes(unit);
-  const foodName = currentIngFoodBase?.name;
-  const servings = foodName ? (foodServings[foodName] || []) : [];
-  const servingRow = document.getElementById('ingServingRow');
-  const servingSel = document.getElementById('ingServingSelect');
 
-  if (!isGramBased && servings.length) {
-    // Show all servings — user picks the reference
-    servingSel.innerHTML = '<option value="">— elegí una porción de referencia —</option>' +
-      servings.map(s => `<option value="${s.grams}">${s.serving_name} = ${s.grams}g</option>`).join('');
-    servingRow.style.display = 'block';
-    // Clear stale serving reference
+  // Hide serving row — conversion is invisible to user
+  document.getElementById('ingServingRow').style.display = 'none';
+
+  if (isGramBased) {
     if (currentIngFoodBase) currentIngFoodBase._servingGrams = null;
   } else {
-    servingRow.style.display = 'none';
-    if (currentIngFoodBase) currentIngFoodBase._servingGrams = null;
-    recalcIngMacros();
+    if (currentIngFoodBase) {
+      const servings = foodServings[currentIngFoodBase.name] || [];
+      const match = servings.find(s => s.serving_name === unit);
+      currentIngFoodBase._servingGrams = match ? match.grams : null;
+    }
   }
+  recalcIngMacros();
 }
 
 function onIngServingSelect(gramsStr) {
   if (!gramsStr || !currentIngFoodBase) return;
   currentIngFoodBase._servingGrams = parseFloat(gramsStr);
-  // Default quantity to 1 serving when user first picks
   const qtyInput = document.getElementById('ingQty');
-  if (!qtyInput.value || parseFloat(qtyInput.value) === 0) {
-    qtyInput.value = 1;
-  }
+  if (!qtyInput.value || parseFloat(qtyInput.value) === 0) qtyInput.value = 1;
   recalcIngMacros();
 }
 
