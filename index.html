@@ -2926,31 +2926,7 @@ async function renderStatsConsistency(food, hyd) {
     </div>`);
   }
 
-  // Supplement consistency
-  if (supplements.length) {
-    const suppRows = await Promise.all(supplements.map(async s => {
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - statsRange);
-      const { data } = await sb.from('supplement_log')
-        .select('log_date')
-        .eq('user_id', currentUser.id)
-        .eq('supplement_id', s.id)
-        .gte('log_date', cutoff.toISOString().split('T')[0]);
-      const taken = (data || []).length;
-      const pct = Math.round((taken / statsRange) * 100);
-      const color = pct >= 80 ? 'var(--accent)' : pct >= 50 ? 'var(--accent2)' : 'var(--warn)';
-      return `<div class="progress-item">
-        <div class="progress-header">
-          <span class="progress-label">💊 ${s.name}</span>
-          <span class="progress-value" style="color:${color}">${taken}/${statsRange} días (${pct}%)</span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
-      </div>`;
-    }));
-    rows.push(...suppRows);
-  }
-
-  // ── Supplement rows ──
+  // ── Suplementos ──
   if (supplements.length) {
     const suppLogs = await loadSuppLogRange();
     supplements.forEach(s => {
