@@ -2218,8 +2218,6 @@ function showToast(msg, isError = false) {
 // PLATILLOS
 // ══════════════════════════════════════════
 let dishes = [];
-let supplements = [];
-let supplementLog = []; // today's logged supplement ids
 let currentDishIngredients = []; // staging area while building
 let currentIngFoodBase = null;   // selected food base for ingredient
 let currentIngDishBase = null;   // selected sub-dish for ingredient
@@ -3419,123 +3417,6 @@ async function generatePDF() {
   btn.textContent = '📄 Descargar informe PDF';
   btn.disabled = false;
   showToast('✓ Informe descargado');
-}
-
-// ══════════════════════════════════════════
-// SUPLEMENTOS
-// ══════════════════════════════════════════
-
-async function loadSupplements() {
-  const today = getTodayDate();
-  const [{ data: suppData }, { data: logData }] = await Promise.all([
-    sb.from('supplements').select('*').eq('user_id', currentUser.id).eq('active', true).order('sort_order').order('created_at'),
-    sb.from('supplement_log').select('*').eq('user_id', currentUser.id).eq('log_date', today),
-  ]);
-  supplements = suppData || [];
-  supplementLog = (logData || []).map(l => l.supplement_id);
-  renderSuppList();
-  renderSuppChecklist();
-}
-
-// ── Render management list in Profile ──
-function renderSuppList() {
-  const list = document.getElementById('suppList');
-  if (!list) return;
-  if (!supplements.length) {
-    list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:8px 0">Agregá tu primer suplemento arriba.</div>';
-    return;
-  }
-  list.innerHTML = supplements.map(s => `
-    <div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <span style="font-size:18px">💊</span>
-      <div style="flex:1;font-family:var(--font-display);font-size:14px;color:var(--text)">${s.name}</div>
-      <button onclick="deleteSupplement(${s.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;opacity:0.7">🗑</button>
-    </div>`).join('');
-}
-
-// ── Render today's checklist in Registrar ──
-function renderSuppChecklist() {
-  const list = document.getElementById('suppChecklist');
-  if (!list) return;
-  if (!supplements.length) {
-    list.innerHTML = `<div class="empty" style="padding:20px 0">
-      <div class="empty-icon" style="font-size:28px">💊</div>
-      <div class="empty-text">No tenés suplementos configurados aún.<br>Agregálos en <strong>Perfil → Metas</strong>.</div>
-    </div>`;
-    return;
-  }
-
-  list.innerHTML = supplements.map(s => {
-    const checked = supplementLog.includes(s.id);
-    return `<div onclick="toggleSupplement(${s.id})" style="display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.15s" id="supp-row-${s.id}">
-      <div style="width:28px;height:28px;border-radius:50%;border:2px solid ${checked?'var(--accent)':'var(--border)'};background:${checked?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0" id="supp-check-${s.id}">
-        ${checked?'<span style="color:#0e110a;font-size:14px;font-weight:700">✓</span>':''}
-      </div>
-      <div style="flex:1">
-        <div style="font-family:var(--font-display);font-size:15px;color:${checked?'var(--accent)':'var(--text)'};transition:color 0.2s" id="supp-name-${s.id}">${s.name}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${checked?'✓ Tomado hoy':'Pendiente'}</div>
-      </div>
-      <span style="font-size:20px">${checked?'💊':'○'}</span>
-    </div>`;
-  }).join('') + `<div style="font-size:11px;color:var(--muted);text-align:center;padding:12px 0 4px">
-    ${supplementLog.length} de ${supplements.length} tomados hoy
-  </div>`;
-}
-
-// ── Toggle supplement check ──
-async function toggleSupplement(suppId) {
-  const isChecked = supplementLog.includes(suppId);
-  const today = getTodayDate();
-
-  if (isChecked) {
-    // Uncheck — delete log entry
-    await sb.from('supplement_log')
-      .delete()
-      .eq('user_id', currentUser.id)
-      .eq('supplement_id', suppId)
-      .eq('log_date', today);
-    supplementLog = supplementLog.filter(id => id !== suppId);
-    showToast('Suplemento desmarcado');
-  } else {
-    // Check — insert log entry
-    const supp = supplements.find(s => s.id === suppId);
-    const { error } = await sb.from('supplement_log').insert({
-      user_id: currentUser.id,
-      supplement_id: suppId,
-      supplement_name: supp.name,
-      log_date: today,
-    });
-    if (error && error.code !== '23505') { showToast('Error al guardar', true); return; }
-    if (!supplementLog.includes(suppId)) supplementLog.push(suppId);
-    showToast(`💊 ${supp.name} registrado`);
-  }
-  renderSuppChecklist();
-}
-
-// ── Add supplement ──
-async function addSupplement() {
-  const name = document.getElementById('newSuppName').value.trim();
-  if (!name) { showToast('Escribí el nombre del suplemento', true); return; }
-  const { data, error } = await sb.from('supplements')
-    .insert({ user_id: currentUser.id, name, sort_order: supplements.length })
-    .select().single();
-  if (error) { showToast('Error al guardar', true); return; }
-  supplements.push(data);
-  document.getElementById('newSuppName').value = '';
-  renderSuppList();
-  showToast(`✓ ${name} agregado`);
-}
-
-// ── Delete supplement ──
-async function deleteSupplement(id) {
-  const supp = supplements.find(s => s.id === id);
-  if (!confirm(`¿Eliminar "${supp?.name}"?`)) return;
-  await sb.from('supplements').delete().eq('id', id).eq('user_id', currentUser.id);
-  supplements = supplements.filter(s => s.id !== id);
-  supplementLog = supplementLog.filter(sid => sid !== id);
-  renderSuppList();
-  renderSuppChecklist();
-  showToast('Suplemento eliminado');
 }
 
 // ══ Init theme on load ══
