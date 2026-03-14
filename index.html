@@ -860,10 +860,10 @@ select { cursor: pointer; }
           <div class="field">
             <label>Porción de referencia</label>
             <select id="servingSelect" onchange="onServingSelect(this.value)">
-              <option value="">— elegí una porción —</option>
+              <option value="">— elegí una porción de referencia —</option>
             </select>
           </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">Seleccioná la porción más cercana a lo que comiste. Podés ajustar la cantidad arriba.</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Elegí la porción más cercana. Luego ajustá la cantidad arriba (ej: 0.33 para 1/3).</div>
         </div>
         <div class="cal-display">
           <div class="cal-number" id="calDisplay">0</div>
@@ -1109,11 +1109,12 @@ select { cursor: pointer; }
           <!-- Selector de porción (aparece según unidad) -->
           <div id="ingServingRow" style="display:none">
             <div class="field">
-              <label>Porción</label>
+              <label>Porción de referencia</label>
               <select id="ingServingSelect" onchange="onIngServingSelect(this.value)">
-                <option value="">— elegí una porción —</option>
+                <option value="">— elegí una porción de referencia —</option>
               </select>
             </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Elegí la porción más cercana. Luego ajustá la cantidad (ej: 0.33 para 1/3).</div>
           </div>
 
           <!-- Preview macros del ingrediente -->
@@ -1611,60 +1612,65 @@ function selectFood(food) {
   document.getElementById('autofillBadge').style.display = 'flex';
 }
 
-// ── Unit change → show serving selector ──
+// ── Unit change → show serving selector if non-gram unit ──
 function onUnitChange() {
   if (!selectedFoodBase) return;
   const unit = document.getElementById('unit').value;
-  const nonGram = !['gramos','ml','oz'].includes(unit);
+  const isGramBased = ['gramos', 'ml', 'oz'].includes(unit);
   const servings = foodServings[selectedFoodBase.name] || [];
   const servingRow = document.getElementById('servingRow');
   const servingSel = document.getElementById('servingSelect');
 
-  if (nonGram && servings.length) {
-    // Filter servings matching the selected unit, fallback to all
-    const keyword = unit.toLowerCase().replace('s',''); // tazas→taza, cdas→cda
-    const filtered = servings.filter(s => s.serving_name.toLowerCase().includes(keyword));
-    const toShow = filtered.length ? filtered : servings;
-    servingSel.innerHTML = '<option value="">— elegí una porción —</option>' +
-      toShow.map(s => `<option value="${s.grams}" data-name="${s.serving_name}">${s.serving_name} (${s.grams}g)</option>`).join('');
+  if (!isGramBased && servings.length) {
+    // Show all servings for this food — user picks the closest one
+    servingSel.innerHTML = '<option value="">— elegí una porción de referencia —</option>' +
+      servings.map(s => `<option value="${s.grams}">${s.serving_name} = ${s.grams}g</option>`).join('');
     servingRow.style.display = 'block';
-    // Auto-select first option and recalc
-    if (toShow.length) {
-      servingSel.selectedIndex = 1;
-      onServingSelect(toShow[0].grams, toShow[0].serving_name);
-    }
+    // Clear _servingGrams so recalc doesn't use stale value until user picks
+    selectedFoodBase._servingGrams = null;
   } else {
+    // Gram-based unit: hide selector, clear serving, recalc directly
     servingRow.style.display = 'none';
+    selectedFoodBase._servingGrams = null;
     recalcByQty();
   }
 }
 
-// ── Serving selected → set grams as base, recalc ──
-function onServingSelect(grams, servingName) {
-  if (!grams || !selectedFoodBase) return;
-  // Store selected serving grams as the new reference
-  selectedFoodBase._servingGrams = parseFloat(grams);
-  selectedFoodBase._servingName = servingName;
-  // Set quantity to 1 (one serving) and recalc
+// ── User picks a serving → store grams per 1 unit, recalc ──
+function onServingSelect(gramsStr) {
+  if (!gramsStr || !selectedFoodBase) return;
+  selectedFoodBase._servingGrams = parseFloat(gramsStr);
+  // Default quantity to 1 serving when user first picks
   const qtyInput = document.getElementById('quantity');
-  if (!qtyInput.value || qtyInput.value == selectedFoodBase.qty) {
+  if (!qtyInput.value || parseFloat(qtyInput.value) === 0) {
     qtyInput.value = 1;
   }
   recalcByQty();
 }
 
+// ── Recalculate macros based on quantity ──
+// Logic:
+//   - gram-based unit (gramos/ml/oz): ratio = qty / base_qty
+//   - non-gram unit with serving selected: ratio = (qty * serving_grams) / base_qty
+//   - non-gram unit without serving: show hint, don't recalc
 function recalcByQty() {
   if (!selectedFoodBase) return;
   const newQty = parseFraction(document.getElementById('quantity').value);
-  if (!newQty) return;
+  if (!newQty || newQty <= 0) return;
 
+  const unit = document.getElementById('unit').value;
+  const isGramBased = ['gramos', 'ml', 'oz'].includes(unit);
   let ratio;
-  if (selectedFoodBase._servingGrams) {
-    // Non-gram unit: qty × servingGrams / baseQty
+
+  if (isGramBased) {
+    ratio = newQty / selectedFoodBase.qty;
+  } else if (selectedFoodBase._servingGrams) {
+    // e.g. user typed 0.33 tazas, selected "1 taza = 186g"
+    // → actual grams = 0.33 × 186 = 61.38g → ratio vs base 100g = 0.6138
     ratio = (newQty * selectedFoodBase._servingGrams) / selectedFoodBase.qty;
   } else {
-    // Gram-based: direct ratio
-    ratio = newQty / selectedFoodBase.qty;
+    // Non-gram unit but no serving selected yet — skip
+    return;
   }
 
   document.getElementById('calories').value = Math.round(selectedFoodBase.cal * ratio * 10) / 10;
@@ -2417,34 +2423,34 @@ function onIngDishSelect(id) {
 // ── Unit change → show serving selector if applicable ──
 function onIngUnitChange() {
   const unit = document.getElementById('ingUnit').value;
-  const nonGram = !['gramos','ml','oz'].includes(unit);
+  const isGramBased = ['gramos','ml','oz'].includes(unit);
   const foodName = currentIngFoodBase?.name;
-  const servings = foodName && foodServings[foodName];
+  const servings = foodName ? (foodServings[foodName] || []) : [];
   const servingRow = document.getElementById('ingServingRow');
   const servingSel = document.getElementById('ingServingSelect');
 
-  if (nonGram && servings && servings.length) {
-    const filtered = servings.filter(s => {
-      // Match servings that contain the unit keyword
-      const u = unit.toLowerCase();
-      return s.serving_name.toLowerCase().includes(u) || u === 'unidades' || u === 'piezas' || u === 'rebanadas';
-    });
-    const toShow = filtered.length ? filtered : servings;
-    servingSel.innerHTML = '<option value="">— elegí una porción —</option>' +
-      toShow.map(s => `<option value="${s.grams}">${s.serving_name} (${s.grams}g)</option>`).join('');
+  if (!isGramBased && servings.length) {
+    // Show all servings — user picks the reference
+    servingSel.innerHTML = '<option value="">— elegí una porción de referencia —</option>' +
+      servings.map(s => `<option value="${s.grams}">${s.serving_name} = ${s.grams}g</option>`).join('');
     servingRow.style.display = 'block';
+    // Clear stale serving reference
+    if (currentIngFoodBase) currentIngFoodBase._servingGrams = null;
   } else {
     servingRow.style.display = 'none';
+    if (currentIngFoodBase) currentIngFoodBase._servingGrams = null;
+    recalcIngMacros();
   }
-  recalcIngMacros();
 }
 
-function onIngServingSelect(grams) {
-  if (!grams || !currentIngFoodBase) return;
-  // Set qty to the grams of the serving, unit to gramos, then recalc
-  document.getElementById('ingQty').value = grams;
-  document.getElementById('ingUnit').value = 'gramos';
-  document.getElementById('ingServingRow').style.display = 'none';
+function onIngServingSelect(gramsStr) {
+  if (!gramsStr || !currentIngFoodBase) return;
+  currentIngFoodBase._servingGrams = parseFloat(gramsStr);
+  // Default quantity to 1 serving when user first picks
+  const qtyInput = document.getElementById('ingQty');
+  if (!qtyInput.value || parseFloat(qtyInput.value) === 0) {
+    qtyInput.value = 1;
+  }
   recalcIngMacros();
 }
 
@@ -2456,13 +2462,24 @@ function recalcIngMacros() {
   if (!qty) { document.getElementById('ingMacroPreview').style.display = 'none'; return; }
 
   let cal, p, c, f;
+
   if (currentIngDishBase) {
-    // Sub-dish: scale by portions (1 porcion = full dish macros)
-    const ratio = qty;
-    cal = base.cal * ratio; p = base.p * ratio; c = base.c * ratio; f = base.f * ratio;
+    // Sub-dish: qty = number of portions
+    cal = base.cal * qty; p = base.p * qty; c = base.c * qty; f = base.f * qty;
   } else {
-    // Food: scale by grams ratio
-    const ratio = qty / base.qty;
+    // Food ingredient
+    const unit = document.getElementById('ingUnit').value;
+    const isGramBased = ['gramos','ml','oz'].includes(unit);
+    let ratio;
+    if (isGramBased) {
+      ratio = qty / base.qty;
+    } else if (base._servingGrams) {
+      ratio = (qty * base._servingGrams) / base.qty;
+    } else {
+      // No serving selected yet for non-gram unit — don't recalc
+      document.getElementById('ingMacroPreview').style.display = 'none';
+      return;
+    }
     cal = base.cal * ratio; p = base.p * ratio; c = base.c * ratio; f = base.f * ratio;
   }
 
