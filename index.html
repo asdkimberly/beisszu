@@ -2520,18 +2520,14 @@ function makeEditableLogItem(e) {
         </div>`).join('')}
     </div>` : '';
 
-  const expandBtn = isDish ? `
-    <button onclick="event.stopPropagation();toggleDishEntryExpand('${expandId}',this)"
-      style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 4px">▼</button>` : '';
-
-  return `<div class="log-item" onclick="openEditModal(${e.id})">
+  return `<div class="log-item">
     <div class="log-item-top">
       <div class="log-item-name">${isDish ? '🍽️ ' : ''}${e.food_name}</div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="log-item-cal">${Math.round(e.calories||0)} kcal</div>
-        ${expandBtn}
-        <span style="font-size:12px;color:var(--muted)">✏️</span>
-        <button class="log-item-delete" onclick="event.stopPropagation();deleteEntry(${e.id})">✕</button>
+        ${isDish ? `<button onclick="toggleDishEntryExpand('${expandId}',this)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:6px;border:1px solid var(--border)">▼</button>` : ''}
+        <button onclick="openEditModal(${e.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px">✏️</button>
+        <button class="log-item-delete" onclick="deleteEntry(${e.id})">✕</button>
       </div>
     </div>
     <div class="log-item-meta">${e.quantity?`${e.quantity} ${e.unit} · `:''}P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g${e.origin==='Fuera'?' · 🌍':''}</div>
