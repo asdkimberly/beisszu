@@ -635,6 +635,13 @@ select { cursor: pointer; }
 .hyd-card-label { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
 
 /* ══ FAB ══ */
+#fabOverlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 49;
+  display: none;
+}
+#fabOverlay.show { display: block; }
 #fabContainer {
   position: fixed;
   bottom: calc(var(--nav-h) + 16px);
@@ -1096,6 +1103,9 @@ select { cursor: pointer; }
       </div>
     </div>
   </div>
+
+  <!-- FAB overlay -->
+  <div id="fabOverlay" onclick="closeFAB()"></div>
 
   <!-- FAB (+) -->
   <div id="fabContainer">
@@ -3834,6 +3844,7 @@ let fabOpen = false;
 function toggleFAB() {
   fabOpen = !fabOpen;
   document.getElementById('fabMain').classList.toggle('open', fabOpen);
+  document.getElementById('fabOverlay').classList.toggle('show', fabOpen);
   ['fabOptFood','fabOptHyd','fabOptSupp'].forEach((id, i) => {
     const el = document.getElementById(id);
     if (fabOpen) {
@@ -3849,6 +3860,7 @@ function closeFAB() {
   if (!fabOpen) return;
   fabOpen = false;
   document.getElementById('fabMain').classList.remove('open');
+  document.getElementById('fabOverlay').classList.remove('show');
   ['fabOptFood','fabOptHyd','fabOptSupp'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
