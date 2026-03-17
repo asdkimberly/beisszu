@@ -2561,23 +2561,34 @@ async function saveEditEntry() {
   };
   if (!updated.food_name) { showToast('El nombre no puede estar vacío', true); return; }
 
-  const { error } = await sb
+  console.log('saveEditEntry — id:', editingEntryId, 'type:', typeof editingEntryId, 'user:', currentUser.id);
+
+  const { data, error, count } = await sb
     .from('food_log')
     .update(updated)
     .eq('id', editingEntryId)
-    .eq('user_id', currentUser.id);
+    .eq('user_id', currentUser.id)
+    .select();
+
+  console.log('update result — data:', data, 'error:', error, 'count:', count);
 
   if (error) {
-    console.error('saveEditEntry error:', error);
     showToast(`Error: ${error.message}`, true);
     return;
   }
 
-  // Update local array with the changes
+  if (!data || data.length === 0) {
+    showToast('No se encontró la entrada en la base de datos', true);
+    console.warn('Update matched 0 rows. editingEntryId=', editingEntryId, 'user_id=', currentUser.id);
+    return;
+  }
+
   const idx = entries.findIndex(e => e.id === editingEntryId);
-  if (idx !== -1) entries[idx] = { ...entries[idx], ...updated };
+  if (idx !== -1) entries[idx] = { ...entries[idx], ...data[0] };
   closeEditModal();
   renderCarouselDay();
+  showToast('✓ Entrada actualizada');
+}
   showToast('✓ Entrada actualizada');
 }
 
