@@ -1124,7 +1124,7 @@ select { cursor: pointer; }
         </div>
         <div style="display:flex;gap:10px;margin-top:14px">
           <button onclick="closeBS('bsFoodConfirm')" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">← Editar</button>
-          <button onclick="submitEntry()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Confirmar</button>
+          <button onclick="confirmAndSaveEntry()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Confirmar</button>
         </div>
         <div style="height:24px"></div>
       </div>
@@ -2064,8 +2064,9 @@ function formatQty(num) {
   return String(Math.round(num * 100) / 100);
 }
 
-// ══ Submit entry ══
 // ── Food confirmation sheet ──
+let _pendingEntry = null;
+
 function openFoodConfirm() {
   const foodName = document.getElementById('foodName').value.trim();
   if (!selectedMeal) { showToast('Seleccioná un tiempo de comida', true); return; }
@@ -2076,72 +2077,67 @@ function openFoodConfirm() {
   const fat   = parseFloat(document.getElementById('fat').value)      || 0;
   if (!cal && !prot && !carb && !fat) { showToast('Agrega al menos calorías o macros', true); return; }
 
+  const calVal = cal || Math.round(prot*4 + carb*4 + fat*9);
   const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
   const dateLabel = selectedFoodDate
     ? new Date(selectedFoodDate+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})
     : 'Hoy';
 
-  document.getElementById('cfFoodName').textContent    = foodName;
-  document.getElementById('cfCal').textContent         = Math.round(cal) || Math.round(prot*4+carb*4+fat*9);
-  document.getElementById('cfMealBadge').textContent   = `${MEAL_ICONS[selectedMeal]||''} ${selectedMeal}`;
-  document.getElementById('cfOriginBadge').textContent = selectedOrigin === 'Fuera' ? '🌍 Fuera' : '🏠 Casa';
-  document.getElementById('cfDateBadge').textContent   = `📅 ${dateLabel}`;
-  document.getElementById('cfQtyUnit').textContent     = document.getElementById('quantity').value ? `${document.getElementById('quantity').value} ${document.getElementById('unit').value}` : '';
-  document.getElementById('cfProt').textContent  = prot;
-  document.getElementById('cfCarb').textContent  = carb;
-  document.getElementById('cfFat').textContent   = fat;
-  document.getElementById('cfFiber').textContent = parseFloat(document.getElementById('fiber').value) || 0;
-  document.getElementById('cfSugar').textContent = parseFloat(document.getElementById('sugar').value) || 0;
-  const notes = document.getElementById('notes').value.trim();
-  document.getElementById('cfNotesRow').style.display = notes ? 'block' : 'none';
-  document.getElementById('cfNotes').textContent = notes;
-  document.getElementById('bsFoodConfirm').classList.add('show');
-}
-
-async function submitEntry() {
-  const foodName = document.getElementById('foodName').value.trim();
-  const quantity = document.getElementById('quantity').value;
-  const calories = document.getElementById('calories').value;
-  const protein  = document.getElementById('protein').value;
-  const carbs    = document.getElementById('carbs').value;
-  const fat      = document.getElementById('fat').value;
-  if (!selectedMeal) { showToast('Seleccioná un tiempo de comida', true); return; }
-  if (!foodName)     { showToast('Ingresá el nombre del alimento', true); return; }
-  if (!calories && !protein && !carbs && !fat) { showToast('Agrega al menos calorías o macros', true); return; }
-
-  const calVal  = parseFloat(calories) || Math.round((parseFloat(protein)||0)*4+(parseFloat(carbs)||0)*4+(parseFloat(fat)||0)*9);
-  const dishIngs = selectedFoodBase?._dishIngs || null;
-  const entry = {
+  // Store pending entry for confirmAndSaveEntry
+  _pendingEntry = {
     user_id:   currentUser.id,
     log_date:  selectedFoodDate || getTodayDate(),
     meal_type: selectedMeal,
     food_name: foodName,
-    quantity:  parseFloat(quantity) || null,
+    quantity:  parseFloat(document.getElementById('quantity').value) || null,
     unit:      document.getElementById('unit').value,
     calories:  calVal,
-    protein_g: parseFloat(protein) || 0,
-    carbs_g:   parseFloat(carbs)   || 0,
-    fat_g:     parseFloat(fat)     || 0,
+    protein_g: prot,
+    carbs_g:   carb,
+    fat_g:     fat,
     fiber_g:   parseFloat(document.getElementById('fiber').value) || 0,
     sugar_g:   parseFloat(document.getElementById('sugar').value) || 0,
     sodium_mg: 0,
     notes:     document.getElementById('notes').value.trim(),
     origin:    selectedOrigin,
     dish_id:   selectedFoodBase?._dishId || null,
+    _dishIngs: selectedFoodBase?._dishIngs || null,
   };
 
-  const { data, error } = await sb.from('food_log').insert(entry).select().single();
-  if (error) { showToast('Error al guardar', true); return; }
+  // Populate confirmation sheet
+  document.getElementById('cfFoodName').textContent    = foodName;
+  document.getElementById('cfCal').textContent         = Math.round(calVal);
+  document.getElementById('cfMealBadge').textContent   = `${MEAL_ICONS[selectedMeal]||''} ${selectedMeal}`;
+  document.getElementById('cfOriginBadge').textContent = selectedOrigin === 'Fuera' ? '🌍 Fuera' : '🏠 Casa';
+  document.getElementById('cfDateBadge').textContent   = `📅 ${dateLabel}`;
+  document.getElementById('cfQtyUnit').textContent     = _pendingEntry.quantity ? `${_pendingEntry.quantity} ${_pendingEntry.unit}` : '';
+  document.getElementById('cfProt').textContent  = prot;
+  document.getElementById('cfCarb').textContent  = carb;
+  document.getElementById('cfFat').textContent   = fat;
+  document.getElementById('cfFiber').textContent = _pendingEntry.fiber_g;
+  document.getElementById('cfSugar').textContent = _pendingEntry.sugar_g;
+  const notes = _pendingEntry.notes;
+  document.getElementById('cfNotesRow').style.display = notes ? 'block' : 'none';
+  document.getElementById('cfNotes').textContent = notes;
+  document.getElementById('bsFoodConfirm').classList.add('show');
+}
 
-  entries.push({ ...entry, id: data.id, logged_at: data.logged_at, _dishIngs: dishIngs });
+async function confirmAndSaveEntry() {
+  if (!_pendingEntry) return;
+  const { _dishIngs, ...dbEntry } = _pendingEntry;
+  const { data, error } = await sb.from('food_log').insert(dbEntry).select().single();
+  if (error) { showToast('Error al guardar', true); return; }
+  entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
   attachDishIngredients();
-  addToSuggestions(foodName);
+  addToSuggestions(dbEntry.food_name);
+  _pendingEntry = null;
   closeBS('bsFoodConfirm');
   resetForm();
   buildCarouselDays();
   showToast('✓ Entrada registrada');
-  // Stay in food sheet with clean form
 }
+
+async function submitEntry() { confirmAndSaveEntry(); }
 
 async function loadEntries() {
   const thirtyDaysAgo = new Date();
