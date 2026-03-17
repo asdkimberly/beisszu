@@ -2190,9 +2190,11 @@ async function loadEntries() {
 
 // Attach dish ingredients to entries — called after both entries and dishes are loaded
 function attachDishIngredients() {
+  if (!dishes.length) return;
   entries.forEach(e => {
     e._dishIngs = null;
-    // Match by dish_id first
+
+    // Strategy 1: match by dish_id
     if (e.dish_id) {
       const dish = dishes.find(d => d.id === e.dish_id);
       if (dish?.dish_ingredients?.length) {
@@ -2200,9 +2202,11 @@ function attachDishIngredients() {
         return;
       }
     }
-    // Fallback: normalized name match (handles emoji, accents, extra spaces)
-    const cleanName = norm(e.food_name.replace(/[\u{1F300}-\u{1FFFF}]/gu, '').trim());
-    const dish = dishes.find(d => norm(d.name) === cleanName);
+
+    // Strategy 2: strip all emojis and normalize, then compare
+    const stripEmojis = str => str.replace(/[\u{1F000}-\u{1FFFF}]/gu, '').replace(/[\u2600-\u27BF]/g, '').trim();
+    const normClean = norm(stripEmojis(e.food_name));
+    const dish = dishes.find(d => norm(d.name) === normClean);
     if (dish?.dish_ingredients?.length) {
       e._dishIngs = dish.dish_ingredients;
     }
@@ -2476,13 +2480,15 @@ function makeHydLogItem(e) {
 }
 
 function makeEditableLogItem(e) {
-  const time = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR', { hour:'2-digit', minute:'2-digit' }) : '';
-  const isDish = e.dish_id && e._dishIngs && e._dishIngs.length;
-  const expandId = `dish-expand-entry-${e.id}`;
+  const time    = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR', { hour:'2-digit', minute:'2-digit' }) : '';
+  const dishIngs = e._dishIngs && e._dishIngs.length ? e._dishIngs : null;
+  const entryId  = `entry-${e.id}`;
+  // Don't add 🍽️ if food_name already contains it
+  const displayName = e.food_name.startsWith('🍽️') ? e.food_name : (dishIngs ? `🍽️ ${e.food_name}` : e.food_name);
 
-  const ingredientsHTML = isDish ? `
-    <div id="${expandId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-      ${e._dishIngs.map(ing => `
+  const ingredientsHTML = dishIngs ? `
+    <div id="dish-expand-${entryId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+      ${dishIngs.map(ing => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px">
           <span style="color:var(--text2)">${ing.food_name || ing.name}</span>
           <span style="color:var(--muted)">${ing.quantity||''} ${ing.unit||''} · ${Math.round(ing.calories||0)} kcal</span>
@@ -2491,10 +2497,10 @@ function makeEditableLogItem(e) {
 
   return `<div class="log-item">
     <div class="log-item-top">
-      <div class="log-item-name">${isDish ? '🍽️ ' : ''}${e.food_name}</div>
+      <div class="log-item-name">${displayName}</div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="log-item-cal">${Math.round(e.calories||0)} kcal</div>
-        ${isDish ? `<button onclick="toggleDishEntryExpand('${expandId}',this)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:6px;border:1px solid var(--border)">▼</button>` : ''}
+        ${dishIngs ? `<span id="dish-chevron-${entryId}" onclick="toggleDishExpand('${entryId}')" style="color:var(--muted);font-size:12px;cursor:pointer;transition:transform 0.2s;padding:2px 4px">▼</span>` : ''}
         <button onclick="openEditModal(${e.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px">✏️</button>
         <button class="log-item-delete" onclick="deleteEntry(${e.id})">✕</button>
       </div>
@@ -2503,14 +2509,6 @@ function makeEditableLogItem(e) {
     ${ingredientsHTML}
     <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:2px">${time}</div>
   </div>`;
-}
-
-function toggleDishEntryExpand(expandId, btn) {
-  const el = document.getElementById(expandId);
-  if (!el) return;
-  const isOpen = el.style.display !== 'none';
-  el.style.display = isOpen ? 'none' : 'block';
-  btn.textContent = isOpen ? '▼' : '▲';
 }
 
 // ── Edit entry modal ──
