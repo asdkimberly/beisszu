@@ -2401,9 +2401,30 @@ function renderCarouselDay() {
 // Keep renderToday as alias that resets to today
 function renderToday() {
   buildCarouselDays();
-  // Jump to today
   carouselIndex = carouselDays.length - 1;
   renderCarouselDay();
+  initHomeSwipe();
+}
+
+function initHomeSwipe() {
+  const page = document.getElementById('page-home');
+  if (!page || page._swipeInit) return;
+  page._swipeInit = true;
+  let startX = 0, startY = 0;
+
+  page.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  page.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    // Only trigger if horizontal swipe dominates
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      carouselNavigate(dx < 0 ? 1 : -1);
+    }
+  }, { passive: true });
 }
 
 
@@ -2476,8 +2497,8 @@ function makeEditableLogItem(e) {
         <button class="log-item-delete" onclick="event.stopPropagation();deleteEntry(${e.id})">✕</button>
       </div>
     </div>
-    <div class="log-item-meta">${time}${e.quantity?` · ${e.quantity} ${e.unit}`:''} ${e.origin==='Fuera'?'🌍':''}</div>
-    <div class="log-item-meta" style="color:var(--text2)">P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g</div>
+    <div class="log-item-meta">${e.quantity?`${e.quantity} ${e.unit} · `:''}P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g${e.origin==='Fuera'?' · 🌍':''}</div>
+    <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:2px">${time}</div>
   </div>`;
 }
 
