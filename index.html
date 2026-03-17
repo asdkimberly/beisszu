@@ -2464,7 +2464,7 @@ function makeLogItem(e) {
       <div class="log-item-name">${e.food_name}</div>
       <div style="display:flex;align-items:center;gap:4px">
         <div class="log-item-cal">${Math.round(e.calories||0)} kcal</div>
-        <button class="log-item-delete" onclick="deleteEntry(${e.id})">✕</button>
+        <button class="log-item-delete" onclick="deleteEntry('${e.id}')">✕</button>
       </div>
     </div>
     <div class="log-item-meta">${e.meal_type} · ${time}${e.quantity?` · ${e.quantity} ${e.unit}`:''} ${e.origin==='Fuera'?'🌍':''}</div>
@@ -2482,19 +2482,19 @@ function makeHydLogItem(e) {
         <div style="font-size:12px;color:var(--muted)">${time}</div>
       </div>
     </div>
-    <button class="log-item-delete" onclick="deleteHydEntry(${e.id})">✕</button>
+    <button class="log-item-delete" onclick="deleteHydEntry('${e.id}')">✕</button>
   </div>`;
 }
 
 function makeEditableLogItem(e) {
   const time = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR', { hour:'2-digit', minute:'2-digit' }) : '';
-  return `<div class="log-item" style="cursor:pointer" onclick="openEditModal(${e.id})">
+  return `<div class="log-item" style="cursor:pointer" onclick="openEditModal('${e.id}')">
     <div class="log-item-top">
       <div class="log-item-name">${e.food_name}</div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="log-item-cal">${Math.round(e.calories||0)} kcal</div>
         <span style="font-size:12px;color:var(--muted)">✏️</span>
-        <button class="log-item-delete" onclick="event.stopPropagation();deleteEntry(${e.id})">✕</button>
+        <button class="log-item-delete" onclick="event.stopPropagation();deleteEntry('${e.id}')">✕</button>
       </div>
     </div>
     <div class="log-item-meta">${e.quantity?`${e.quantity} ${e.unit} · `:''}P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g${e.origin==='Fuera'?' · 🌍':''}</div>
@@ -2992,7 +2992,7 @@ function renderDishesList() {
       </div>`;
 
     return `<div class="food-list-item" id="dish-item-${d.id}">
-      <div class="food-list-row" onclick="toggleDishExpand(${d.id})" style="cursor:pointer">
+      <div class="food-list-row" onclick="toggleDishExpand('${d.id}')" style="cursor:pointer">
         <div style="flex:1;min-width:0">
           <div class="food-list-name">🍽️ ${d.name}</div>
           <div class="food-list-meta">${ings.length} ingrediente${ings.length !== 1 ? 's' : ''} · ${Math.round(totCal)} kcal</div>
@@ -3000,7 +3000,7 @@ function renderDishesList() {
         <div style="display:flex;align-items:center;gap:8px">
           <div class="food-list-cal">${Math.round(totCal)} kcal</div>
           <span id="dish-chevron-${d.id}" style="color:var(--muted);font-size:12px;transition:transform 0.2s">▼</span>
-          <button class="food-delete-btn" onclick="event.stopPropagation();deleteDish(${d.id})">🗑</button>
+          <button class="food-delete-btn" onclick="event.stopPropagation();deleteDish('${d.id}')">🗑</button>
         </div>
       </div>
       <div id="dish-expand-${d.id}" style="display:none;margin-top:8px">
@@ -3409,7 +3409,7 @@ function renderSuppList() {
         <div style="font-size:14px;color:var(--text);font-family:var(--font-display)">💊 ${s.name}</div>
         ${s.notes ? `<div style="font-size:11px;color:var(--muted)">${s.notes}</div>` : ''}
       </div>
-      <button onclick="deleteSupplement(${s.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;opacity:0.7">🗑</button>
+      <button onclick="deleteSupplement('${s.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;opacity:0.7">🗑</button>
     </div>`).join('');
 }
 
@@ -3426,7 +3426,7 @@ function renderSuppChecklist() {
   }
   list.innerHTML = supplements.map(s => {
     const taken = suppLog.some(l => l.supplement_id === s.id);
-    return `<div onclick="toggleSupp(${s.id})" style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.18s" id="suppItem-${s.id}">
+    return `<div onclick="toggleSupp('${s.id}')" style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.18s" id="suppItem-${s.id}">
       <div style="width:26px;height:26px;border-radius:50%;border:2px solid ${taken?'var(--accent)':'var(--border)'};background:${taken?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0">
         ${taken ? '<span style="color:#0e110a;font-size:14px;font-weight:700">✓</span>' : ''}
       </div>
@@ -3448,7 +3448,7 @@ function renderHomeSuppChecklist() {
   section.style.display = 'block';
   list.innerHTML = supplements.map(s => {
     const taken = suppLog.some(l => l.supplement_id === s.id);
-    return `<div onclick="toggleSupp(${s.id})" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer" id="homeSuppItem-${s.id}">
+    return `<div onclick="toggleSupp('${s.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer" id="homeSuppItem-${s.id}">
       <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${taken?'var(--accent)':'var(--border)'};background:${taken?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">
         ${taken ? '<span style="color:#0e110a;font-size:13px;font-weight:700">✓</span>' : ''}
       </div>
