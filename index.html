@@ -1215,7 +1215,7 @@ select { cursor: pointer; }
     <div class="card" id="statsHydCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Hidratación promedio</div>
       <div id="statsHydContent"></div>
-      <canvas id="chartHyd" height="180" style="display:none"></canvas>
+      <canvas id="chartHyd" height="260" style="display:none"></canvas>
     </div>
 
     <!-- ⑥ Alimentos más frecuentes -->
@@ -2228,7 +2228,7 @@ async function deleteEntry(id) {
       const { error } = await sb.from('food_log').delete().eq('id', id).eq('user_id', currentUser.id);
       if (error) { showToast('Error al eliminar', true); return; }
       entries = entries.filter(e => e.id !== id);
-      buildCarouselDays();
+      buildCarouselDays(true);
       renderCarouselDay();
     },
   });
@@ -2257,17 +2257,21 @@ function resetForm() {
 let carouselDays = [];      // sorted array of dates with data
 let carouselIndex = 0;      // current index (0 = today/most recent)
 
-function buildCarouselDays() {
-  // Collect all unique dates that have food or hydration entries
+function buildCarouselDays(preserveDate = false) {
+  const currentDate = preserveDate ? carouselDays[carouselIndex] : null;
   const dateSet = new Set([
     ...entries.map(e => e.log_date),
     ...hydEntries.map(e => e.date),
   ]);
-  // Always include today even if no entries
   dateSet.add(getTodayDate());
   carouselDays = [...dateSet].sort();
-  // Start at today (last/most recent)
-  carouselIndex = carouselDays.length - 1;
+  // Restore previous date if preserveDate, otherwise jump to today
+  if (preserveDate && currentDate) {
+    const idx = carouselDays.indexOf(currentDate);
+    carouselIndex = idx !== -1 ? idx : carouselDays.length - 1;
+  } else {
+    carouselIndex = carouselDays.length - 1;
+  }
 }
 
 function carouselNavigate(dir) {
@@ -2912,7 +2916,7 @@ async function deleteHydEntry(id) {
       const { error } = await sb.from('hydration_log').delete().eq('id', id).eq('user_id', currentUser.id);
       if (error) { showToast('Error al eliminar', true); return; }
       hydEntries = hydEntries.filter(e => e.id !== id);
-      buildCarouselDays();
+      buildCarouselDays(true);
       renderCarouselDay();
     },
   });
@@ -3993,12 +3997,12 @@ function renderStatsTopDrinks(food) {
   document.getElementById('statsTopDrinks').innerHTML = sorted.map(([name, data]) => {
     const pct = Math.round((data.count/maxCount)*100);
     const avgCal = Math.round(data.totalCal/data.count);
-    return `<div class="progress-item">
+    return `<div class="progress-item" style="margin-bottom:10px">
       <div class="progress-header">
-        <span class="progress-label" style="font-size:13px">🥤 ${name}</span>
-        <span class="progress-value">${data.count}x · ~${avgCal} kcal</span>
+        <span class="progress-label" style="font-size:14px">🥤 ${name}</span>
+        <span class="progress-value" style="font-size:13px">${data.count}x · ~${avgCal} kcal</span>
       </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:#4a90d9"></div></div>
+      <div class="progress-bar" style="height:12px;margin-top:6px"><div class="progress-fill" style="width:${pct}%;background:#4a90d9;height:12px"></div></div>
     </div>`;
   }).join('');
 }
