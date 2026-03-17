@@ -2560,11 +2560,24 @@ async function saveEditEntry() {
     notes:      document.getElementById('editNotes').value.trim(),
   };
   if (!updated.food_name) { showToast('El nombre no puede estar vacío', true); return; }
-  const { error } = await sb.from('food_log').update(updated).eq('id', editingEntryId).eq('user_id', currentUser.id);
-  if (error) { showToast('Error al guardar', true); return; }
-  // Update local array
+
+  const { data, error } = await sb
+    .from('food_log')
+    .update(updated)
+    .eq('id', editingEntryId)
+    .eq('user_id', currentUser.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('saveEditEntry error:', error);
+    showToast(`Error: ${error.message}`, true);
+    return;
+  }
+
+  // Update local array with server-confirmed data
   const idx = entries.findIndex(e => e.id === editingEntryId);
-  if (idx !== -1) entries[idx] = { ...entries[idx], ...updated };
+  if (idx !== -1) entries[idx] = { ...entries[idx], ...data };
   closeEditModal();
   renderCarouselDay();
   showToast('✓ Entrada actualizada');
