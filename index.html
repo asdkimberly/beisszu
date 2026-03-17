@@ -2224,6 +2224,7 @@ async function confirmAndSaveEntry() {
   if (error) { showToast('Error al guardar', true); return; }
   // Keep _dishIngs in local entry for display
   entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
+  attachDishIngredients(); // re-attach in case name-based matching needed
   addToSuggestions(_pendingEntry.food_name);
   _pendingEntry = null;
   resetForm();
@@ -2240,12 +2241,26 @@ async function loadEntries() {
     .gte('log_date', thirtyDaysAgo.toISOString().split('T')[0])
     .order('logged_at', { ascending: true });
   entries = data || [];
+  attachDishIngredients();
+}
 
-  // For dish entries, fetch ingredients from local dishes array
+// Attach dish ingredients to entries — called after both entries and dishes are loaded
+function attachDishIngredients() {
   entries.forEach(e => {
+    e._dishIngs = null;
+    // Match by dish_id if available
     if (e.dish_id) {
       const dish = dishes.find(d => d.id === e.dish_id);
-      if (dish) e._dishIngs = dish.dish_ingredients || [];
+      if (dish?.dish_ingredients?.length) {
+        e._dishIngs = dish.dish_ingredients;
+        return;
+      }
+    }
+    // Fallback: match by food_name (strips 🍽️ prefix if present)
+    const cleanName = e.food_name.replace(/^🍽️\s*/, '').trim();
+    const dish = dishes.find(d => d.name === cleanName);
+    if (dish?.dish_ingredients?.length) {
+      e._dishIngs = dish.dish_ingredients;
     }
   });
 }
@@ -2997,6 +3012,9 @@ async function loadDishes() {
     ...d,
     dish_ingredients: ingsById[d.id] || []
   }));
+
+  // Re-attach ingredients to any already-loaded entries
+  if (entries.length) attachDishIngredients();
 }
 
 // ── Load food servings ──
