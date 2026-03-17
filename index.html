@@ -2142,23 +2142,9 @@ async function confirmAndSaveEntry() {
   if (error) { showToast(`Error: ${error.message}`, true); return; }
 
   entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
-  attachDishIngredients();
   addToSuggestions(dbEntry.food_name);
   _pendingEntry = null;
-
-  // Force close both sheets
-  const confirm = document.getElementById('bsFoodConfirm');
-  const food    = document.getElementById('bsFood');
-  confirm.classList.remove('show');
-  confirm.style.display = 'none';
-  food.classList.remove('show');
-  food.style.display = 'none';
-  // Restore display after animation
-  setTimeout(() => { confirm.style.display = ''; food.style.display = ''; }, 400);
-
-  resetForm();
-  buildCarouselDays();
-  showToast('✓ Entrada registrada');
+  location.reload();
 }
 
 async function submitEntry() { confirmAndSaveEntry(); }
