@@ -1394,7 +1394,7 @@ select { cursor: pointer; }
 
     <!-- ④ Distribución por comida -->
     <div class="card" id="statsMealCard">
-      <div class="section-label" style="margin-bottom:8px">Calorías por tiempo de comida</div>
+      <div class="section-label" style="margin-bottom:8px">Promedio de calorías por tiempo de comida</div>
       <div id="statsMealContent"></div>
       <canvas id="chartMeal" height="180" style="display:none"></canvas>
     </div>
@@ -1410,6 +1410,12 @@ select { cursor: pointer; }
     <div class="card">
       <div class="section-label" style="margin-bottom:8px">Alimentos más frecuentes</div>
       <div id="statsTopFoods"></div>
+    </div>
+
+    <!-- ⑥b Bebidas más frecuentes -->
+    <div class="card" id="statsTopDrinksCard">
+      <div class="section-label" style="margin-bottom:8px">Bebidas más frecuentes</div>
+      <div id="statsTopDrinks"></div>
     </div>
 
     <!-- ⑦ Origen de comidas -->
@@ -3147,6 +3153,7 @@ async function renderStats() {
   renderStatsMeal(food);
   renderStatsHyd(hyd);
   renderStatsTopFoods(food);
+  renderStatsTopDrinks(hyd);
   renderStatsOrigin(food);
   renderChartTrend(food);
 }
@@ -3386,17 +3393,29 @@ function renderStatsMeal(food) {
     document.getElementById('statsMealContent').innerHTML = '<div style="color:var(--muted);font-size:13px">Sin datos.</div>';
     return;
   }
-  const meals = {};
+
+  // Group by meal_type and by date to compute daily totals per meal
+  // Then average across days that had that meal
+  const mealDays = {}; // { mealType: { [date]: totalCal } }
   food.forEach(e => {
-    meals[e.meal_type] = (meals[e.meal_type]||0) + (e.calories||0);
+    if (!mealDays[e.meal_type]) mealDays[e.meal_type] = {};
+    if (!mealDays[e.meal_type][e.log_date]) mealDays[e.meal_type][e.log_date] = 0;
+    mealDays[e.meal_type][e.log_date] += e.calories || 0;
   });
-  const total = Object.values(meals).reduce((s,v)=>s+v,0) || 1;
+
+  // Average = total cal for meal type / days that had that meal
+  const mealAvg = {};
+  Object.entries(mealDays).forEach(([meal, byDate]) => {
+    const vals = Object.values(byDate);
+    mealAvg[meal] = Math.round(vals.reduce((s,v)=>s+v,0) / vals.length);
+  });
+
   const mealColors = {
     'Desayuno':'#a8c060','Snack Mañana':'#d4a840','Almuerzo':'#4a90d9',
     'Snack Tarde':'#e07840','Cena':'#9b59b6','Extra':'#7a8460'
   };
-
-  const sorted = Object.entries(meals).sort((a,b)=>b[1]-a[1]);
+  const sorted = Object.entries(mealAvg).sort((a,b)=>b[1]-a[1]);
+  const maxVal = sorted[0]?.[1] || 1;
 
   if (showCharts) {
     document.getElementById('statsMealContent').style.display = 'none';
@@ -3407,13 +3426,14 @@ function renderStatsMeal(food) {
     chartMealInstance = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: sorted.map(([k])=>k),
-        datasets: [{ data: sorted.map(([,v])=>Math.round(v)), backgroundColor: sorted.map(([k])=>mealColors[k]||'#7a8460'), borderWidth: 0 }],
+        labels: sorted.map(([k]) => k),
+        datasets: [{ data: sorted.map(([,v]) => v), backgroundColor: sorted.map(([k]) => mealColors[k]||'#7a8460'), borderWidth: 0 }],
       },
       options: {
         responsive: true,
         plugins: {
           legend: { position:'bottom', labels:{ color:'#7a8460', font:{size:11}, padding:12 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ~${ctx.raw} kcal/día` } },
         },
         cutout: '60%',
       },
@@ -3421,14 +3441,14 @@ function renderStatsMeal(food) {
   } else {
     document.getElementById('chartMeal').style.display = 'none';
     document.getElementById('statsMealContent').style.display = 'block';
-    document.getElementById('statsMealContent').innerHTML = sorted.map(([meal, cal]) => {
-      const pct = Math.round((cal/total)*100);
+    document.getElementById('statsMealContent').innerHTML = sorted.map(([meal, avg]) => {
+      const pct = Math.round((avg/maxVal)*100);
       return `<div class="progress-item">
         <div class="progress-header">
           <span class="progress-label">${meal}</span>
-          <span class="progress-value">${Math.round(cal)} kcal · ${pct}%</span>
+          <span class="progress-value">~${avg} kcal/día</span>
         </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${mealColors[meal]||'var(--muted)'}"></div></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${mealColors[meal]||'#7a8460'}"></div></div>
       </div>`;
     }).join('');
   }
@@ -3548,7 +3568,36 @@ function renderStatsTopFoods(food) {
   }).join('');
 }
 
-// ── PDF Generation ──
+function renderStatsTopDrinks(hyd) {
+  const card = document.getElementById('statsTopDrinksCard');
+  if (!hyd.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const freq = {};
+  hyd.forEach(e => {
+    const key = e.drinkLabel || e.drinkId;
+    if (!freq[key]) freq[key] = { count:0, icon: e.drinkIcon||'💧', totalAmt:0 };
+    freq[key].count++;
+    freq[key].totalAmt += e.amount || 0;
+  });
+  const sorted = Object.entries(freq).sort((a,b)=>b[1].count-a[1].count).slice(0,6);
+  const maxCount = sorted[0]?.[1].count || 1;
+
+  document.getElementById('statsTopDrinks').innerHTML = sorted.map(([name, data]) => {
+    const pct = Math.round((data.count/maxCount)*100);
+    const avgAmt = Math.round(data.totalAmt/data.count);
+    const disp = avgAmt >= 1000 ? `${(avgAmt/1000).toFixed(1)}L` : `${avgAmt}ml`;
+    return `<div class="progress-item">
+      <div class="progress-header">
+        <span class="progress-label" style="font-size:13px">${data.icon} ${name}</span>
+        <span class="progress-value">${data.count}x · ~${disp}</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:#4a90d9"></div></div>
+    </div>`;
+  }).join('');
+}
+
+
 async function generatePDF() {
   const btn = document.getElementById('btnGeneratePDF');
   btn.textContent = '⏳ Generando…';
@@ -3780,28 +3829,35 @@ function renderStatsOrigin(food) {
   const content = document.getElementById('statsOriginContent');
   const canvas = document.getElementById('chartOrigin');
   if (!food.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
 
-  const casaEntries  = food.filter(e => e.origin === 'Casa');
-  const fueraEntries = food.filter(e => e.origin === 'Fuera');
-  const casaCal  = Math.round(casaEntries.reduce((s,e)=>s+(e.calories||0), 0));
-  const fueraCal = Math.round(fueraEntries.reduce((s,e)=>s+(e.calories||0), 0));
-  const total = casaCal + fueraCal || 1;
-  const casaPct  = Math.round((casaCal/total)*100);
-  const fueraPct = Math.round((fueraCal/total)*100);
+  // Count unique meal occasions (date + meal_type) by origin
+  const MEAL_ORDER = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
+  const casaOccasions  = new Set();
+  const fueraOccasions = new Set();
+  food.forEach(e => {
+    const key = `${e.log_date}|${e.meal_type}`;
+    if (e.origin === 'Fuera') fueraOccasions.add(key);
+    else casaOccasions.add(key);
+  });
+  const casaCount  = casaOccasions.size;
+  const fueraCount = fueraOccasions.size;
+  const total = casaCount + fueraCount || 1;
+  const casaPct  = Math.round((casaCount/total)*100);
+  const fueraPct = Math.round((fueraCount/total)*100);
 
-  // Stats below chart
-  content.style.display = 'block';
+  // Summary cards
   content.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
         <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">🏠 Casa</div>
         <div style="font-size:22px;font-weight:300;color:var(--accent);font-family:var(--font-display);margin-top:4px">${casaPct}%</div>
-        <div style="font-size:11px;color:var(--muted)">${casaEntries.length} entradas · ${casaCal} kcal</div>
+        <div style="font-size:11px;color:var(--muted)">${casaCount} tiempos de comida</div>
       </div>
       <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
         <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">🌍 Fuera</div>
         <div style="font-size:22px;font-weight:300;color:var(--accent2);font-family:var(--font-display);margin-top:4px">${fueraPct}%</div>
-        <div style="font-size:11px;color:var(--muted)">${fueraEntries.length} entradas · ${fueraCal} kcal</div>
+        <div style="font-size:11px;color:var(--muted)">${fueraCount} tiempos de comida</div>
       </div>
     </div>`;
 
@@ -3814,28 +3870,55 @@ function renderStatsOrigin(food) {
     data: {
       labels: ['🏠 Casa', '🌍 Fuera'],
       datasets: [{
-        data: [casaCal, fueraCal],
+        data: [casaCount, fueraCount],
         backgroundColor: ['rgba(168,192,96,0.8)', 'rgba(212,168,64,0.8)'],
         borderColor: ['rgba(168,192,96,1)', 'rgba(212,168,64,1)'],
         borderWidth: 1,
       }],
     },
     options: {
-      responsive: true,
-      cutout: '60%',
+      responsive: true, cutout: '60%',
       plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#7a8460', font: { size: 12 }, padding: 16 },
-        },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.label}: ${ctx.raw} kcal (${Math.round((ctx.raw/total)*100)}%)`,
-          },
-        },
+        legend: { position:'bottom', labels:{ color:'#7a8460', font:{size:12}, padding:16 } },
+        tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw} tiempos (${Math.round((c.raw/total)*100)}%)` } },
       },
     },
   });
+
+  // Entries made outside — grouped by date
+  const fueraEntries = food.filter(e => e.origin === 'Fuera')
+    .sort((a,b) => new Date(b.logged_at) - new Date(a.logged_at));
+
+  if (fueraEntries.length) {
+    // Group by date
+    const byDate = {};
+    fueraEntries.forEach(e => {
+      if (!byDate[e.log_date]) byDate[e.log_date] = [];
+      byDate[e.log_date].push(e);
+    });
+
+    const fueraHTML = Object.entries(byDate).map(([date, items]) => {
+      const dateLabel = new Date(date+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'});
+      const rows = items.map(e => `
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;color:var(--text)">${e.food_name}</div>
+            <div style="font-size:11px;color:var(--muted)">${e.meal_type}</div>
+          </div>
+          <div style="font-size:13px;color:var(--accent2);text-align:right">${Math.round(e.calories||0)} kcal</div>
+        </div>`).join('');
+      return `<div style="margin-top:8px">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">${dateLabel}</div>
+        ${rows}
+      </div>`;
+    }).join('');
+
+    content.innerHTML += `
+      <div style="margin-top:12px">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:6px">🌍 Comidas fuera de casa</div>
+        ${fueraHTML}
+      </div>`;
+  }
 }
 
 // ══ FAB ══
