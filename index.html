@@ -733,6 +733,38 @@ select { cursor: pointer; }
   flex: 1;
 }
 
+/* ══ HYD CAROUSEL ══ */
+.hyd-carousel { overflow: hidden; margin: 0 -20px; }
+.hyd-carousel-track {
+  display: flex; transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+}
+.hyd-slide {
+  min-width: 100vw; max-width: 480px;
+  padding: 16px 20px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.hyd-donut-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.hyd-donut-value {
+  font-family: var(--font-display); font-size: 26px;
+  font-weight: 300; color: var(--text); line-height: 1;
+}
+.hyd-donut-unit  { font-size: 11px; color: var(--muted); }
+.hyd-donut-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.hyd-donut-goal  { font-size: 12px; color: var(--muted); text-align: center; }
+.hyd-dots {
+  display: flex; justify-content: center; gap: 8px; padding: 10px 0 4px;
+}
+.hyd-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--border); cursor: pointer; transition: background 0.2s;
+}
+.hyd-dot.active { background: var(--accent); }
+
 /* ══ CAROUSEL HEADER ══ */
 .carousel-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -1116,7 +1148,48 @@ select { cursor: pointer; }
         <button class="bs-close" onclick="closeBS('bsHyd')">✕</button>
       </div>
       <div class="bs-body">
-        <div class="card">
+
+        <!-- Donut carousel -->
+        <div class="hyd-carousel">
+          <div class="hyd-carousel-track" id="hydCarouselTrack">
+
+            <!-- Slide 1: Agua -->
+            <div class="hyd-slide">
+              <div style="position:relative;width:160px;height:160px;margin:0 auto">
+                <canvas id="hydDonutWater" width="160" height="160"></canvas>
+                <div class="hyd-donut-center">
+                  <div class="hyd-donut-value" id="hydDonutWaterVal">0</div>
+                  <div class="hyd-donut-unit">ml</div>
+                  <div class="hyd-donut-label">💧 Agua</div>
+                </div>
+              </div>
+              <div class="hyd-donut-goal" id="hydDonutWaterGoal"></div>
+            </div>
+
+            <!-- Slide 2: Hidratante -->
+            <div class="hyd-slide">
+              <div style="position:relative;width:160px;height:160px;margin:0 auto">
+                <canvas id="hydDonutIso" width="160" height="160"></canvas>
+                <div class="hyd-donut-center">
+                  <div class="hyd-donut-value" id="hydDonutIsoVal">0</div>
+                  <div class="hyd-donut-unit">ml</div>
+                  <div class="hyd-donut-label">🏋️ Hidratante</div>
+                </div>
+              </div>
+              <div class="hyd-donut-goal" id="hydDonutIsoGoal"></div>
+            </div>
+
+          </div>
+
+          <!-- Dots -->
+          <div class="hyd-dots">
+            <div class="hyd-dot active" id="hydDot0" onclick="hydCarouselGo(0)"></div>
+            <div class="hyd-dot" id="hydDot1" onclick="hydCarouselGo(1)"></div>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <div class="card" style="margin-top:4px">
           <div class="section-label">Tipo de bebida</div>
           <div class="drink-grid" id="drinkTypeGrid" style="grid-template-columns:1fr 1fr"></div>
         </div>
@@ -2752,6 +2825,7 @@ async function logHydration() {
   document.getElementById('hydCountDisplay').textContent = 1;
   showToast(`${selectedDrink.icon} Registrado`);
   buildCarouselDays();
+  renderHydDonuts();
   closeBS('bsHyd');
   switchTab('home');
 }
@@ -4150,6 +4224,70 @@ function renderStatsOrigin(food) {
   }
 }
 
+// ══ HYDRATION DONUT CAROUSEL ══
+let hydCarouselIdx = 0;
+let hydDonutWaterInstance = null;
+let hydDonutIsoInstance   = null;
+
+function hydCarouselGo(idx) {
+  hydCarouselIdx = idx;
+  const track = document.getElementById('hydCarouselTrack');
+  if (!track) return;
+  // Use viewport width capped at 480px
+  const slideW = Math.min(window.innerWidth, 480);
+  track.style.transform = `translateX(-${idx * slideW}px)`;
+  document.getElementById('hydDot0').classList.toggle('active', idx === 0);
+  document.getElementById('hydDot1').classList.toggle('active', idx === 1);
+}
+
+function renderHydDonuts() {
+  const today = getTodayDate();
+  const todayHyd = hydEntries.filter(e => e.date === today);
+  const waterAmt = todayHyd.filter(e => e.drinkId === 'water').reduce((s,e) => s + e.amount, 0);
+  const isoAmt   = todayHyd.filter(e => e.drinkId === 'hidratante').reduce((s,e) => s + e.amount, 0);
+  const goalW = settings.goalWater    || 2000;
+  const goalI = settings.goalIsotonic || 500;
+
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const trackColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+
+  function makeDonut(canvasId, amount, goal, color) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    const pct = Math.min(amount / goal, 1);
+    if (window[canvasId + '_chart']) { window[canvasId + '_chart'].destroy(); }
+    const chart = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        datasets: [{
+          data: [pct, 1 - pct],
+          backgroundColor: [color, trackColor],
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        cutout: '72%',
+        responsive: false,
+        animation: { duration: 600 },
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      },
+    });
+    window[canvasId + '_chart'] = chart;
+    return chart;
+  }
+
+  makeDonut('hydDonutWater', waterAmt, goalW, '#4a90d9');
+  makeDonut('hydDonutIso',   isoAmt,  goalI, '#9b59b6');
+
+  // Update center values
+  const fmtAmt = v => v >= 1000 ? `${(v/1000).toFixed(1)}L` : `${Math.round(v)}`;
+  const fmtGoal = v => v >= 1000 ? `${(v/1000).toFixed(1)}L` : `${v}ml`;
+  document.getElementById('hydDonutWaterVal').textContent = fmtAmt(waterAmt);
+  document.getElementById('hydDonutIsoVal').textContent   = fmtAmt(isoAmt);
+  document.getElementById('hydDonutWaterGoal').textContent = `meta: ${fmtGoal(goalW)} · ${Math.round((waterAmt/goalW)*100)}%`;
+  document.getElementById('hydDonutIsoGoal').textContent   = `meta: ${fmtGoal(goalI)} · ${Math.round((isoAmt/goalI)*100)}%`;
+}
+
 // ══ FAB ══
 let fabOpen = false;
 
@@ -4183,6 +4321,13 @@ function openBS(id) {
   closeFAB();
   document.getElementById(id).classList.add('show');
   if (id === 'bsSupp') renderSuppChecklist();
+  if (id === 'bsHyd') {
+    hydCarouselIdx = 0;
+    requestAnimationFrame(() => {
+      hydCarouselGo(0);
+      renderHydDonuts();
+    });
+  }
 }
 
 function closeBS(id) {
