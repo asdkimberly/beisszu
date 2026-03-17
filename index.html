@@ -1461,20 +1461,22 @@ select { cursor: pointer; }
 
   </div>
 
-
-  </div>
-
-  <!-- BOTTOM NAV -->
   <!-- ══ PAGE: ANÁLISIS ══ -->
   <div class="page" id="page-stats">
 
     <!-- Header controls -->
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-      <!-- Range toggle -->
       <div class="sub-tabs" style="flex:1">
         <button class="sub-tab active" id="statsRange7" onclick="setStatsRange(7)">7 días</button>
         <button class="sub-tab" id="statsRange30" onclick="setStatsRange(30)">30 días</button>
       </div>
+    </div>
+
+    <!-- Loading skeleton — visible until renderStats() runs -->
+    <div id="statsSkeleton">
+      <div class="card" style="height:120px;opacity:0.4"></div>
+      <div class="card" style="height:80px;opacity:0.3"></div>
+      <div class="card" style="height:200px;opacity:0.2"></div>
     </div>
 
     <!-- ① Resumen del período -->
@@ -3453,13 +3455,18 @@ function getStatsEntries() {
 async function renderStats() {
   if (!currentUser) return;
 
-  // Show loading state
+  // Hide skeleton once rendering starts
+  const skeleton = document.getElementById('statsSkeleton');
+  if (skeleton) skeleton.style.display = 'block'; // show while loading
+
+  // Show summary card with loading message
   document.getElementById('statsSummary').style.display = 'block';
   document.getElementById('statsSummaryGrid').innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:span 2">Cargando datos…</div>';
 
   try {
     if (statsRange === 30) await refreshStatsData();
     const { food, hyd } = getStatsEntries();
+    if (skeleton) skeleton.style.display = 'none'; // hide skeleton once data is ready
     renderStatsSummary(food, hyd);
     await renderStatsConsistency(food, hyd);
     renderStatsMeal(food);
@@ -3471,6 +3478,7 @@ async function renderStats() {
     document.getElementById('statsReportSection').style.display = 'block';
   } catch(err) {
     console.error('renderStats error:', err);
+    if (skeleton) skeleton.style.display = 'none';
     document.getElementById('statsSummaryGrid').innerHTML = '<div style="color:var(--warn);font-size:13px;grid-column:span 2">Error al cargar datos. Intentá de nuevo.</div>';
   }
 }
@@ -3862,14 +3870,21 @@ function renderStatsHyd(hyd) {
 }
 
 // ── ⑥ Top foods ──
-// Beverages: entries logged with unit 'ml' OR matching drink keywords
-const BEVERAGE_KEYWORDS = ['café','cafe','té','te ','jugo','cerveza','vino','licor','guaro','capuchino','latte','smoothie','batido','refresco','kombucha','agua de'];
+// Beverages: check is_beverage flag from foods DB, fallback to unit ml
 function isBeverage(entry) {
-  // Primary signal: unit is ml (most beverages are logged in ml)
-  if (entry.unit === 'ml') return true;
-  // Secondary: keyword match on name
-  const n = norm(entry.food_name || '');
-  return BEVERAGE_KEYWORDS.some(k => n.includes(norm(k)));
+  // Check flag in global foods DB
+  const dbFood = foodsDb.find(f => f.name === entry.food_name);
+  if (dbFood && dbFood.is_beverage) return true;
+  // Check flag in custom foods
+  const customFood = customFoods.find(f => f.name === entry.food_name);
+  if (customFood && customFood.is_beverage) return true;
+  // Fallback: unit ml AND name contains known drink keywords
+  const DRINK_KEYWORDS = ['café','cafe','té ','te ','jugo','leche','cerveza','vino','licor','guaro','capuchino','refresco','kombucha','smoothie','batido'];
+  if (entry.unit === 'ml') {
+    const n = norm(entry.food_name || '');
+    return DRINK_KEYWORDS.some(k => n.includes(norm(k)));
+  }
+  return false;
 }
 
 function renderStatsTopFoods(food) {
