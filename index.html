@@ -1769,8 +1769,9 @@ function closeConfirmModal() {
 }
 
 async function runConfirmAction() {
+  const action = _confirmAction;
   closeConfirmModal();
-  if (_confirmAction) await _confirmAction();
+  if (action) await action();
 }
 
 // ── Logout ──
