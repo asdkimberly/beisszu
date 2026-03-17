@@ -1879,6 +1879,8 @@ function switchTab(name) {
   currentTab = name;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.scrollTop = 0;
   document.getElementById('page-' + name).classList.add('active');
   const navBtn = document.getElementById('nav-' + name);
   if (navBtn) navBtn.classList.add('active');
@@ -3860,17 +3862,20 @@ function renderStatsHyd(hyd) {
 }
 
 // ── ⑥ Top foods ──
-// Keywords that identify beverages in food_log
-const BEVERAGE_KEYWORDS = ['café','cafe','té','te','jugo','agua','leche','cerveza','vino','licor','guaro','bebida','refresco','capuchino','latte','smoothie','batido','proteína en polvo','whey'];
-function isBeverage(foodName) {
-  const n = norm(foodName);
-  return BEVERAGE_KEYWORDS.some(k => n.includes(k));
+// Beverages: entries logged with unit 'ml' OR matching drink keywords
+const BEVERAGE_KEYWORDS = ['café','cafe','té','te ','jugo','cerveza','vino','licor','guaro','capuchino','latte','smoothie','batido','refresco','kombucha','agua de'];
+function isBeverage(entry) {
+  // Primary signal: unit is ml (most beverages are logged in ml)
+  if (entry.unit === 'ml') return true;
+  // Secondary: keyword match on name
+  const n = norm(entry.food_name || '');
+  return BEVERAGE_KEYWORDS.some(k => n.includes(norm(k)));
 }
 
 function renderStatsTopFoods(food) {
   const card = document.getElementById('statsTopFoodsCard');
   // Exclude beverages from foods list
-  const solidFood = food.filter(e => !isBeverage(e.food_name));
+  const solidFood = food.filter(e => !isBeverage(e));
   if (!solidFood.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   const freq = {};
@@ -3898,7 +3903,7 @@ function renderStatsTopFoods(food) {
 function renderStatsTopDrinks(food) {
   const card = document.getElementById('statsTopDrinksCard');
   // Filter food_log entries that are beverages
-  const beverages = food.filter(e => isBeverage(e.food_name));
+  const beverages = food.filter(e => isBeverage(e));
   if (!beverages.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
@@ -4158,8 +4163,6 @@ function renderStatsOrigin(food) {
   if (!food.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  // Count unique meal occasions (date + meal_type) by origin
-  const MEAL_ORDER = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
   const casaOccasions  = new Set();
   const fueraOccasions = new Set();
   food.forEach(e => {
@@ -4173,7 +4176,7 @@ function renderStatsOrigin(food) {
   const casaPct  = Math.round((casaCount/total)*100);
   const fueraPct = Math.round((fueraCount/total)*100);
 
-  // Summary cards
+  // ① Summary cards (above chart)
   content.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
@@ -4188,11 +4191,10 @@ function renderStatsOrigin(food) {
       </div>
     </div>`;
 
-  // Doughnut chart
+  // ② Donut chart
   canvas.style.display = 'block';
   if (chartOriginInstance) { chartOriginInstance.destroy(); chartOriginInstance = null; }
-  const ctx = canvas.getContext('2d');
-  chartOriginInstance = new Chart(ctx, {
+  chartOriginInstance = new Chart(canvas.getContext('2d'), {
     type: 'doughnut',
     data: {
       labels: ['🏠 Casa', '🌍 Fuera'],
@@ -4212,18 +4214,23 @@ function renderStatsOrigin(food) {
     },
   });
 
-  // Entries made outside — grouped by date
+  // ③ Fuera entries list — AFTER the chart, using a separate div
+  let fueraDiv = document.getElementById('statsOriginFuera');
+  if (!fueraDiv) {
+    fueraDiv = document.createElement('div');
+    fueraDiv.id = 'statsOriginFuera';
+    card.appendChild(fueraDiv);
+  }
+
   const fueraEntries = food.filter(e => e.origin === 'Fuera')
     .sort((a,b) => new Date(b.logged_at) - new Date(a.logged_at));
 
   if (fueraEntries.length) {
-    // Group by date
     const byDate = {};
     fueraEntries.forEach(e => {
       if (!byDate[e.log_date]) byDate[e.log_date] = [];
       byDate[e.log_date].push(e);
     });
-
     const fueraHTML = Object.entries(byDate).map(([date, items]) => {
       const dateLabel = new Date(date+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'});
       const rows = items.map(e => `
@@ -4232,19 +4239,20 @@ function renderStatsOrigin(food) {
             <div style="font-size:13px;color:var(--text)">${e.food_name}</div>
             <div style="font-size:11px;color:var(--muted)">${e.meal_type}</div>
           </div>
-          <div style="font-size:13px;color:var(--accent2);text-align:right">${Math.round(e.calories||0)} kcal</div>
+          <div style="font-size:13px;color:var(--accent2)">${Math.round(e.calories||0)} kcal</div>
         </div>`).join('');
       return `<div style="margin-top:8px">
         <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">${dateLabel}</div>
         ${rows}
       </div>`;
     }).join('');
-
-    content.innerHTML += `
-      <div style="margin-top:12px">
-        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:6px">🌍 Comidas fuera de casa</div>
+    fueraDiv.innerHTML = `
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:8px">🌍 Comidas fuera de casa</div>
         ${fueraHTML}
       </div>`;
+  } else {
+    fueraDiv.innerHTML = '';
   }
 }
 
