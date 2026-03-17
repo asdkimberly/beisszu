@@ -1471,14 +1471,14 @@ select { cursor: pointer; }
   </div>
 </div>
 
-<!-- ══ LOGOUT CONFIRM MODAL ══ -->
-<div class="modal-overlay" id="logoutModal">
+<!-- ══ CONFIRM MODAL (genérico) ══ -->
+<div class="modal-overlay" id="confirmModal">
   <div class="modal">
-    <div class="modal-title">¿Cerrar sesión?</div>
-    <div class="modal-body">Se cerrará tu sesión y volverás a la pantalla de inicio.</div>
+    <div class="modal-title" id="confirmTitle">¿Estás seguro?</div>
+    <div class="modal-body" id="confirmBody"></div>
     <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeLogoutModal()">Cancelar</button>
-      <button class="modal-confirm" onclick="handleLogout()">Cerrar sesión</button>
+      <button class="modal-cancel" onclick="closeConfirmModal()">Cancelar</button>
+      <button class="modal-confirm" id="confirmActionBtn" onclick="runConfirmAction()">Confirmar</button>
     </div>
   </div>
 </div>
@@ -1593,16 +1593,38 @@ function showAuthError(msg, isSuccess = false) {
   el.style.display = 'block';
 }
 
-// ══ Logout confirm ══
+// ══ Generic Confirm Modal ══
+let _confirmAction = null;
+
+function showConfirm({ title, body, label = 'Confirmar', danger = true, onConfirm }) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmBody').textContent  = body;
+  const btn = document.getElementById('confirmActionBtn');
+  btn.textContent = label;
+  btn.style.background = danger ? 'var(--warn)' : 'var(--accent)';
+  btn.style.color = '#fff';
+  _confirmAction = onConfirm;
+  document.getElementById('confirmModal').classList.add('show');
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirmModal').classList.remove('show');
+  _confirmAction = null;
+}
+
+function runConfirmAction() {
+  closeConfirmModal();
+  if (_confirmAction) _confirmAction();
+}
+
+// ── Logout ──
 function confirmLogout() {
-  document.getElementById('logoutModal').classList.add('show');
-}
-function closeLogoutModal() {
-  document.getElementById('logoutModal').classList.remove('show');
-}
-async function handleLogout() {
-  closeLogoutModal();
-  await sb.auth.signOut();
+  showConfirm({
+    title: '¿Cerrar sesión?',
+    body:  'Se cerrará tu sesión y volverás a la pantalla de inicio.',
+    label: 'Cerrar sesión',
+    onConfirm: () => sb.auth.signOut(),
+  });
 }
 
 // ══ Back button intercept ══
@@ -1924,11 +1946,19 @@ async function loadEntries() {
 }
 
 async function deleteEntry(id) {
-  const { error } = await sb.from('food_log').delete().eq('id', id).eq('user_id', currentUser.id);
-  if (error) { showToast('Error al eliminar', true); return; }
-  entries = entries.filter(e => e.id !== id);
-  buildCarouselDays();
-  renderCarouselDay();
+  const entry = entries.find(e => e.id === id);
+  showConfirm({
+    title: 'Eliminar entrada',
+    body: `¿Eliminás "${entry?.food_name || 'esta entrada'}"?`,
+    label: 'Eliminar',
+    onConfirm: async () => {
+      const { error } = await sb.from('food_log').delete().eq('id', id).eq('user_id', currentUser.id);
+      if (error) { showToast('Error al eliminar', true); return; }
+      entries = entries.filter(e => e.id !== id);
+      buildCarouselDays();
+      renderCarouselDay();
+    },
+  });
 }
 
 function resetForm() {
@@ -2267,11 +2297,17 @@ async function saveNewFood() {
 
 async function deleteFood(idx) {
   const food = customFoods[idx];
-  if (!confirm(`¿Eliminar "${food.name}"?`)) return;
-  const { error } = await sb.from('custom_foods').delete().eq('id', food.id).eq('user_id', currentUser.id);
-  if (error) { showToast('Error al eliminar', true); return; }
-  customFoods.splice(idx, 1);
-  renderFoodsList();
+  showConfirm({
+    title: 'Eliminar alimento',
+    body: `¿Eliminás "${food.name}" de tus alimentos personalizados?`,
+    label: 'Eliminar',
+    onConfirm: async () => {
+      const { error } = await sb.from('custom_foods').delete().eq('id', food.id).eq('user_id', currentUser.id);
+      if (error) { showToast('Error al eliminar', true); return; }
+      customFoods.splice(idx, 1);
+      renderFoodsList();
+    },
+  });
 }
 
 function editFood(idx) {
@@ -2422,13 +2458,19 @@ async function saveSettings() {
 }
 
 async function clearAllData() {
-  if (!confirm('¿Borrar todas tus entradas? Esta acción no se puede deshacer.')) return;
-  await sb.from('food_log').delete().eq('user_id', currentUser.id);
-  await sb.from('hydration_log').delete().eq('user_id', currentUser.id);
-  entries = []; hydEntries = [];
-  buildCarouselDays();
-  renderCarouselDay();
-  showToast('Datos eliminados');
+  showConfirm({
+    title: '¿Borrar todos tus datos?',
+    body: 'Se eliminarán todas tus entradas de alimentos e hidratación. Esta acción no se puede deshacer.',
+    label: '🗑 Borrar todo',
+    onConfirm: async () => {
+      await sb.from('food_log').delete().eq('user_id', currentUser.id);
+      await sb.from('hydration_log').delete().eq('user_id', currentUser.id);
+      entries = []; hydEntries = [];
+      buildCarouselDays();
+      renderCarouselDay();
+      showToast('Datos eliminados');
+    },
+  });
 }
 
 // ══ Hydration ══
@@ -2518,11 +2560,19 @@ async function loadHydration() {
 }
 
 async function deleteHydEntry(id) {
-  const { error } = await sb.from('hydration_log').delete().eq('id', id).eq('user_id', currentUser.id);
-  if (error) { showToast('Error al eliminar', true); return; }
-  hydEntries = hydEntries.filter(e => e.id !== id);
-  buildCarouselDays();
-  renderCarouselDay();
+  const entry = hydEntries.find(e => e.id === id);
+  showConfirm({
+    title: 'Eliminar bebida',
+    body: `¿Eliminás "${entry?.drinkLabel || 'esta entrada'}"?`,
+    label: 'Eliminar',
+    onConfirm: async () => {
+      const { error } = await sb.from('hydration_log').delete().eq('id', id).eq('user_id', currentUser.id);
+      if (error) { showToast('Error al eliminar', true); return; }
+      hydEntries = hydEntries.filter(e => e.id !== id);
+      buildCarouselDays();
+      renderCarouselDay();
+    },
+  });
 }
 
 // ══ Utils ══
@@ -2923,11 +2973,17 @@ async function saveDish() {
 // ── Delete dish ──
 async function deleteDish(id) {
   const dish = dishes.find(d => d.id === id);
-  if (!confirm(`¿Eliminar "${dish?.name}"?`)) return;
-  await sb.from('dishes').delete().eq('id', id).eq('user_id', currentUser.id);
-  dishes = dishes.filter(d => d.id !== id);
-  renderDishesList();
-  showToast('Platillo eliminado');
+  showConfirm({
+    title: 'Eliminar platillo',
+    body: `¿Eliminás "${dish?.name || 'este platillo'}"? Esta acción no se puede deshacer.`,
+    label: 'Eliminar',
+    onConfirm: async () => {
+      await sb.from('dishes').delete().eq('id', id).eq('user_id', currentUser.id);
+      dishes = dishes.filter(d => d.id !== id);
+      renderDishesList();
+      showToast('Platillo eliminado');
+    },
+  });
 }
 
 // ══════════════════════════════════════════
@@ -2980,12 +3036,19 @@ async function addSupplement() {
 // ── Delete supplement ──
 async function deleteSupplement(id) {
   const s = supplements.find(s => s.id === id);
-  if (!confirm(`¿Eliminar "${s?.name}"?`)) return;
-  await sb.from('supplements').delete().eq('id', id).eq('user_id', currentUser.id);
-  supplements = supplements.filter(s => s.id !== id);
-  renderSuppList();
-  renderSuppChecklist();
-  renderHomeSuppChecklist();
+  showConfirm({
+    title: 'Eliminar suplemento',
+    body: `¿Eliminás "${s?.name || 'este suplemento'}" de tu lista?`,
+    label: 'Eliminar',
+    onConfirm: async () => {
+      await sb.from('supplements').delete().eq('id', id).eq('user_id', currentUser.id);
+      supplements = supplements.filter(s => s.id !== id);
+      renderSuppList();
+      renderSuppChecklist();
+      renderHomeSuppChecklist();
+      showToast('Suplemento eliminado');
+    },
+  });
 }
 
 // ── Toggle supplement taken today ──
