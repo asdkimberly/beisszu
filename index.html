@@ -1441,12 +1441,12 @@ select { cursor: pointer; }
     <!-- Suplementos -->
     <div class="section-label" style="margin-top:4px">Mis suplementos</div>
     <div class="card">
-      <div style="display:flex;gap:8px">
-        <input type="text" id="newSuppName" placeholder="Ej: Creatina, Vitamina D…" style="flex:1">
-        <input type="text" id="newSuppNotes" placeholder="Notas (opcional)" style="flex:1">
-        <button onclick="addSupplement()" style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:12px 16px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Agregar</button>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input type="text" id="newSuppName" placeholder="Nombre del suplemento…" style="width:100%">
+        <input type="text" id="newSuppNotes" placeholder="Notas (opcional)…" style="width:100%">
+        <button onclick="addSupplement()" style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:12px 16px;font-family:var(--font-display);font-size:14px;font-weight:600;cursor:pointer;width:100%">+ Agregar suplemento</button>
       </div>
-      <div id="suppList" style="display:flex;flex-direction:column;gap:8px;margin-top:4px"></div>
+      <div id="suppList" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
     </div>
 
     <!-- Único botón guardar para metas + suplementos -->
