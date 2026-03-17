@@ -1478,7 +1478,7 @@ select { cursor: pointer; }
     </div>
 
     <!-- ① Resumen del período -->
-    <div class="card" id="statsSummary">
+    <div class="card" id="statsSummary" style="display:none">
       <div class="section-label" style="margin-bottom:4px">Resumen del período</div>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px" id="statsSummaryGrid"></div>
     </div>
@@ -1496,40 +1496,40 @@ select { cursor: pointer; }
     </div>
 
     <!-- ④ Distribución por comida -->
-    <div class="card" id="statsMealCard">
+    <div class="card" id="statsMealCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Promedio de calorías por tiempo de comida</div>
       <div id="statsMealContent"></div>
       <canvas id="chartMeal" height="180" style="display:none"></canvas>
     </div>
 
     <!-- ⑤ Hidratación -->
-    <div class="card" id="statsHydCard">
+    <div class="card" id="statsHydCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Hidratación promedio</div>
       <div id="statsHydContent"></div>
       <canvas id="chartHyd" height="180" style="display:none"></canvas>
     </div>
 
     <!-- ⑥ Alimentos más frecuentes -->
-    <div class="card">
+    <div class="card" id="statsTopFoodsCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Alimentos más frecuentes</div>
       <div id="statsTopFoods"></div>
     </div>
 
     <!-- ⑥b Bebidas más frecuentes -->
-    <div class="card" id="statsTopDrinksCard">
+    <div class="card" id="statsTopDrinksCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Bebidas más frecuentes</div>
       <div id="statsTopDrinks"></div>
     </div>
 
     <!-- ⑦ Origen de comidas -->
-    <div class="card" id="statsOriginCard">
+    <div class="card" id="statsOriginCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Origen de comidas</div>
       <div id="statsOriginContent"></div>
       <canvas id="chartOrigin" height="180" style="display:none"></canvas>
     </div>
 
     <!-- Generar informe -->
-    <div style="padding-bottom:8px">
+    <div id="statsReportSection" style="display:none;padding-bottom:8px">
       <div class="field" style="margin-bottom:10px">
         <label>Notas para el nutricionista (opcional)</label>
         <textarea id="reportNotes" placeholder="Ej: he estado con más estrés esta semana, tomé antibióticos…" style="resize:none;height:72px;font-size:13px"></textarea>
@@ -3456,7 +3456,7 @@ async function renderStats() {
   renderStatsMeal(food);
   renderStatsHyd(hyd);
   renderStatsTopFoods(food);
-  renderStatsTopDrinks(hyd);
+  renderStatsTopDrinks(food);
   renderStatsOrigin(food);
   renderChartTrend(food);
 }
@@ -3480,6 +3480,8 @@ async function refreshStatsData() {
 
 // ── ① Summary cards ──
 function renderStatsSummary(food, hyd) {
+  document.getElementById('statsSummary').style.display = 'block';
+  document.getElementById('statsReportSection').style.display = 'block';
   if (!food.length) {
     document.getElementById('statsSummaryGrid').innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:span 2">Sin datos en este período.</div>';
     return;
@@ -3692,6 +3694,7 @@ function renderChartTrend(food) {
 
 // ── ④ Meal distribution ──
 function renderStatsMeal(food) {
+  document.getElementById('statsMealCard').style.display = 'block';
   if (!food.length) {
     document.getElementById('statsMealContent').innerHTML = '<div style="color:var(--muted);font-size:13px">Sin datos.</div>';
     return;
@@ -3759,6 +3762,7 @@ function renderStatsMeal(food) {
 
 // ── ⑤ Hydration ──
 function renderStatsHyd(hyd) {
+  document.getElementById('statsHydCard').style.display = 'block';
   const waterEntries    = hyd.filter(e => e.drinkId === 'water');
   const hidEntries      = hyd.filter(e => e.drinkId === 'hidratante');
 
@@ -3844,13 +3848,21 @@ function renderStatsHyd(hyd) {
 }
 
 // ── ⑥ Top foods ──
+// Keywords that identify beverages in food_log
+const BEVERAGE_KEYWORDS = ['café','cafe','té','te','jugo','agua','leche','cerveza','vino','licor','guaro','bebida','refresco','capuchino','latte','smoothie','batido','proteína en polvo','whey'];
+function isBeverage(foodName) {
+  const n = norm(foodName);
+  return BEVERAGE_KEYWORDS.some(k => n.includes(k));
+}
+
 function renderStatsTopFoods(food) {
-  if (!food.length) {
-    document.getElementById('statsTopFoods').innerHTML = '<div style="color:var(--muted);font-size:13px">Sin datos.</div>';
-    return;
-  }
+  const card = document.getElementById('statsTopFoodsCard');
+  // Exclude beverages from foods list
+  const solidFood = food.filter(e => !isBeverage(e.food_name));
+  if (!solidFood.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
   const freq = {};
-  food.forEach(e => {
+  solidFood.forEach(e => {
     if (!freq[e.food_name]) freq[e.food_name] = { count:0, totalCal:0 };
     freq[e.food_name].count++;
     freq[e.food_name].totalCal += e.calories||0;
@@ -3871,29 +3883,29 @@ function renderStatsTopFoods(food) {
   }).join('');
 }
 
-function renderStatsTopDrinks(hyd) {
+function renderStatsTopDrinks(food) {
   const card = document.getElementById('statsTopDrinksCard');
-  if (!hyd.length) { card.style.display = 'none'; return; }
+  // Filter food_log entries that are beverages
+  const beverages = food.filter(e => isBeverage(e.food_name));
+  if (!beverages.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
   const freq = {};
-  hyd.forEach(e => {
-    const key = e.drinkLabel || e.drinkId;
-    if (!freq[key]) freq[key] = { count:0, icon: e.drinkIcon||'💧', totalAmt:0 };
-    freq[key].count++;
-    freq[key].totalAmt += e.amount || 0;
+  beverages.forEach(e => {
+    if (!freq[e.food_name]) freq[e.food_name] = { count:0, totalCal:0 };
+    freq[e.food_name].count++;
+    freq[e.food_name].totalCal += e.calories||0;
   });
   const sorted = Object.entries(freq).sort((a,b)=>b[1].count-a[1].count).slice(0,6);
   const maxCount = sorted[0]?.[1].count || 1;
 
   document.getElementById('statsTopDrinks').innerHTML = sorted.map(([name, data]) => {
     const pct = Math.round((data.count/maxCount)*100);
-    const avgAmt = Math.round(data.totalAmt/data.count);
-    const disp = avgAmt >= 1000 ? `${(avgAmt/1000).toFixed(1)}L` : `${avgAmt}ml`;
+    const avgCal = Math.round(data.totalCal/data.count);
     return `<div class="progress-item">
       <div class="progress-header">
-        <span class="progress-label" style="font-size:13px">${data.icon} ${name}</span>
-        <span class="progress-value">${data.count}x · ~${disp}</span>
+        <span class="progress-label" style="font-size:13px">🥤 ${name}</span>
+        <span class="progress-value">${data.count}x · ~${avgCal} kcal</span>
       </div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:#4a90d9"></div></div>
     </div>`;
@@ -4233,11 +4245,40 @@ function hydCarouselGo(idx) {
   hydCarouselIdx = idx;
   const track = document.getElementById('hydCarouselTrack');
   if (!track) return;
-  // Use viewport width capped at 480px
   const slideW = Math.min(window.innerWidth, 480);
   track.style.transform = `translateX(-${idx * slideW}px)`;
   document.getElementById('hydDot0').classList.toggle('active', idx === 0);
   document.getElementById('hydDot1').classList.toggle('active', idx === 1);
+}
+
+function initHydCarouselSwipe() {
+  const track = document.getElementById('hydCarouselTrack');
+  if (!track || track._swipeInit) return;
+  track._swipeInit = true;
+  let startX = 0, startY = 0, dragging = false;
+
+  track.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dragging = true;
+  }, { passive: true });
+
+  track.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    // Prevent vertical scroll hijack only if horizontal swipe
+    const dx = Math.abs(e.touches[0].clientX - startX);
+    const dy = Math.abs(e.touches[0].clientY - startY);
+    if (dx > dy) e.preventDefault();
+  }, { passive: false });
+
+  track.addEventListener('touchend', e => {
+    if (!dragging) return;
+    dragging = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 40) {
+      hydCarouselGo(dx < 0 ? 1 : 0);
+    }
+  }, { passive: true });
 }
 
 function renderHydDonuts() {
@@ -4324,6 +4365,7 @@ function openBS(id) {
   if (id === 'bsHyd') {
     hydCarouselIdx = 0;
     requestAnimationFrame(() => {
+      initHydCarouselSwipe();
       hydCarouselGo(0);
       renderHydDonuts();
     });
