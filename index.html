@@ -634,6 +634,45 @@ select { cursor: pointer; }
 .hyd-card-val { font-size: 16px; font-weight: 400; font-family: var(--font-display); color: var(--text); }
 .hyd-card-label { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
 
+/* ══ CAROUSEL HEADER ══ */
+.carousel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0 8px;
+}
+.carousel-arrow {
+  width: 36px; height: 36px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 50%; font-size: 20px; color: var(--text2);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.18s; flex-shrink: 0;
+}
+.carousel-arrow:active { background: var(--accent); color: #0e110a; border-color: var(--accent); }
+.carousel-arrow:disabled { opacity: 0.25; cursor: default; }
+.carousel-title {
+  font-family: var(--font-display); font-size: 18px; font-weight: 400;
+  color: var(--text); text-align: center; flex: 1;
+}
+
+/* ══ SECTION HEADER ROW ══ */
+.section-header-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.section-edit-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 14px; color: var(--muted); padding: 4px;
+  opacity: 0.7; transition: opacity 0.18s;
+}
+.section-edit-btn:active { opacity: 1; }
+
+/* ══ MEAL GROUP ══ */
+.meal-group { margin-bottom: 4px; }
+.meal-group-label {
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); padding: 8px 0 6px;
+  border-bottom: 1px solid var(--border); margin-bottom: 8px;
+}
+
 /* ══ PROFILE QUICK BTNS ══ */
 .profile-quick-btn {
   background: var(--surface);
@@ -746,54 +785,60 @@ select { cursor: pointer; }
     <span>⚡</span> Sin conexión
   </div>
 
-  <!-- ══ PAGE: INICIO (Hoy) ══ -->
+  <!-- ══ PAGE: INICIO ══ -->
   <div class="page active" id="page-home">
 
-    <div>
-      <div class="section-label">Nutrición de hoy</div>
-      <div class="summary-grid">
-        <div class="summary-card">
-          <div class="summary-card-label">Calorías</div>
-          <div class="summary-card-value" id="todayCal">0</div>
-          <div class="summary-card-unit">kcal</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-label">Proteína</div>
-          <div class="summary-card-value" id="todayProt">0</div>
-          <div class="summary-card-unit">gramos</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-label">Carbos</div>
-          <div class="summary-card-value" id="todayCarbs">0</div>
-          <div class="summary-card-unit">gramos</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-label">Grasas</div>
-          <div class="summary-card-value" id="todayFat">0</div>
-          <div class="summary-card-unit">gramos</div>
-        </div>
+    <!-- Carousel header -->
+    <div class="carousel-header">
+      <button class="carousel-arrow" id="carouselPrev" onclick="carouselNavigate(-1)">‹</button>
+      <div class="carousel-title" id="carouselTitle">Hoy</div>
+      <button class="carousel-arrow" id="carouselNext" onclick="carouselNavigate(1)">›</button>
+    </div>
+
+    <!-- Nutrition summary cards -->
+    <div class="summary-grid" id="homeSummaryGrid">
+      <div class="summary-card">
+        <div class="summary-card-label">Calorías</div>
+        <div class="summary-card-value" id="todayCal">0</div>
+        <div class="summary-card-unit">kcal</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Proteína</div>
+        <div class="summary-card-value" id="todayProt">0</div>
+        <div class="summary-card-unit">gramos</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Carbos</div>
+        <div class="summary-card-value" id="todayCarbs">0</div>
+        <div class="summary-card-unit">gramos</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Grasas</div>
+        <div class="summary-card-value" id="todayFat">0</div>
+        <div class="summary-card-unit">gramos</div>
       </div>
     </div>
 
+    <!-- Metas -->
     <div id="homeProgressSection" style="display:none">
-      <div class="section-label">Progreso de metas</div>
+      <div class="section-header-row">
+        <span class="section-label" style="margin-bottom:0">Metas</span>
+        <button class="section-edit-btn" onclick="switchTab('profile');showProfileSection('metas')" title="Editar metas">✏️</button>
+      </div>
       <div class="card" id="homeProgressBars"></div>
     </div>
 
+    <!-- Suplementos -->
     <div id="homeSuppSection" style="display:none">
-      <div class="section-label">Suplementos de hoy</div>
+      <div class="section-header-row">
+        <span class="section-label" style="margin-bottom:0">Suplementos</span>
+        <button class="section-edit-btn" onclick="switchTab('profile');showProfileSection('metas')" title="Editar suplementos">✏️</button>
+      </div>
       <div class="card" id="homeSuppChecklist"></div>
     </div>
 
-    <div>
-      <div class="section-label">Entradas de hoy</div>
-      <div id="homeTodayList">
-        <div class="empty">
-          <div class="empty-icon">🥗</div>
-          <div class="empty-text">Aún no hay entradas hoy.<br>¡Registrá tu primera comida!</div>
-        </div>
-      </div>
-    </div>
+    <!-- Entries grouped by meal type -->
+    <div id="homeMealGroups"></div>
 
   </div>
 
@@ -956,16 +1001,6 @@ select { cursor: pointer; }
         </div>
       </div>
 
-    </div>
-  </div>
-
-  <!-- ══ PAGE: HISTORIAL ══ -->
-  <div class="page" id="page-history">
-    <div id="historyList">
-      <div class="empty">
-        <div class="empty-icon">📋</div>
-        <div class="empty-text">El historial aparecerá aquí.</div>
-      </div>
     </div>
   </div>
 
@@ -1275,7 +1310,7 @@ select { cursor: pointer; }
 
   </div>
 
-  <nav class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
+  <nav class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
     <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
       <span class="nav-icon">🏠</span>Inicio
     </button>
@@ -1285,15 +1320,70 @@ select { cursor: pointer; }
     <button class="nav-btn" id="nav-stats" onclick="switchTab('stats')">
       <span class="nav-icon">📊</span>Análisis
     </button>
-    <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
-      <span class="nav-icon">📋</span>Historial
-    </button>
     <button class="nav-btn" id="nav-profile" onclick="switchTab('profile')">
       <span class="nav-icon">👤</span>Perfil
     </button>
   </nav>
 
 </div><!-- end appScreen -->
+
+<!-- ══ EDIT ENTRY MODAL ══ -->
+<div class="modal-overlay" id="editEntryModal">
+  <div class="modal" style="max-width:380px;max-height:90dvh;overflow-y:auto">
+    <div class="modal-title">Editar entrada</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field">
+        <label>Nombre</label>
+        <input type="text" id="editFoodName" placeholder="Nombre del alimento">
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>Cantidad</label>
+          <input type="text" id="editQuantity" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>Unidad</label>
+          <select id="editUnit">
+            <option>gramos</option><option>ml</option><option>oz</option>
+            <option>tazas</option><option>cdas</option><option>cditas</option>
+            <option>unidades</option><option>rebanadas</option><option>piezas</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Tiempo de comida</label>
+        <select id="editMealType">
+          <option>Desayuno</option><option>Snack Mañana</option><option>Almuerzo</option>
+          <option>Snack Tarde</option><option>Cena</option><option>Extra</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Origen</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button id="editOriginHome" onclick="setEditOrigin('Casa')" style="padding:10px;border-radius:10px;border:1.5px solid var(--accent2);background:rgba(212,168,64,0.08);color:var(--accent2);font-family:var(--font-display);font-size:13px;cursor:pointer">🏠 Casa</button>
+          <button id="editOriginFuera" onclick="setEditOrigin('Fuera')" style="padding:10px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-display);font-size:13px;cursor:pointer">🌍 Fuera</button>
+        </div>
+      </div>
+      <div class="three-col">
+        <div class="macro-input"><label>Calorías</label><input type="number" id="editCalories" inputmode="decimal"><div class="macro-unit">kcal</div></div>
+        <div class="macro-input"><label>Proteína</label><input type="number" id="editProtein" inputmode="decimal"><div class="macro-unit">g</div></div>
+        <div class="macro-input"><label>Carbos</label><input type="number" id="editCarbs" inputmode="decimal"><div class="macro-unit">g</div></div>
+      </div>
+      <div class="two-col">
+        <div class="macro-input"><label>Grasas</label><input type="number" id="editFat" inputmode="decimal"><div class="macro-unit">g</div></div>
+        <div class="macro-input"><label>Fibra</label><input type="number" id="editFiber" inputmode="decimal"><div class="macro-unit">g</div></div>
+      </div>
+      <div class="field">
+        <label>Notas</label>
+        <input type="text" id="editNotes" placeholder="Opcional">
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-cancel" onclick="closeEditModal()">Cancelar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="saveEditEntry()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ LOGOUT CONFIRM MODAL ══ -->
 <div class="modal-overlay" id="logoutModal">
@@ -1469,7 +1559,6 @@ async function initApp(user) {
   initHydration();
   autoSelectMeal();
   renderToday();
-  renderHistory();
   setupBackButton();
 }
 
@@ -1480,8 +1569,7 @@ function switchTab(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.getElementById('nav-' + name).classList.add('active');
-  if (name === 'home') { renderToday(); }
-  if (name === 'history') { renderHistory(); }
+  if (name === 'home') { renderToday(); } // always resets to today
   if (name === 'profile') { renderFoodsList(); showProfileSection('metas'); }
   if (name === 'stats') { renderStats(); }
 }
@@ -1738,7 +1826,7 @@ async function submitEntry() {
   entries.push({ ...entry, id: data.id, logged_at: data.logged_at });
   addToSuggestions(foodName);
   resetForm();
-  renderToday();
+  buildCarouselDays();
   showToast('✓ Entrada registrada');
   switchTab('home');
 }
@@ -1756,7 +1844,8 @@ async function deleteEntry(id) {
   const { error } = await sb.from('food_log').delete().eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Error al eliminar', true); return; }
   entries = entries.filter(e => e.id !== id);
-  renderToday(); renderHistory();
+  buildCarouselDays();
+  renderCarouselDay();
 }
 
 function resetForm() {
@@ -1769,68 +1858,97 @@ function resetForm() {
 }
 
 // ══ Render Today ══
-function renderToday() {
+// ══ CAROUSEL STATE ══
+let carouselDays = [];      // sorted array of dates with data
+let carouselIndex = 0;      // current index (0 = today/most recent)
+
+function buildCarouselDays() {
+  // Collect all unique dates that have food or hydration entries
+  const dateSet = new Set([
+    ...entries.map(e => e.log_date),
+    ...hydEntries.map(e => e.date),
+  ]);
+  // Always include today even if no entries
+  dateSet.add(getTodayDate());
+  carouselDays = [...dateSet].sort();
+  // Start at today (last/most recent)
+  carouselIndex = carouselDays.length - 1;
+}
+
+function carouselNavigate(dir) {
+  const newIndex = carouselIndex + dir;
+  if (newIndex < 0 || newIndex >= carouselDays.length) return;
+  carouselIndex = newIndex;
+  renderCarouselDay();
+}
+
+function getCarouselTitle(dateStr) {
   const today = getTodayDate();
-  const todayEntries = entries.filter(e => e.log_date === today);
-  const todayHyd = hydEntries.filter(e => e.date === today);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  if (dateStr === today) return 'Hoy';
+  if (dateStr === yesterdayStr) return 'Ayer';
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('es-CR', { weekday:'long', day:'numeric', month:'long' });
+}
 
-  // Totals
-  const totCal  = todayEntries.reduce((s,e) => s + (e.calories||0), 0);
-  const totProt = todayEntries.reduce((s,e) => s + (e.protein_g||0), 0);
-  const totCarb = todayEntries.reduce((s,e) => s + (e.carbs_g||0), 0);
-  const totFat  = todayEntries.reduce((s,e) => s + (e.fat_g||0), 0);
+function renderCarouselDay() {
+  const dateStr = carouselDays[carouselIndex];
+  if (!dateStr) return;
 
-  document.getElementById('todayCal').textContent  = Math.round(totCal);
-  document.getElementById('todayProt').textContent = totProt.toFixed(1);
+  // Update title
+  document.getElementById('carouselTitle').textContent = getCarouselTitle(dateStr);
+
+  // Arrow states
+  document.getElementById('carouselPrev').disabled = carouselIndex === 0;
+  document.getElementById('carouselNext').disabled = carouselIndex === carouselDays.length - 1;
+
+  // Filter entries for this date
+  const dayEntries = entries.filter(e => e.log_date === dateStr);
+  const dayHyd     = hydEntries.filter(e => e.date === dateStr);
+
+  // ── Summary cards ──
+  const totCal  = dayEntries.reduce((s,e) => s + (e.calories||0), 0);
+  const totProt = dayEntries.reduce((s,e) => s + (e.protein_g||0), 0);
+  const totCarb = dayEntries.reduce((s,e) => s + (e.carbs_g||0), 0);
+  const totFat  = dayEntries.reduce((s,e) => s + (e.fat_g||0), 0);
+  document.getElementById('todayCal').textContent   = Math.round(totCal);
+  document.getElementById('todayProt').textContent  = totProt.toFixed(1);
   document.getElementById('todayCarbs').textContent = totCarb.toFixed(1);
-  document.getElementById('todayFat').textContent  = totFat.toFixed(1);
+  document.getElementById('todayFat').textContent   = totFat.toFixed(1);
 
-  // Progress bars — nutrition + hydration together
+  // ── Metas progress bars ──
   const progSection = document.getElementById('homeProgressSection');
-  const progBars = document.getElementById('homeProgressBars');
-
-  // Hydration totals
-  const hydTotals = {};
-  todayHyd.forEach(e => {
-    if (!hydTotals[e.drinkId]) hydTotals[e.drinkId] = { icon: e.drinkIcon, label: e.drinkLabel, amount: 0, unit: e.unit };
+  const progBars    = document.getElementById('homeProgressBars');
+  const hydTotals   = {};
+  dayHyd.forEach(e => {
+    if (!hydTotals[e.drinkId]) hydTotals[e.drinkId] = { amount: 0 };
     hydTotals[e.drinkId].amount += e.amount;
   });
-  const waterAmt     = hydTotals['water']?.amount     || 0;
+  const waterAmt      = hydTotals['water']?.amount      || 0;
   const hidratanteAmt = hydTotals['hidratante']?.amount || 0;
-
-  const hasNutrGoals = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat;
-  const hasHydGoals  = settings.goalWater || settings.goalIsotonic;
+  const hasNutrGoals  = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat;
+  const hasHydGoals   = settings.goalWater || settings.goalIsotonic;
 
   if (hasNutrGoals || hasHydGoals) {
     progSection.style.display = 'block';
-
-    const nutrBars = [
-      { label: 'Calorías', val: totCal,  goal: settings.goalCal,     unit: 'kcal', color: 'var(--accent)'  },
-      { label: 'Proteína', val: totProt, goal: settings.goalProtein,  unit: 'g',    color: 'var(--accent2)' },
-      { label: 'Carbos',   val: totCarb, goal: settings.goalCarbs,    unit: 'g',    color: '#5bc0de'        },
-      { label: 'Grasas',   val: totFat,  goal: settings.goalFat,      unit: 'g',    color: '#e07840'        },
-    ].filter(b => b.goal);
-
-    const hydBars = [
+    const allBars = [
+      { label: 'Calorías', val: totCal,       goal: settings.goalCal,     unit: 'kcal', color: 'var(--accent)'  },
+      { label: 'Proteína', val: totProt,       goal: settings.goalProtein, unit: 'g',    color: 'var(--accent2)' },
+      { label: 'Carbos',   val: totCarb,       goal: settings.goalCarbs,   unit: 'g',    color: '#5bc0de'        },
+      { label: 'Grasas',   val: totFat,        goal: settings.goalFat,     unit: 'g',    color: '#e07840'        },
       { label: '💧 Agua',       val: waterAmt,      goal: settings.goalWater,    unit: 'ml', color: '#4a90d9' },
       { label: '🏋️ Hidratante', val: hidratanteAmt, goal: settings.goalIsotonic, unit: 'ml', color: '#5bc0de' },
     ].filter(b => b.goal);
-
-    const allBars = [...nutrBars, ...hydBars];
-
     progBars.innerHTML = allBars.map(b => {
       const pct = Math.min((b.val / b.goal) * 100, 110);
       const over = pct > 100;
-      const displayVal = b.unit === 'ml'
-        ? (b.val >= 1000 ? `${(b.val/1000).toFixed(1)}L` : `${Math.round(b.val)}ml`)
-        : Math.round(b.val);
-      const displayGoal = b.unit === 'ml'
-        ? (b.goal >= 1000 ? `${(b.goal/1000).toFixed(1)}L` : `${b.goal}ml`)
-        : `${b.goal} ${b.unit}`;
+      const dv = b.unit === 'ml' ? (b.val >= 1000 ? `${(b.val/1000).toFixed(1)}L` : `${Math.round(b.val)}ml`) : Math.round(b.val);
+      const dg = b.unit === 'ml' ? (b.goal >= 1000 ? `${(b.goal/1000).toFixed(1)}L` : `${b.goal}ml`) : `${b.goal} ${b.unit}`;
       return `<div class="progress-item">
         <div class="progress-header">
           <span class="progress-label">${b.label}</span>
-          <span class="progress-value">${displayVal} / ${displayGoal}</span>
+          <span class="progress-value">${dv} / ${dg}</span>
         </div>
         <div class="progress-bar">
           <div class="progress-fill${over?' over':''}" style="width:${pct}%;background:${over?'var(--warn)':b.color}"></div>
@@ -1841,20 +1959,56 @@ function renderToday() {
     progSection.style.display = 'none';
   }
 
-  // Today list — descending order (latest first)
-  const list = document.getElementById('homeTodayList');
-  const allToday = [
-    ...todayEntries.map(e => ({ ...e, _type: 'food', _time: e.logged_at })),
-    ...todayHyd.map(e => ({ ...e, _type: 'hyd', _time: e.logged_at }))
-  ].sort((a, b) => new Date(b._time) - new Date(a._time));
+  // ── Suplementos ──
+  renderHomeSuppChecklist();
 
-  if (!allToday.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-icon">🥗</div><div class="empty-text">Aún no hay entradas hoy.<br>¡Registrá tu primera comida!</div></div>';
+  // ── Entries grouped by meal type ──
+  const MEAL_ORDER = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰','Hidratación':'💧' };
+
+  // Merge food + hydration sorted by time
+  const allEntries = [
+    ...dayEntries.map(e => ({ ...e, _type:'food', _time: e.logged_at })),
+    ...dayHyd.map(e => ({ ...e, _type:'hyd', _time: e.logged_at })),
+  ].sort((a,b) => new Date(a._time) - new Date(b._time));
+
+  // Group food by meal_type; hydration in its own group
+  const groups = {};
+  allEntries.forEach(e => {
+    const key = e._type === 'hyd' ? 'Hidratación' : e.meal_type;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
+  });
+
+  // Sort groups: meal order first, then Hidratación
+  const orderedKeys = [...MEAL_ORDER.filter(k => groups[k]), ...(groups['Hidratación'] ? ['Hidratación'] : [])];
+
+  const mealGroupsEl = document.getElementById('homeMealGroups');
+  if (!orderedKeys.length) {
+    mealGroupsEl.innerHTML = `<div class="empty"><div class="empty-icon">🥗</div><div class="empty-text">Sin entradas este día.</div></div>`;
     return;
   }
-  list.innerHTML = allToday.map(e => e._type === 'food' ? makeLogItem(e) : makeHydLogItem(e)).join('');
-  renderHomeSuppChecklist();
+
+  mealGroupsEl.innerHTML = orderedKeys.map(key => {
+    const icon = MEAL_ICONS[key] || '🍽️';
+    const items = groups[key].map(e =>
+      e._type === 'food' ? makeEditableLogItem(e) : makeHydLogItem(e)
+    ).join('');
+    return `<div class="meal-group">
+      <div class="meal-group-label">${icon} ${key}</div>
+      ${items}
+    </div>`;
+  }).join('');
 }
+
+// Keep renderToday as alias that resets to today
+function renderToday() {
+  buildCarouselDays();
+  // Jump to today
+  carouselIndex = carouselDays.length - 1;
+  renderCarouselDay();
+}
+
 
 // ══ Render History ══
 function renderHistory() {
@@ -1914,9 +2068,89 @@ function makeHydLogItem(e) {
   </div>`;
 }
 
-// ══ Suggestions ══
-function buildSuggestions() { /* handled in dropdown */ }
-function addToSuggestions(name) { /* handled in dropdown via entries array */ }
+function makeEditableLogItem(e) {
+  const time = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR', { hour:'2-digit', minute:'2-digit' }) : '';
+  return `<div class="log-item" style="cursor:pointer" onclick="openEditModal(${e.id})">
+    <div class="log-item-top">
+      <div class="log-item-name">${e.food_name}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="log-item-cal">${Math.round(e.calories||0)} kcal</div>
+        <span style="font-size:12px;color:var(--muted)">✏️</span>
+        <button class="log-item-delete" onclick="event.stopPropagation();deleteEntry(${e.id})">✕</button>
+      </div>
+    </div>
+    <div class="log-item-meta">${time}${e.quantity?` · ${e.quantity} ${e.unit}`:''} ${e.origin==='Fuera'?'🌍':''}</div>
+    <div class="log-item-meta" style="color:var(--text2)">P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g</div>
+  </div>`;
+}
+
+// ── Edit entry modal ──
+let editingEntryId = null;
+let editingOrigin  = 'Casa';
+
+function openEditModal(id) {
+  const e = entries.find(e => e.id === id);
+  if (!e) return;
+  editingEntryId = id;
+  editingOrigin  = e.origin || 'Casa';
+  document.getElementById('editFoodName').value  = e.food_name || '';
+  document.getElementById('editQuantity').value  = e.quantity  || '';
+  document.getElementById('editUnit').value       = e.unit      || 'gramos';
+  document.getElementById('editMealType').value   = e.meal_type || 'Almuerzo';
+  document.getElementById('editCalories').value  = e.calories  || 0;
+  document.getElementById('editProtein').value   = e.protein_g || 0;
+  document.getElementById('editCarbs').value     = e.carbs_g   || 0;
+  document.getElementById('editFat').value       = e.fat_g     || 0;
+  document.getElementById('editFiber').value     = e.fiber_g   || 0;
+  document.getElementById('editNotes').value     = e.notes     || '';
+  setEditOrigin(editingOrigin);
+  document.getElementById('editEntryModal').classList.add('show');
+}
+
+function setEditOrigin(origin) {
+  editingOrigin = origin;
+  const home  = document.getElementById('editOriginHome');
+  const fuera = document.getElementById('editOriginFuera');
+  home.style.borderColor  = origin === 'Casa'  ? 'var(--accent2)' : 'var(--border)';
+  home.style.color        = origin === 'Casa'  ? 'var(--accent2)' : 'var(--muted)';
+  home.style.background   = origin === 'Casa'  ? 'rgba(212,168,64,0.08)' : 'transparent';
+  fuera.style.borderColor = origin === 'Fuera' ? 'var(--accent2)' : 'var(--border)';
+  fuera.style.color       = origin === 'Fuera' ? 'var(--accent2)' : 'var(--muted)';
+  fuera.style.background  = origin === 'Fuera' ? 'rgba(212,168,64,0.08)' : 'transparent';
+}
+
+function closeEditModal() {
+  document.getElementById('editEntryModal').classList.remove('show');
+  editingEntryId = null;
+}
+
+async function saveEditEntry() {
+  if (!editingEntryId) return;
+  const updated = {
+    food_name:  document.getElementById('editFoodName').value.trim(),
+    quantity:   parseFloat(document.getElementById('editQuantity').value) || null,
+    unit:       document.getElementById('editUnit').value,
+    meal_type:  document.getElementById('editMealType').value,
+    origin:     editingOrigin,
+    calories:   parseFloat(document.getElementById('editCalories').value)  || 0,
+    protein_g:  parseFloat(document.getElementById('editProtein').value)   || 0,
+    carbs_g:    parseFloat(document.getElementById('editCarbs').value)     || 0,
+    fat_g:      parseFloat(document.getElementById('editFat').value)       || 0,
+    fiber_g:    parseFloat(document.getElementById('editFiber').value)     || 0,
+    notes:      document.getElementById('editNotes').value.trim(),
+  };
+  if (!updated.food_name) { showToast('El nombre no puede estar vacío', true); return; }
+  const { error } = await sb.from('food_log').update(updated).eq('id', editingEntryId).eq('user_id', currentUser.id);
+  if (error) { showToast('Error al guardar', true); return; }
+  // Update local array
+  const idx = entries.findIndex(e => e.id === editingEntryId);
+  if (idx !== -1) entries[idx] = { ...entries[idx], ...updated };
+  closeEditModal();
+  renderCarouselDay();
+  showToast('✓ Entrada actualizada');
+}
+
+
 
 // ══ Foods DB ══
 async function loadFoodsDb() {
@@ -2101,7 +2335,7 @@ async function saveSettings() {
   });
   if (error) { showToast('Error al guardar', true); return; }
   showToast('Metas guardadas ✓');
-  renderToday();
+  renderCarouselDay();
 }
 
 async function clearAllData() {
@@ -2109,7 +2343,8 @@ async function clearAllData() {
   await sb.from('food_log').delete().eq('user_id', currentUser.id);
   await sb.from('hydration_log').delete().eq('user_id', currentUser.id);
   entries = []; hydEntries = [];
-  renderToday(); renderHistory();
+  buildCarouselDays();
+  renderCarouselDay();
   showToast('Datos eliminados');
 }
 
@@ -2182,7 +2417,7 @@ async function logHydration() {
   hydCount = 1;
   document.getElementById('hydCountDisplay').textContent = 1;
   showToast(`${selectedDrink.icon} Registrado`);
-  renderToday();
+  buildCarouselDays();
   switchTab('home');
 }
 
@@ -2202,7 +2437,8 @@ async function deleteHydEntry(id) {
   const { error } = await sb.from('hydration_log').delete().eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Error al eliminar', true); return; }
   hydEntries = hydEntries.filter(e => e.id !== id);
-  renderToday();
+  buildCarouselDays();
+  renderCarouselDay();
 }
 
 // ══ Utils ══
