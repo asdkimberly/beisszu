@@ -3999,8 +3999,8 @@ function renderStatsTopDrinks(food) {
     const avgCal = Math.round(data.totalCal/data.count);
     return `<div class="progress-item" style="margin-bottom:10px">
       <div class="progress-header">
-        <span class="progress-label" style="font-size:14px">🥤 ${name}</span>
-        <span class="progress-value" style="font-size:13px">${data.count}x · ~${avgCal} kcal</span>
+        <span class="progress-label">🥤 ${name}</span>
+        <span class="progress-value">${data.count}x · ~${avgCal} kcal</span>
       </div>
       <div class="progress-bar" style="height:12px;margin-top:6px"><div class="progress-fill" style="width:${pct}%;background:#4a90d9;height:12px"></div></div>
     </div>`;
