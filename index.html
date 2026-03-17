@@ -3794,11 +3794,12 @@ function renderStatsMeal(food) {
     mealDays[e.meal_type][e.log_date] += e.calories || 0;
   });
 
-  // Average = total cal for meal type / days that had that meal
+  // Average = total cal for meal type / statsRange (total days in period)
+  // This reflects real weight: a meal eaten 2/7 days shows proportionally lower average
   const mealAvg = {};
   Object.entries(mealDays).forEach(([meal, byDate]) => {
-    const vals = Object.values(byDate);
-    mealAvg[meal] = Math.round(vals.reduce((s,v)=>s+v,0) / vals.length);
+    const totalCal = Object.values(byDate).reduce((s,v)=>s+v,0);
+    mealAvg[meal] = Math.round(totalCal / statsRange);
   });
 
   const mealColors = {
@@ -4002,7 +4003,7 @@ function renderStatsTopDrinks(food) {
         <span class="progress-label">🥤 ${name}</span>
         <span class="progress-value">${data.count}x · ~${avgCal} kcal</span>
       </div>
-      <div class="progress-bar" style="height:12px;margin-top:6px"><div class="progress-fill" style="width:${pct}%;background:#4a90d9;height:12px"></div></div>
+      <div class="progress-bar" style="margin-top:6px"><div class="progress-fill" style="width:${pct}%;background:#4a90d9"></div></div>
     </div>`;
   }).join('');
 }
