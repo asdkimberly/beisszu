@@ -1090,8 +1090,6 @@ select { cursor: pointer; }
         <button class="bs-close" onclick="closeBS('bsFoodConfirm')">✕</button>
       </div>
       <div class="bs-body">
-
-        <!-- Food name + meal + origin -->
         <div class="card">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
             <div>
@@ -1099,6 +1097,7 @@ select { cursor: pointer; }
               <div style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
                 <span id="cfMealBadge" style="font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
                 <span id="cfOriginBadge" style="font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+                <span id="cfDateBadge" style="font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
               </div>
             </div>
             <div style="text-align:right;flex-shrink:0">
@@ -1108,42 +1107,21 @@ select { cursor: pointer; }
           </div>
           <div id="cfQtyUnit" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
         </div>
-
-        <!-- Macros grid -->
         <div class="card" style="margin-top:10px">
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
-            <div>
-              <div id="cfProt" style="font-size:20px;font-weight:300;color:var(--accent2);font-family:var(--font-display)"></div>
-              <div style="font-size:11px;color:var(--muted)">proteína g</div>
-            </div>
-            <div>
-              <div id="cfCarb" style="font-size:20px;font-weight:300;color:#5bc0de;font-family:var(--font-display)"></div>
-              <div style="font-size:11px;color:var(--muted)">carbos g</div>
-            </div>
-            <div>
-              <div id="cfFat" style="font-size:20px;font-weight:300;color:#e07840;font-family:var(--font-display)"></div>
-              <div style="font-size:11px;color:var(--muted)">grasas g</div>
-            </div>
+            <div><div id="cfProt" style="font-size:20px;font-weight:300;color:var(--accent2);font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">proteína g</div></div>
+            <div><div id="cfCarb" style="font-size:20px;font-weight:300;color:#5bc0de;font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">carbos g</div></div>
+            <div><div id="cfFat" style="font-size:20px;font-weight:300;color:#e07840;font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">grasas g</div></div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-            <div>
-              <div id="cfFiber" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div>
-              <div style="font-size:11px;color:var(--muted)">fibra g</div>
-            </div>
-            <div>
-              <div id="cfSugar" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div>
-              <div style="font-size:11px;color:var(--muted)">azúcar g</div>
-            </div>
+            <div><div id="cfFiber" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">fibra g</div></div>
+            <div><div id="cfSugar" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">azúcar g</div></div>
           </div>
         </div>
-
-        <!-- Notes if any -->
         <div id="cfNotesRow" class="card" style="margin-top:10px;display:none">
           <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Notas</div>
           <div id="cfNotes" style="font-size:13px;color:var(--text2)"></div>
         </div>
-
-        <!-- Actions -->
         <div style="display:flex;gap:10px;margin-top:14px">
           <button onclick="closeBS('bsFoodConfirm')" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">← Editar</button>
           <button onclick="submitEntry()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Confirmar</button>
@@ -1583,68 +1561,6 @@ select { cursor: pointer; }
   </nav>
 
 </div><!-- end appScreen -->
-
-<!-- ══ CONFIRM ENTRY MODAL ══ -->
-<div class="modal-overlay" id="confirmEntryModal">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-title">✓ Confirmar registro</div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-
-      <!-- Food name + qty -->
-      <div style="background:var(--surface2);border-radius:12px;padding:14px 16px">
-        <div style="font-family:var(--font-display);font-size:16px;color:var(--text)" id="ceFood">—</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:3px" id="ceQty">—</div>
-      </div>
-
-      <!-- Meal + Origin + Date row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div style="background:var(--surface2);border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tiempo</div>
-          <div style="font-size:14px;color:var(--text);font-family:var(--font-display)" id="ceMeal">—</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Origen</div>
-          <div style="font-size:14px;color:var(--text);font-family:var(--font-display)" id="ceOrigin">—</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Fecha</div>
-          <div style="font-size:13px;color:var(--text);font-family:var(--font-display)" id="ceDate">Hoy</div>
-        </div>
-      </div>
-
-      <!-- Macros row -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center">
-          <div style="font-size:16px;font-weight:300;color:var(--accent);font-family:var(--font-display)" id="ceCal">0</div>
-          <div style="font-size:10px;color:var(--muted)">kcal</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center">
-          <div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="ceProt">0</div>
-          <div style="font-size:10px;color:var(--muted)">prot g</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center">
-          <div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="ceCarb">0</div>
-          <div style="font-size:10px;color:var(--muted)">carb g</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center">
-          <div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="ceFat">0</div>
-          <div style="font-size:10px;color:var(--muted)">gras g</div>
-        </div>
-      </div>
-
-      <!-- Notes (only if present) -->
-      <div id="ceNotesRow" style="display:none;background:var(--surface2);border-radius:10px;padding:10px 14px">
-        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Notas</div>
-        <div style="font-size:13px;color:var(--text2)" id="ceNotes"></div>
-      </div>
-
-    </div>
-    <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeConfirmEntry()">← Editar</button>
-      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="confirmAndSaveEntry()">✓ Guardar</button>
-    </div>
-  </div>
-</div>
 
 <!-- ══ EDIT ENTRY MODAL ══ -->
 <div class="modal-overlay" id="editEntryModal">
@@ -2154,44 +2070,33 @@ function openFoodConfirm() {
   const foodName = document.getElementById('foodName').value.trim();
   if (!selectedMeal) { showToast('Seleccioná un tiempo de comida', true); return; }
   if (!foodName)     { showToast('Ingresá el nombre del alimento', true); return; }
-
-  const cal    = parseFloat(document.getElementById('calories').value) || 0;
-  const prot   = parseFloat(document.getElementById('protein').value)  || 0;
-  const carb   = parseFloat(document.getElementById('carbs').value)    || 0;
-  const fat    = parseFloat(document.getElementById('fat').value)      || 0;
-  const fiber  = parseFloat(document.getElementById('fiber').value)    || 0;
-  const sugar  = parseFloat(document.getElementById('sugar').value)    || 0;
-  const qty    = document.getElementById('quantity').value;
-  const unit   = document.getElementById('unit').value;
-  const notes  = document.getElementById('notes').value.trim();
-
+  const cal   = parseFloat(document.getElementById('calories').value) || 0;
+  const prot  = parseFloat(document.getElementById('protein').value)  || 0;
+  const carb  = parseFloat(document.getElementById('carbs').value)    || 0;
+  const fat   = parseFloat(document.getElementById('fat').value)      || 0;
   if (!cal && !prot && !carb && !fat) { showToast('Agrega al menos calorías o macros', true); return; }
 
   const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+  const dateLabel = selectedFoodDate
+    ? new Date(selectedFoodDate+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})
+    : 'Hoy';
 
-  document.getElementById('cfFoodName').textContent   = foodName;
-  document.getElementById('cfCal').textContent        = Math.round(cal) || Math.round(prot*4 + carb*4 + fat*9);
-  document.getElementById('cfMealBadge').textContent  = `${MEAL_ICONS[selectedMeal] || ''} ${selectedMeal}`;
+  document.getElementById('cfFoodName').textContent    = foodName;
+  document.getElementById('cfCal').textContent         = Math.round(cal) || Math.round(prot*4+carb*4+fat*9);
+  document.getElementById('cfMealBadge').textContent   = `${MEAL_ICONS[selectedMeal]||''} ${selectedMeal}`;
   document.getElementById('cfOriginBadge').textContent = selectedOrigin === 'Fuera' ? '🌍 Fuera' : '🏠 Casa';
-  document.getElementById('cfQtyUnit').textContent    = qty ? `${qty} ${unit}` : '';
-  document.getElementById('cfProt').textContent       = prot;
-  document.getElementById('cfCarb').textContent       = carb;
-  document.getElementById('cfFat').textContent        = fat;
-  document.getElementById('cfFiber').textContent      = fiber;
-  document.getElementById('cfSugar').textContent      = sugar;
-
-  const notesRow = document.getElementById('cfNotesRow');
-  if (notes) {
-    document.getElementById('cfNotes').textContent = notes;
-    notesRow.style.display = 'block';
-  } else {
-    notesRow.style.display = 'none';
-  }
-
+  document.getElementById('cfDateBadge').textContent   = `📅 ${dateLabel}`;
+  document.getElementById('cfQtyUnit').textContent     = document.getElementById('quantity').value ? `${document.getElementById('quantity').value} ${document.getElementById('unit').value}` : '';
+  document.getElementById('cfProt').textContent  = prot;
+  document.getElementById('cfCarb').textContent  = carb;
+  document.getElementById('cfFat').textContent   = fat;
+  document.getElementById('cfFiber').textContent = parseFloat(document.getElementById('fiber').value) || 0;
+  document.getElementById('cfSugar').textContent = parseFloat(document.getElementById('sugar').value) || 0;
+  const notes = document.getElementById('notes').value.trim();
+  document.getElementById('cfNotesRow').style.display = notes ? 'block' : 'none';
+  document.getElementById('cfNotes').textContent = notes;
   document.getElementById('bsFoodConfirm').classList.add('show');
 }
-
-let _pendingEntry = null;
 
 async function submitEntry() {
   const foodName = document.getElementById('foodName').value.trim();
@@ -2204,8 +2109,9 @@ async function submitEntry() {
   if (!foodName)     { showToast('Ingresá el nombre del alimento', true); return; }
   if (!calories && !protein && !carbs && !fat) { showToast('Agrega al menos calorías o macros', true); return; }
 
-  const calVal = parseFloat(calories) || Math.round((parseFloat(protein)||0)*4+(parseFloat(carbs)||0)*4+(parseFloat(fat)||0)*9);
-  _pendingEntry = {
+  const calVal  = parseFloat(calories) || Math.round((parseFloat(protein)||0)*4+(parseFloat(carbs)||0)*4+(parseFloat(fat)||0)*9);
+  const dishIngs = selectedFoodBase?._dishIngs || null;
+  const entry = {
     user_id:   currentUser.id,
     log_date:  selectedFoodDate || getTodayDate(),
     meal_type: selectedMeal,
@@ -2223,49 +2129,19 @@ async function submitEntry() {
     origin:    selectedOrigin,
     dish_id:   selectedFoodBase?._dishId || null,
   };
-  // Store dish ingredients locally for display (not saved to DB)
-  _pendingEntry._dishIngs = selectedFoodBase?._dishIngs || null;
 
-  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
-  document.getElementById('ceFood').textContent   = foodName;
-  document.getElementById('ceQty').textContent    = quantity ? `${quantity} ${document.getElementById('unit').value}` : '—';
-  document.getElementById('ceMeal').textContent   = `${MEAL_ICONS[selectedMeal]||''} ${selectedMeal}`;
-  document.getElementById('ceOrigin').textContent = selectedOrigin === 'Casa' ? '🏠 Casa' : '🌍 Fuera';
-  document.getElementById('ceDate').textContent   = selectedFoodDate
-    ? new Date(selectedFoodDate+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})
-    : 'Hoy';
-  document.getElementById('ceCal').textContent    = Math.round(calVal);
-  document.getElementById('ceProt').textContent   = (parseFloat(protein)||0).toFixed(1);
-  document.getElementById('ceCarb').textContent   = (parseFloat(carbs)||0).toFixed(1);
-  document.getElementById('ceFat').textContent    = (parseFloat(fat)||0).toFixed(1);
-  const notes = document.getElementById('notes').value.trim();
-  document.getElementById('ceNotesRow').style.display = notes ? 'block' : 'none';
-  document.getElementById('ceNotes').textContent  = notes;
-  document.getElementById('confirmEntryModal').classList.add('show');
-}
-
-function closeConfirmEntry() {
-  document.getElementById('confirmEntryModal').classList.remove('show');
-}
-
-async function confirmAndSaveEntry() {
-  if (!_pendingEntry) return;
-  closeConfirmEntry();
-  // Strip local-only fields before saving to DB
-  const { _dishIngs, ...dbEntry } = _pendingEntry;
-  const { data, error } = await sb.from('food_log').insert(dbEntry).select().single();
+  const { data, error } = await sb.from('food_log').insert(entry).select().single();
   if (error) { showToast('Error al guardar', true); return; }
-  // Keep _dishIngs in local entry for display
-  entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
-  attachDishIngredients(); // re-attach in case name-based matching needed
-  addToSuggestions(_pendingEntry.food_name);
-  _pendingEntry = null;
+
+  entries.push({ ...entry, id: data.id, logged_at: data.logged_at, _dishIngs: dishIngs });
+  attachDishIngredients();
+  addToSuggestions(foodName);
+  closeBS('bsFoodConfirm');
   resetForm();
   buildCarouselDays();
   showToast('✓ Entrada registrada');
-  // Stay in food sheet — user can register next food
+  // Stay in food sheet with clean form
 }
-
 
 async function loadEntries() {
   const thirtyDaysAgo = new Date();
@@ -4590,7 +4466,7 @@ function openBS(id) {
   if (foodDateInput) foodDateInput.max = today;
   if (hydDateInput)  hydDateInput.max  = today;
 
-  // Reset dates when opening sheets
+  // Reset dates only when opening the main food/hyd sheets
   if (id === 'bsFood') { clearFoodDate(); }
   if (id === 'bsHyd')  { clearHydDate(); }
 
