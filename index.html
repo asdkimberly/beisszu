@@ -2134,22 +2134,25 @@ async function confirmAndSaveEntry() {
   if (!_pendingEntry) { showToast('Error: no hay entrada pendiente', true); return; }
   const btn = document.querySelector('.btn-confirm');
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
-  try {
-    const { _dishIngs, ...dbEntry } = _pendingEntry;
-    const { data, error } = await sb.from('food_log').insert(dbEntry).select().single();
-    if (error) { showToast(`Error: ${error.message}`, true); return; }
-    entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
-    attachDishIngredients();
-    addToSuggestions(dbEntry.food_name);
-    _pendingEntry = null;
-    closeBS('bsFoodConfirm');
-    closeBS('bsFood');
-    resetForm();
-    buildCarouselDays();
-    showToast('✓ Entrada registrada');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar'; }
-  }
+
+  const { _dishIngs, ...dbEntry } = _pendingEntry;
+  const { data, error } = await sb.from('food_log').insert(dbEntry).select().single();
+
+  if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar'; }
+
+  if (error) { showToast(`Error: ${error.message}`, true); return; }
+
+  entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
+  attachDishIngredients();
+  addToSuggestions(dbEntry.food_name);
+  _pendingEntry = null;
+
+  // Close both sheets then clean up
+  document.getElementById('bsFoodConfirm').classList.remove('show');
+  document.getElementById('bsFood').classList.remove('show');
+  resetForm();
+  buildCarouselDays();
+  showToast('✓ Entrada registrada');
 }
 
 async function submitEntry() { confirmAndSaveEntry(); }
@@ -2202,10 +2205,18 @@ async function deleteEntry(id) {
 }
 
 function resetForm() {
-  ['foodName','quantity','calories','protein','carbs','fat','fiber','sugar','notes'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('autofillBadge').style.display = 'none';
-  document.getElementById('servingRow').style.display = 'none';
+  ['foodName','quantity','calories','protein','carbs','fat','fiber','sugar','notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const badge = document.getElementById('autofillBadge');
+  if (badge) badge.style.display = 'none';
+  const servingRow = document.getElementById('servingRow');
+  if (servingRow) servingRow.style.display = 'none';
   selectedFoodBase = null;
+  selectedMeal = null;
+  // Reset meal buttons
+  document.querySelectorAll('.meal-btn').forEach(b => b.classList.remove('active'));
   selectOrigin('Casa');
   clearFoodDate();
   updateCalDisplay();
@@ -4439,8 +4450,12 @@ function onFoodDateChange(val) {
 
 function clearFoodDate() {
   selectedFoodDate = null;
-  document.getElementById('foodDateInput').value = '';
-  onFoodDateChange('');
+  const input = document.getElementById('foodDateInput');
+  if (input) input.value = '';
+  const btn = document.getElementById('foodDateBtn');
+  const clear = document.getElementById('foodDateClear');
+  if (btn) { btn.textContent = '📅 Hoy'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text)'; }
+  if (clear) clear.style.display = 'none';
 }
 
 function onHydDateChange(val) {
