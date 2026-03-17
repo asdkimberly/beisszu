@@ -2191,6 +2191,12 @@ async function loadEntries() {
 // Attach dish ingredients to entries — called after both entries and dishes are loaded
 function attachDishIngredients() {
   if (!dishes.length) return;
+  const stripEmojis = str => str
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu, '')  // emoji
+    .replace(/[\u2600-\u27BF]/g, '')           // misc symbols
+    .replace(/\uFE0F/g, '')                    // variation selectors
+    .trim();
+
   entries.forEach(e => {
     e._dishIngs = null;
 
@@ -2203,8 +2209,7 @@ function attachDishIngredients() {
       }
     }
 
-    // Strategy 2: strip all emojis and normalize, then compare
-    const stripEmojis = str => str.replace(/[\u{1F000}-\u{1FFFF}]/gu, '').replace(/[\u2600-\u27BF]/g, '').trim();
+    // Strategy 2: normalized name match after stripping emojis and variation selectors
     const normClean = norm(stripEmojis(e.food_name));
     const dish = dishes.find(d => norm(d.name) === normClean);
     if (dish?.dish_ingredients?.length) {
