@@ -2143,10 +2143,9 @@ async function confirmAndSaveEntry() {
     addToSuggestions(dbEntry.food_name);
     _pendingEntry = null;
     closeBS('bsFoodConfirm');
+    closeBS('bsFood');
     resetForm();
     buildCarouselDays();
-    // Reopen food sheet clean for next entry
-    document.getElementById('bsFood').classList.add('show');
     showToast('✓ Entrada registrada');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar'; }
