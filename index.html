@@ -973,6 +973,8 @@ select { cursor: pointer; }
 
   </div>
 
+</div><!-- end appScreen -->
+
   <!-- ══ BOTTOM SHEETS ══ -->
 
   <!-- Food bottom sheet -->
@@ -1124,7 +1126,7 @@ select { cursor: pointer; }
         </div>
         <div style="display:flex;gap:10px;margin-top:14px">
           <button onclick="closeBS('bsFoodConfirm');document.getElementById('bsFood').classList.add('show')" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">← Editar</button>
-          <button onclick="confirmAndSaveEntry()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Confirmar</button>
+          <button class="btn-confirm" onclick="confirmAndSaveEntry()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Confirmar</button>
         </div>
         <div style="height:24px"></div>
       </div>
@@ -1559,8 +1561,6 @@ select { cursor: pointer; }
       <span class="nav-icon">👤</span>Perfil
     </button>
   </nav>
-
-</div><!-- end appScreen -->
 
 <!-- ══ EDIT ENTRY MODAL ══ -->
 <div class="modal-overlay" id="editEntryModal">
@@ -2124,10 +2124,13 @@ function openFoodConfirm() {
 }
 
 async function confirmAndSaveEntry() {
-  if (!_pendingEntry) return;
+  if (!_pendingEntry) { showToast('Error: no hay entrada pendiente', true); return; }
+  const btn = document.querySelector('#bsFoodConfirm .btn-confirm');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
   const { _dishIngs, ...dbEntry } = _pendingEntry;
   const { data, error } = await sb.from('food_log').insert(dbEntry).select().single();
-  if (error) { showToast('Error al guardar', true); return; }
+  if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar'; }
+  if (error) { showToast(`Error: ${error.message}`, true); return; }
   entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
   attachDishIngredients();
   addToSuggestions(dbEntry.food_name);
