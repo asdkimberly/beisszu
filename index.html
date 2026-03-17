@@ -1061,6 +1061,20 @@ select { cursor: pointer; }
           </div>
         </div>
 
+        <!-- Fecha -->
+        <div class="card" style="margin-top:12px">
+          <div class="section-label">Fecha</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button id="foodDateBtn" onclick="document.getElementById('foodDateInput').showPicker()"
+              style="flex:1;padding:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-display);font-size:14px;cursor:pointer;text-align:left">
+              📅 Hoy
+            </button>
+            <input type="date" id="foodDateInput" max="" style="position:absolute;opacity:0;pointer-events:none"
+              oninput="onFoodDateChange(this.value)">
+            <button id="foodDateClear" onclick="clearFoodDate()" style="display:none;background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+          </div>
+        </div>
+
         <button class="btn-primary" style="margin-top:12px" onclick="openFoodConfirm()">Revisar y registrar →</button>
         <div style="height:24px"></div>
       </div>
@@ -1219,7 +1233,17 @@ select { cursor: pointer; }
             <label>Notas (opcional)</label>
             <input type="text" id="hydNotes" placeholder="Ej: con limón…">
           </div>
-          <button class="btn-primary" onclick="logHydration()">💧 Registrar bebida</button>
+          <!-- Fecha -->
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+            <button id="hydDateBtn" onclick="document.getElementById('hydDateInput').showPicker()"
+              style="flex:1;padding:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-display);font-size:14px;cursor:pointer;text-align:left">
+              📅 Hoy
+            </button>
+            <input type="date" id="hydDateInput" max="" style="position:absolute;opacity:0;pointer-events:none"
+              oninput="onHydDateChange(this.value)">
+            <button id="hydDateClear" onclick="clearHydDate()" style="display:none;background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+          </div>
+          <button class="btn-primary" style="margin-top:12px" onclick="logHydration()">💧 Registrar bebida</button>
         </div>
         <div style="height:24px"></div>
       </div>
@@ -1572,8 +1596,8 @@ select { cursor: pointer; }
         <div style="font-size:13px;color:var(--muted);margin-top:3px" id="ceQty">—</div>
       </div>
 
-      <!-- Meal + Origin row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <!-- Meal + Origin + Date row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div style="background:var(--surface2);border-radius:12px;padding:12px;text-align:center">
           <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tiempo</div>
           <div style="font-size:14px;color:var(--text);font-family:var(--font-display)" id="ceMeal">—</div>
@@ -1581,6 +1605,10 @@ select { cursor: pointer; }
         <div style="background:var(--surface2);border-radius:12px;padding:12px;text-align:center">
           <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Origen</div>
           <div style="font-size:14px;color:var(--text);font-family:var(--font-display)" id="ceOrigin">—</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Fecha</div>
+          <div style="font-size:13px;color:var(--text);font-family:var(--font-display)" id="ceDate">Hoy</div>
         </div>
       </div>
 
@@ -1702,6 +1730,8 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 let currentUser = null;
 let selectedMeal = null;
 let selectedOrigin = 'Casa';
+let selectedFoodDate = null;  // null = today
+let selectedHydDate  = null;  // null = today
 let foodsDb = [];
 let customFoods = [];
 let entries = [];
@@ -2177,7 +2207,7 @@ async function submitEntry() {
   const calVal = parseFloat(calories) || Math.round((parseFloat(protein)||0)*4+(parseFloat(carbs)||0)*4+(parseFloat(fat)||0)*9);
   _pendingEntry = {
     user_id:   currentUser.id,
-    log_date:  getTodayDate(),
+    log_date:  selectedFoodDate || getTodayDate(),
     meal_type: selectedMeal,
     food_name: foodName,
     quantity:  parseFloat(quantity) || null,
@@ -2201,6 +2231,9 @@ async function submitEntry() {
   document.getElementById('ceQty').textContent    = quantity ? `${quantity} ${document.getElementById('unit').value}` : '—';
   document.getElementById('ceMeal').textContent   = `${MEAL_ICONS[selectedMeal]||''} ${selectedMeal}`;
   document.getElementById('ceOrigin').textContent = selectedOrigin === 'Casa' ? '🏠 Casa' : '🌍 Fuera';
+  document.getElementById('ceDate').textContent   = selectedFoodDate
+    ? new Date(selectedFoodDate+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})
+    : 'Hoy';
   document.getElementById('ceCal').textContent    = Math.round(calVal);
   document.getElementById('ceProt').textContent   = (parseFloat(protein)||0).toFixed(1);
   document.getElementById('ceCarb').textContent   = (parseFloat(carbs)||0).toFixed(1);
@@ -2287,6 +2320,7 @@ function resetForm() {
   document.getElementById('servingRow').style.display = 'none';
   selectedFoodBase = null;
   selectOrigin('Casa');
+  clearFoodDate();
   updateCalDisplay();
 }
 
@@ -2912,7 +2946,7 @@ async function logHydration() {
     display = `${amount} ud.`;
   }
   const entry = {
-    user_id: currentUser.id, log_date: getTodayDate(),
+    user_id: currentUser.id, log_date: selectedHydDate || getTodayDate(),
     drink_id: selectedDrink.id, drink_label: selectedDrink.label,
     drink_icon: selectedDrink.icon, unit: selectedDrink.unit,
     amount, display, notes,
@@ -2926,6 +2960,7 @@ async function logHydration() {
   document.getElementById('hydNotes').value = '';
   hydCount = 1;
   document.getElementById('hydCountDisplay').textContent = 1;
+  clearHydDate();
   showToast(`${selectedDrink.icon} Registrado`);
   buildCarouselDays();
   renderHydDonuts();
@@ -4495,8 +4530,70 @@ function closeFAB() {
 }
 
 // ══ BOTTOM SHEETS ══
+// ── Date picker helpers ──
+function onFoodDateChange(val) {
+  selectedFoodDate = val || null;
+  const btn = document.getElementById('foodDateBtn');
+  const clear = document.getElementById('foodDateClear');
+  if (val) {
+    const d = new Date(val + 'T12:00:00');
+    const label = d.toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
+    btn.textContent = `📅 ${label}`;
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    clear.style.display = 'block';
+  } else {
+    btn.textContent = '📅 Hoy';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text)';
+    clear.style.display = 'none';
+  }
+}
+
+function clearFoodDate() {
+  selectedFoodDate = null;
+  document.getElementById('foodDateInput').value = '';
+  onFoodDateChange('');
+}
+
+function onHydDateChange(val) {
+  selectedHydDate = val || null;
+  const btn = document.getElementById('hydDateBtn');
+  const clear = document.getElementById('hydDateClear');
+  if (val) {
+    const d = new Date(val + 'T12:00:00');
+    const label = d.toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
+    btn.textContent = `📅 ${label}`;
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    clear.style.display = 'block';
+  } else {
+    btn.textContent = '📅 Hoy';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text)';
+    clear.style.display = 'none';
+  }
+}
+
+function clearHydDate() {
+  selectedHydDate = null;
+  document.getElementById('hydDateInput').value = '';
+  onHydDateChange('');
+}
+
 function openBS(id) {
   closeFAB();
+  const today = getTodayDate();
+  // Set max date to today on date inputs
+  const foodDateInput = document.getElementById('foodDateInput');
+  const hydDateInput  = document.getElementById('hydDateInput');
+  if (foodDateInput) foodDateInput.max = today;
+  if (hydDateInput)  hydDateInput.max  = today;
+
+  // Reset dates when opening sheets
+  if (id === 'bsFood') { clearFoodDate(); }
+  if (id === 'bsHyd')  { clearHydDate(); }
+
   document.getElementById(id).classList.add('show');
   if (id === 'bsSupp') renderSuppChecklist();
   if (id === 'bsHyd') {
