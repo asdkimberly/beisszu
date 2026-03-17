@@ -2132,14 +2132,13 @@ function openFoodConfirm() {
 
 async function confirmAndSaveEntry() {
   if (!_pendingEntry) { showToast('Error: no hay entrada pendiente', true); return; }
-  const btn = document.querySelector('.btn-confirm');
+  const btn = document.getElementById('bsFoodConfirm').querySelector('button[onclick="confirmAndSaveEntry()"]');
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
 
   const { _dishIngs, ...dbEntry } = _pendingEntry;
   const { data, error } = await sb.from('food_log').insert(dbEntry).select().single();
 
   if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar'; }
-
   if (error) { showToast(`Error: ${error.message}`, true); return; }
 
   entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
@@ -2147,9 +2146,16 @@ async function confirmAndSaveEntry() {
   addToSuggestions(dbEntry.food_name);
   _pendingEntry = null;
 
-  // Close both sheets then clean up
-  document.getElementById('bsFoodConfirm').classList.remove('show');
-  document.getElementById('bsFood').classList.remove('show');
+  // Force close both sheets
+  const confirm = document.getElementById('bsFoodConfirm');
+  const food    = document.getElementById('bsFood');
+  confirm.classList.remove('show');
+  confirm.style.display = 'none';
+  food.classList.remove('show');
+  food.style.display = 'none';
+  // Restore display after animation
+  setTimeout(() => { confirm.style.display = ''; food.style.display = ''; }, 400);
+
   resetForm();
   buildCarouselDays();
   showToast('✓ Entrada registrada');
