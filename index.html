@@ -1123,7 +1123,7 @@ select { cursor: pointer; }
           <div id="cfNotes" style="font-size:13px;color:var(--text2)"></div>
         </div>
         <div style="display:flex;gap:10px;margin-top:14px">
-          <button onclick="closeBS('bsFoodConfirm')" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">← Editar</button>
+          <button onclick="closeBS('bsFoodConfirm');document.getElementById('bsFood').classList.add('show')" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">← Editar</button>
           <button onclick="confirmAndSaveEntry()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Confirmar</button>
         </div>
         <div style="height:24px"></div>
@@ -2119,6 +2119,7 @@ function openFoodConfirm() {
   const notes = _pendingEntry.notes;
   document.getElementById('cfNotesRow').style.display = notes ? 'block' : 'none';
   document.getElementById('cfNotes').textContent = notes;
+  closeBS('bsFood');
   document.getElementById('bsFoodConfirm').classList.add('show');
 }
 
