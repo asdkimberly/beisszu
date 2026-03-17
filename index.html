@@ -1800,7 +1800,9 @@ sb.auth.onAuthStateChange((event, session) => {
   if (session?.user) {
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('appScreen').style.display = 'block';
-    initApp(session.user);
+    if (!currentUser || currentUser.id !== session.user.id) {
+      initApp(session.user);
+    }
   } else {
     document.getElementById('authScreen').style.display = 'flex';
     document.getElementById('appScreen').style.display = 'none';
@@ -2142,6 +2144,8 @@ async function confirmAndSaveEntry() {
     closeBS('bsFoodConfirm');
     resetForm();
     buildCarouselDays();
+    // Reopen food sheet clean for next entry
+    document.getElementById('bsFood').classList.add('show');
     showToast('✓ Entrada registrada');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar'; }
