@@ -1570,7 +1570,7 @@ select { cursor: pointer; }
     </div>
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeFoodConfirmModal()">← Editar</button>
-      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="confirmAndSaveEntry()">✓ Confirmar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="event.stopPropagation();confirmAndSaveEntry()">✓ Confirmar</button>
     </div>
   </div>
 </div>
@@ -2147,18 +2147,32 @@ function closeFoodConfirmModal() {
 async function confirmAndSaveEntry() {
   if (!_pendingEntry) { showToast('Error: no hay entrada pendiente', true); return; }
 
-  const { _dishIngs, ...dbEntry } = _pendingEntry;
-  const { data, error } = await sb.from('food_log').insert(dbEntry).select().single();
-  if (error) { showToast(`Error: ${error.message}`, true); return; }
+  const modal = document.getElementById('foodConfirmModal');
+  const confirmBtn = modal.querySelector('.modal-confirm');
+  if (confirmBtn) confirmBtn.disabled = true;
+  modal.classList.remove('show');
 
-  entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
-  attachDishIngredients();
-  addToSuggestions(dbEntry.food_name);
+  const { _dishIngs, ...dbEntry } = _pendingEntry;
   _pendingEntry = null;
 
-  document.getElementById('foodConfirmModal').classList.remove('show');
+  const { data, error } = await sb.from('food_log').insert(dbEntry).select();
+
+  if (confirmBtn) confirmBtn.disabled = false;
+
+  if (error) {
+    modal.classList.add('show');
+    _pendingEntry = { ...dbEntry, _dishIngs };
+    showToast(`Error: ${error.message}`, true);
+    return;
+  }
+
+  const saved = data?.[0];
+  entries.push({ ...dbEntry, id: saved?.id, logged_at: saved?.logged_at, _dishIngs });
+  attachDishIngredients();
+  addToSuggestions(dbEntry.food_name);
   resetForm();
   buildCarouselDays();
+  renderCarouselDay();
   showToast('✓ Entrada registrada');
 }
 
