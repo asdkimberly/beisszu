@@ -2246,29 +2246,21 @@ async function loadEntries() {
 
 // Attach dish ingredients to entries — called after both entries and dishes are loaded
 function attachDishIngredients() {
-  console.log('[attachDishIngredients] dishes loaded:', dishes.map(d => `id:${d.id} name:"${d.name}" ings:${d.dish_ingredients?.length}`));
   entries.forEach(e => {
     e._dishIngs = null;
+    // Match by dish_id first
     if (e.dish_id) {
       const dish = dishes.find(d => d.id === e.dish_id);
       if (dish?.dish_ingredients?.length) {
         e._dishIngs = dish.dish_ingredients;
-        console.log('[attachDishIngredients] matched by dish_id:', e.food_name);
         return;
       }
     }
-    const cleanName = e.food_name.replace(/^🍽️\s*/, '').trim();
-    const dish = dishes.find(d => d.name === cleanName);
+    // Fallback: normalized name match (handles emoji, accents, extra spaces)
+    const cleanName = norm(e.food_name.replace(/[\u{1F300}-\u{1FFFF}]/gu, '').trim());
+    const dish = dishes.find(d => norm(d.name) === cleanName);
     if (dish?.dish_ingredients?.length) {
       e._dishIngs = dish.dish_ingredients;
-      console.log('[attachDishIngredients] matched by name:', cleanName);
-    } else {
-      // Log only entries that look like dishes (have 🍽️ or match any dish name loosely)
-      const looksLikeDish = e.food_name.includes('🍽️') || dishes.some(d => e.food_name.includes(d.name));
-      if (looksLikeDish) {
-        console.log('[attachDishIngredients] DISH NOT MATCHED:', JSON.stringify(e.food_name), '-> cleanName:', JSON.stringify(cleanName));
-        console.log('  Available dish names:', dishes.map(d => JSON.stringify(d.name)));
-      }
     }
   });
 }
