@@ -1375,56 +1375,6 @@ select { cursor: pointer; }
     </div>
   </div>
 
-  <!-- Food confirmation bottom sheet -->
-  <div class="bottom-sheet-overlay" id="bsFoodConfirm" onclick="closeBSIfOverlay(event,'bsFoodConfirm')">
-    <div class="bottom-sheet">
-      <div class="bs-handle"></div>
-      <div class="bs-header">
-        <div class="bs-title">Confirmar registro</div>
-        <button class="bs-close" onclick="closeBS('bsFoodConfirm')">✕</button>
-      </div>
-      <div class="bs-body">
-        <div class="card">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
-            <div>
-              <div id="cfFoodName" style="font-family:var(--font-display);font-size:17px;color:var(--text);font-weight:500"></div>
-              <div style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
-                <span id="cfMealBadge" style="font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
-                <span id="cfOriginBadge" style="font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
-                <span id="cfDateBadge" style="font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
-              </div>
-            </div>
-            <div style="text-align:right;flex-shrink:0">
-              <div id="cfCal" style="font-size:28px;font-weight:300;color:var(--accent);font-family:var(--font-display)"></div>
-              <div style="font-size:11px;color:var(--muted)">kcal</div>
-            </div>
-          </div>
-          <div id="cfQtyUnit" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
-        </div>
-        <div class="card" style="margin-top:10px">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
-            <div><div id="cfProt" style="font-size:20px;font-weight:300;color:var(--accent2);font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">proteína g</div></div>
-            <div><div id="cfCarb" style="font-size:20px;font-weight:300;color:#5bc0de;font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">carbos g</div></div>
-            <div><div id="cfFat" style="font-size:20px;font-weight:300;color:#e07840;font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">grasas g</div></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-            <div><div id="cfFiber" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">fibra g</div></div>
-            <div><div id="cfSugar" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div><div style="font-size:11px;color:var(--muted)">azúcar g</div></div>
-          </div>
-        </div>
-        <div id="cfNotesRow" class="card" style="margin-top:10px;display:none">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Notas</div>
-          <div id="cfNotes" style="font-size:13px;color:var(--text2)"></div>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:14px">
-          <button onclick="closeBS('bsFoodConfirm');document.getElementById('bsFood').classList.add('show')" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">← Editar</button>
-          <button class="btn-confirm" onclick="confirmAndSaveEntry()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Confirmar</button>
-        </div>
-        <div style="height:24px"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- Hydration bottom sheet -->
   <div class="bottom-sheet-overlay" id="bsHyd" onclick="closeBSIfOverlay(event,'bsHyd')">
     <div class="bottom-sheet">
@@ -1566,6 +1516,65 @@ select { cursor: pointer; }
     <!-- Main FAB -->
     <button class="fab-main" id="fabMain" onclick="toggleFAB()">+</button>
   </div>
+<!-- ══ FOOD CONFIRM MODAL ══ -->
+<div class="modal-overlay" id="foodConfirmModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">✓ Confirmar registro</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+
+      <div style="background:var(--surface2);border-radius:12px;padding:14px 16px">
+        <div style="font-family:var(--font-display);font-size:17px;color:var(--text);font-weight:500" id="cfFoodName"></div>
+        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+          <span id="cfMealBadge" style="font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+          <span id="cfOriginBadge" style="font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+          <span id="cfDateBadge" style="font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:baseline;gap:6px">
+          <span id="cfCal" style="font-size:28px;font-weight:300;color:var(--accent);font-family:var(--font-display)"></span>
+          <span style="font-size:12px;color:var(--muted)">kcal</span>
+        </div>
+        <div id="cfQtyUnit" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfProt" style="font-size:18px;font-weight:300;color:var(--accent2);font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">proteína g</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfCarb" style="font-size:18px;font-weight:300;color:#5bc0de;font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">carbos g</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfFat" style="font-size:18px;font-weight:300;color:#e07840;font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">grasas g</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfFiber" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">fibra g</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfSugar" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">azúcar g</div>
+        </div>
+      </div>
+
+      <div id="cfNotesRow" style="display:none;background:var(--surface2);border-radius:10px;padding:10px 14px">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Notas</div>
+        <div id="cfNotes" style="font-size:13px;color:var(--text2)"></div>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeFoodConfirmModal()">← Editar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="confirmAndSaveEntry()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ EDIT ENTRY MODAL ══ -->
 <div class="modal-overlay" id="editEntryModal">
   <div class="modal" style="max-width:380px;max-height:90dvh;overflow-y:auto">
@@ -2127,24 +2136,30 @@ function openFoodConfirm() {
   document.getElementById('cfNotesRow').style.display = notes ? 'block' : 'none';
   document.getElementById('cfNotes').textContent = notes;
   closeBS('bsFood');
-  document.getElementById('bsFoodConfirm').classList.add('show');
+  document.getElementById('foodConfirmModal').classList.add('show');
+}
+
+function closeFoodConfirmModal() {
+  document.getElementById('foodConfirmModal').classList.remove('show');
+  document.getElementById('bsFood').classList.add('show');
 }
 
 async function confirmAndSaveEntry() {
   if (!_pendingEntry) { showToast('Error: no hay entrada pendiente', true); return; }
-  const btn = document.getElementById('bsFoodConfirm').querySelector('button[onclick="confirmAndSaveEntry()"]');
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
 
   const { _dishIngs, ...dbEntry } = _pendingEntry;
   const { data, error } = await sb.from('food_log').insert(dbEntry).select().single();
-
-  if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar'; }
   if (error) { showToast(`Error: ${error.message}`, true); return; }
 
   entries.push({ ...dbEntry, id: data.id, logged_at: data.logged_at, _dishIngs });
+  attachDishIngredients();
   addToSuggestions(dbEntry.food_name);
   _pendingEntry = null;
-  location.reload();
+
+  document.getElementById('foodConfirmModal').classList.remove('show');
+  resetForm();
+  buildCarouselDays();
+  showToast('✓ Entrada registrada');
 }
 
 async function submitEntry() { confirmAndSaveEntry(); }
