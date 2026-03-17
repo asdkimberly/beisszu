@@ -2291,7 +2291,7 @@ function getCarouselTitle(dateStr) {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('es-CR', { weekday:'long', day:'numeric', month:'long' });
 }
 
-function renderCarouselDay() {
+async function renderCarouselDay() {
   const dateStr = carouselDays[carouselIndex];
   if (!dateStr) return;
 
@@ -2359,6 +2359,7 @@ function renderCarouselDay() {
   }
 
   // ── Suplementos ──
+  await loadSuppLogForDate(dateStr);
   renderHomeSuppChecklist();
 
   // ── Entries grouped by meal type ──
@@ -3340,7 +3341,12 @@ async function deleteDish(id) {
 // SUPLEMENTOS
 // ══════════════════════════════════════════
 let supplements = [];
-let suppLog = []; // today's logged supplements
+let suppLog = {}; // { 'YYYY-MM-DD': [...entries] }
+
+// ── Get current carousel date ──
+function getCarouselDate() {
+  return carouselDays[carouselIndex] || getTodayDate();
+}
 
 // ── Load ──
 async function loadSupplements() {
@@ -3350,7 +3356,18 @@ async function loadSupplements() {
     sb.from('supplement_log').select('*').eq('user_id', currentUser.id).eq('log_date', today),
   ]);
   supplements = suppData || [];
-  suppLog = logData || [];
+  suppLog = {};
+  suppLog[today] = logData || [];
+}
+
+// ── Load supplement log for a specific date (on demand) ──
+async function loadSuppLogForDate(dateStr) {
+  if (suppLog[dateStr]) return; // already loaded
+  const { data } = await sb.from('supplement_log')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .eq('log_date', dateStr);
+  suppLog[dateStr] = data || [];
 }
 
 // ── Load supplement log for stats range ──
@@ -3401,23 +3418,22 @@ async function deleteSupplement(id) {
   });
 }
 
-// ── Toggle supplement taken today ──
+// ── Toggle supplement taken on the visible carousel date ──
 async function toggleSupp(suppId) {
-  const today = getTodayDate();
+  const dateStr = getCarouselDate();
   const supp = supplements.find(s => s.id === suppId);
-  const alreadyLogged = suppLog.find(l => l.supplement_id === suppId);
+  if (!suppLog[dateStr]) suppLog[dateStr] = [];
+  const alreadyLogged = suppLog[dateStr].find(l => l.supplement_id === suppId);
 
   if (alreadyLogged) {
-    // Un-check — delete log entry
     await sb.from('supplement_log').delete().eq('id', alreadyLogged.id).eq('user_id', currentUser.id);
-    suppLog = suppLog.filter(l => l.id !== alreadyLogged.id);
+    suppLog[dateStr] = suppLog[dateStr].filter(l => l.id !== alreadyLogged.id);
   } else {
-    // Check — insert log entry
     const { data, error } = await sb.from('supplement_log')
-      .insert({ user_id: currentUser.id, supplement_id: suppId, supplement_name: supp.name, log_date: today })
+      .insert({ user_id: currentUser.id, supplement_id: suppId, supplement_name: supp.name, log_date: dateStr })
       .select().single();
     if (error) { showToast('Error al registrar', true); return; }
-    suppLog.push(data);
+    suppLog[dateStr].push(data);
   }
 
   renderSuppChecklist();
@@ -3454,7 +3470,9 @@ function renderSuppChecklist() {
     return;
   }
   list.innerHTML = supplements.map(s => {
-    const taken = suppLog.some(l => l.supplement_id === s.id);
+    const today = getTodayDate();
+    const dayLog = suppLog[today] || [];
+    const taken = dayLog.some(l => l.supplement_id === s.id);
     return `<div onclick="toggleSupp(${s.id})" style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.18s" id="suppItem-${s.id}">
       <div style="width:26px;height:26px;border-radius:50%;border:2px solid ${taken?'var(--accent)':'var(--border)'};background:${taken?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0">
         ${taken ? '<span style="color:#0e110a;font-size:14px;font-weight:700">✓</span>' : ''}
@@ -3475,8 +3493,10 @@ function renderHomeSuppChecklist() {
   if (!section || !list) return;
   if (!supplements.length) { section.style.display = 'none'; return; }
   section.style.display = 'block';
+  const dateStr = getCarouselDate();
+  const dayLog = suppLog[dateStr] || [];
   list.innerHTML = supplements.map(s => {
-    const taken = suppLog.some(l => l.supplement_id === s.id);
+    const taken = dayLog.some(l => l.supplement_id === s.id);
     return `<div onclick="toggleSupp(${s.id})" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer" id="homeSuppItem-${s.id}">
       <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${taken?'var(--accent)':'var(--border)'};background:${taken?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">
         ${taken ? '<span style="color:#0e110a;font-size:13px;font-weight:700">✓</span>' : ''}
