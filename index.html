@@ -2246,6 +2246,8 @@ async function loadEntries() {
 
 // Attach dish ingredients to entries — called after both entries and dishes are loaded
 function attachDishIngredients() {
+  console.log('[attachDishIngredients] dishes:', dishes.length, 'entries:', entries.length);
+  dishes.forEach(d => console.log('  dish:', d.id, d.name, 'ings:', d.dish_ingredients?.length));
   entries.forEach(e => {
     e._dishIngs = null;
     // Match by dish_id if available
@@ -2253,6 +2255,7 @@ function attachDishIngredients() {
       const dish = dishes.find(d => d.id === e.dish_id);
       if (dish?.dish_ingredients?.length) {
         e._dishIngs = dish.dish_ingredients;
+        console.log('[attachDishIngredients] matched by dish_id:', e.food_name);
         return;
       }
     }
@@ -2261,6 +2264,9 @@ function attachDishIngredients() {
     const dish = dishes.find(d => d.name === cleanName);
     if (dish?.dish_ingredients?.length) {
       e._dishIngs = dish.dish_ingredients;
+      console.log('[attachDishIngredients] matched by name:', cleanName);
+    } else {
+      console.log('[attachDishIngredients] NO MATCH for:', e.food_name, '-> cleanName:', cleanName);
     }
   });
 }
