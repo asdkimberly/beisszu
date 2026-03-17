@@ -1029,7 +1029,79 @@ select { cursor: pointer; }
           </div>
         </div>
 
-        <button class="btn-primary" style="margin-top:12px" onclick="submitEntry()">✓ Registrar alimento</button>
+        <button class="btn-primary" style="margin-top:12px" onclick="openFoodConfirm()">Revisar y registrar →</button>
+        <div style="height:24px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Food confirmation bottom sheet -->
+  <div class="bottom-sheet-overlay" id="bsFoodConfirm" onclick="closeBSIfOverlay(event,'bsFoodConfirm')">
+    <div class="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">Confirmar registro</div>
+        <button class="bs-close" onclick="closeBS('bsFoodConfirm')">✕</button>
+      </div>
+      <div class="bs-body">
+
+        <!-- Food name + meal + origin -->
+        <div class="card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div>
+              <div id="cfFoodName" style="font-family:var(--font-display);font-size:17px;color:var(--text);font-weight:500"></div>
+              <div style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
+                <span id="cfMealBadge" style="font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+                <span id="cfOriginBadge" style="font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div id="cfCal" style="font-size:28px;font-weight:300;color:var(--accent);font-family:var(--font-display)"></div>
+              <div style="font-size:11px;color:var(--muted)">kcal</div>
+            </div>
+          </div>
+          <div id="cfQtyUnit" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+        </div>
+
+        <!-- Macros grid -->
+        <div class="card" style="margin-top:10px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+            <div>
+              <div id="cfProt" style="font-size:20px;font-weight:300;color:var(--accent2);font-family:var(--font-display)"></div>
+              <div style="font-size:11px;color:var(--muted)">proteína g</div>
+            </div>
+            <div>
+              <div id="cfCarb" style="font-size:20px;font-weight:300;color:#5bc0de;font-family:var(--font-display)"></div>
+              <div style="font-size:11px;color:var(--muted)">carbos g</div>
+            </div>
+            <div>
+              <div id="cfFat" style="font-size:20px;font-weight:300;color:#e07840;font-family:var(--font-display)"></div>
+              <div style="font-size:11px;color:var(--muted)">grasas g</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div>
+              <div id="cfFiber" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div>
+              <div style="font-size:11px;color:var(--muted)">fibra g</div>
+            </div>
+            <div>
+              <div id="cfSugar" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div>
+              <div style="font-size:11px;color:var(--muted)">azúcar g</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes if any -->
+        <div id="cfNotesRow" class="card" style="margin-top:10px;display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Notas</div>
+          <div id="cfNotes" style="font-size:13px;color:var(--text2)"></div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <button onclick="closeBS('bsFoodConfirm')" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">← Editar</button>
+          <button onclick="submitEntry()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Confirmar</button>
+        </div>
         <div style="height:24px"></div>
       </div>
     </div>
@@ -1413,6 +1485,64 @@ select { cursor: pointer; }
 
 </div><!-- end appScreen -->
 
+<!-- ══ CONFIRM ENTRY MODAL ══ -->
+<div class="modal-overlay" id="confirmEntryModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">✓ Confirmar registro</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+
+      <!-- Food name + qty -->
+      <div style="background:var(--surface2);border-radius:12px;padding:14px 16px">
+        <div style="font-family:var(--font-display);font-size:16px;color:var(--text)" id="ceFood">—</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:3px" id="ceQty">—</div>
+      </div>
+
+      <!-- Meal + Origin row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Tiempo</div>
+          <div style="font-size:14px;color:var(--text);font-family:var(--font-display)" id="ceMeal">—</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Origen</div>
+          <div style="font-size:14px;color:var(--text);font-family:var(--font-display)" id="ceOrigin">—</div>
+        </div>
+      </div>
+
+      <!-- Macros row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center">
+          <div style="font-size:16px;font-weight:300;color:var(--accent);font-family:var(--font-display)" id="ceCal">0</div>
+          <div style="font-size:10px;color:var(--muted)">kcal</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center">
+          <div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="ceProt">0</div>
+          <div style="font-size:10px;color:var(--muted)">prot g</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center">
+          <div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="ceCarb">0</div>
+          <div style="font-size:10px;color:var(--muted)">carb g</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center">
+          <div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="ceFat">0</div>
+          <div style="font-size:10px;color:var(--muted)">gras g</div>
+        </div>
+      </div>
+
+      <!-- Notes (only if present) -->
+      <div id="ceNotesRow" style="display:none;background:var(--surface2);border-radius:10px;padding:10px 14px">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Notas</div>
+        <div style="font-size:13px;color:var(--text2)" id="ceNotes"></div>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeConfirmEntry()">← Editar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="confirmAndSaveEntry()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ EDIT ENTRY MODAL ══ -->
 <div class="modal-overlay" id="editEntryModal">
   <div class="modal" style="max-width:380px;max-height:90dvh;overflow-y:auto">
@@ -1458,6 +1588,7 @@ select { cursor: pointer; }
       <div class="two-col">
         <div class="macro-input"><label>Grasas</label><input type="number" id="editFat" inputmode="decimal"><div class="macro-unit">g</div></div>
         <div class="macro-input"><label>Fibra</label><input type="number" id="editFiber" inputmode="decimal"><div class="macro-unit">g</div></div>
+        <div class="macro-input"><label>Azúcar</label><input type="number" id="editSugar" inputmode="decimal"><div class="macro-unit">g</div></div>
       </div>
       <div class="field">
         <label>Notas</label>
@@ -1755,13 +1886,17 @@ function updateCalDisplay() {
 let dropdownTimeout;
 let selectedFoodBase = null;
 
+// ── Normalize string: remove accents for search ──
+function norm(str) {
+  return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function onFoodInput(val) {
   clearTimeout(dropdownTimeout);
   const dd = document.getElementById('foodDropdown');
   if (!val.trim()) { dd.classList.remove('show'); return; }
-  const q = val.toLowerCase();
+  const q = norm(val);
   const allDb = [...customFoods, ...foodsDb];
-  // Include dishes as selectable items — search on raw name, display with emoji
   const dishItems = dishes.map(d => {
     const ings = d.dish_ingredients || [];
     const cal  = ings.reduce((s,i) => s+(i.calories||0), 0);
@@ -1770,10 +1905,10 @@ function onFoodInput(val) {
     const f    = ings.reduce((s,i) => s+(i.fat_g||0), 0);
     return { name: d.name, displayName: `🍽️ ${d.name}`, qty: 1, unit: 'porción', cal: Math.round(cal), p: Math.round(p*10)/10, c: Math.round(c*10)/10, f: Math.round(f*10)/10, fib: 0, _isDish: true };
   });
-  const dbMatches = [...allDb, ...dishItems].filter(f => f.name.toLowerCase().includes(q)).slice(0, 6);
+  const dbMatches = [...allDb, ...dishItems].filter(f => norm(f.name).includes(q)).slice(0, 6);
   const pastNames = [...new Set(entries.map(e => e.food_name))];
   const pastMatches = pastNames
-    .filter(n => n.toLowerCase().includes(q) && !dbMatches.find(f => f.name === n))
+    .filter(n => norm(n).includes(q) && !dbMatches.find(f => f.name === n))
     .slice(0, 3).map(n => ({ name: n, _past: true }));
   const all = [...dbMatches, ...pastMatches];
   if (!all.length) { dd.classList.remove('show'); return; }
@@ -1880,7 +2015,7 @@ function hideFoodDropdown() {
 function clearAutofill() {
   selectedFoodBase = null;
   document.getElementById('autofillBadge').style.display = 'none';
-  ['foodName','quantity','calories','protein','carbs','fat','fiber','notes'].forEach(id => document.getElementById(id).value = '');
+  ['foodName','quantity','calories','protein','carbs','fat','fiber','sugar','notes'].forEach(id => document.getElementById(id).value = '');
   updateCalDisplay();
 }
 
@@ -1900,41 +2035,113 @@ function formatQty(num) {
 }
 
 // ══ Submit entry ══
+// ── Food confirmation sheet ──
+function openFoodConfirm() {
+  const foodName = document.getElementById('foodName').value.trim();
+  if (!selectedMeal) { showToast('Seleccioná un tiempo de comida', true); return; }
+  if (!foodName)     { showToast('Ingresá el nombre del alimento', true); return; }
+
+  const cal    = parseFloat(document.getElementById('calories').value) || 0;
+  const prot   = parseFloat(document.getElementById('protein').value)  || 0;
+  const carb   = parseFloat(document.getElementById('carbs').value)    || 0;
+  const fat    = parseFloat(document.getElementById('fat').value)      || 0;
+  const fiber  = parseFloat(document.getElementById('fiber').value)    || 0;
+  const sugar  = parseFloat(document.getElementById('sugar').value)    || 0;
+  const qty    = document.getElementById('quantity').value;
+  const unit   = document.getElementById('unit').value;
+  const notes  = document.getElementById('notes').value.trim();
+
+  if (!cal && !prot && !carb && !fat) { showToast('Agrega al menos calorías o macros', true); return; }
+
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+
+  document.getElementById('cfFoodName').textContent   = foodName;
+  document.getElementById('cfCal').textContent        = Math.round(cal) || Math.round(prot*4 + carb*4 + fat*9);
+  document.getElementById('cfMealBadge').textContent  = `${MEAL_ICONS[selectedMeal] || ''} ${selectedMeal}`;
+  document.getElementById('cfOriginBadge').textContent = selectedOrigin === 'Fuera' ? '🌍 Fuera' : '🏠 Casa';
+  document.getElementById('cfQtyUnit').textContent    = qty ? `${qty} ${unit}` : '';
+  document.getElementById('cfProt').textContent       = prot;
+  document.getElementById('cfCarb').textContent       = carb;
+  document.getElementById('cfFat').textContent        = fat;
+  document.getElementById('cfFiber').textContent      = fiber;
+  document.getElementById('cfSugar').textContent      = sugar;
+
+  const notesRow = document.getElementById('cfNotesRow');
+  if (notes) {
+    document.getElementById('cfNotes').textContent = notes;
+    notesRow.style.display = 'block';
+  } else {
+    notesRow.style.display = 'none';
+  }
+
+  document.getElementById('bsFoodConfirm').classList.add('show');
+}
+
+let _pendingEntry = null;
+
 async function submitEntry() {
   const foodName = document.getElementById('foodName').value.trim();
-  const quantity  = document.getElementById('quantity').value;
-  const calories  = document.getElementById('calories').value;
-  const protein   = document.getElementById('protein').value;
-  const carbs     = document.getElementById('carbs').value;
-  const fat       = document.getElementById('fat').value;
-  if (!selectedMeal) { showToast('Seleccioná un tipo de comida', true); return; }
-  if (!foodName) { showToast('Ingresá el nombre del alimento', true); return; }
+  const quantity = document.getElementById('quantity').value;
+  const calories = document.getElementById('calories').value;
+  const protein  = document.getElementById('protein').value;
+  const carbs    = document.getElementById('carbs').value;
+  const fat      = document.getElementById('fat').value;
+  if (!selectedMeal) { showToast('Seleccioná un tiempo de comida', true); return; }
+  if (!foodName)     { showToast('Ingresá el nombre del alimento', true); return; }
   if (!calories && !protein && !carbs && !fat) { showToast('Agrega al menos calorías o macros', true); return; }
-  const entry = {
-    user_id: currentUser.id,
-    log_date: getTodayDate(),
+
+  const calVal = parseFloat(calories) || Math.round((parseFloat(protein)||0)*4+(parseFloat(carbs)||0)*4+(parseFloat(fat)||0)*9);
+  _pendingEntry = {
+    user_id:   currentUser.id,
+    log_date:  getTodayDate(),
     meal_type: selectedMeal,
     food_name: foodName,
-    quantity: parseFloat(quantity) || null,
-    unit: document.getElementById('unit').value,
-    calories: parseFloat(calories) || Math.round((parseFloat(protein)||0)*4+(parseFloat(carbs)||0)*4+(parseFloat(fat)||0)*9),
+    quantity:  parseFloat(quantity) || null,
+    unit:      document.getElementById('unit').value,
+    calories:  calVal,
     protein_g: parseFloat(protein) || 0,
-    carbs_g: parseFloat(carbs) || 0,
-    fat_g: parseFloat(fat) || 0,
-    fiber_g: parseFloat(document.getElementById('fiber').value) || 0,
+    carbs_g:   parseFloat(carbs)   || 0,
+    fat_g:     parseFloat(fat)     || 0,
+    fiber_g:   parseFloat(document.getElementById('fiber').value) || 0,
+    sugar_g:   parseFloat(document.getElementById('sugar').value) || 0,
     sodium_mg: 0,
-    notes: document.getElementById('notes').value.trim(),
-    origin: selectedOrigin,
+    notes:     document.getElementById('notes').value.trim(),
+    origin:    selectedOrigin,
   };
-  const { data, error } = await sb.from('food_log').insert(entry).select().single();
+
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+  document.getElementById('ceFood').textContent   = foodName;
+  document.getElementById('ceQty').textContent    = quantity ? `${quantity} ${document.getElementById('unit').value}` : '—';
+  document.getElementById('ceMeal').textContent   = `${MEAL_ICONS[selectedMeal]||''} ${selectedMeal}`;
+  document.getElementById('ceOrigin').textContent = selectedOrigin === 'Casa' ? '🏠 Casa' : '🌍 Fuera';
+  document.getElementById('ceCal').textContent    = Math.round(calVal);
+  document.getElementById('ceProt').textContent   = (parseFloat(protein)||0).toFixed(1);
+  document.getElementById('ceCarb').textContent   = (parseFloat(carbs)||0).toFixed(1);
+  document.getElementById('ceFat').textContent    = (parseFloat(fat)||0).toFixed(1);
+  const notes = document.getElementById('notes').value.trim();
+  document.getElementById('ceNotesRow').style.display = notes ? 'block' : 'none';
+  document.getElementById('ceNotes').textContent  = notes;
+  document.getElementById('confirmEntryModal').classList.add('show');
+}
+
+function closeConfirmEntry() {
+  document.getElementById('confirmEntryModal').classList.remove('show');
+}
+
+async function confirmAndSaveEntry() {
+  if (!_pendingEntry) return;
+  closeConfirmEntry();
+  const { data, error } = await sb.from('food_log').insert(_pendingEntry).select().single();
   if (error) { showToast('Error al guardar', true); return; }
-  entries.push({ ...entry, id: data.id, logged_at: data.logged_at });
-  addToSuggestions(foodName);
+  entries.push({ ..._pendingEntry, id: data.id, logged_at: data.logged_at });
+  addToSuggestions(_pendingEntry.food_name);
+  _pendingEntry = null;
   resetForm();
   buildCarouselDays();
   showToast('✓ Entrada registrada');
-  // Stay in sheet — user can register next food
+  // Stay in food sheet — user can register next food
 }
+
 
 async function loadEntries() {
   const thirtyDaysAgo = new Date();
@@ -1962,7 +2169,7 @@ async function deleteEntry(id) {
 }
 
 function resetForm() {
-  ['foodName','quantity','calories','protein','carbs','fat','fiber','notes'].forEach(id => document.getElementById(id).value = '');
+  ['foodName','quantity','calories','protein','carbs','fat','fiber','sugar','notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('autofillBadge').style.display = 'none';
   document.getElementById('servingRow').style.display = 'none';
   selectedFoodBase = null;
@@ -2215,6 +2422,7 @@ function openEditModal(id) {
   document.getElementById('editCarbs').value     = e.carbs_g   || 0;
   document.getElementById('editFat').value       = e.fat_g     || 0;
   document.getElementById('editFiber').value     = e.fiber_g   || 0;
+  document.getElementById('editSugar').value     = e.sugar_g   || 0;
   document.getElementById('editNotes').value     = e.notes     || '';
   setEditOrigin(editingOrigin);
   document.getElementById('editEntryModal').classList.add('show');
@@ -2250,6 +2458,7 @@ async function saveEditEntry() {
     carbs_g:    parseFloat(document.getElementById('editCarbs').value)     || 0,
     fat_g:      parseFloat(document.getElementById('editFat').value)       || 0,
     fiber_g:    parseFloat(document.getElementById('editFiber').value)     || 0,
+    sugar_g:    parseFloat(document.getElementById('editSugar').value)     || 0,
     notes:      document.getElementById('editNotes').value.trim(),
   };
   if (!updated.food_name) { showToast('El nombre no puede estar vacío', true); return; }
@@ -2742,9 +2951,9 @@ function onIngFoodInput(val) {
   clearTimeout(ingDropdownTimeout);
   const dd = document.getElementById('ingFoodDropdown');
   if (!val.trim()) { dd.classList.remove('show'); return; }
-  const q = val.toLowerCase();
+  const q = norm(val);
   const allDb = [...customFoods, ...foodsDb];
-  const matches = allDb.filter(f => f.name.toLowerCase().includes(q)).slice(0, 8);
+  const matches = allDb.filter(f => norm(f.name).includes(q)).slice(0, 8);
   if (!matches.length) { dd.classList.remove('show'); return; }
   dd.innerHTML = matches.map(f => `
     <div class="food-option" onmousedown="selectIngFood(${JSON.stringify(f).replace(/"/g,'&quot;')})">
