@@ -1864,7 +1864,8 @@ async function initApp(user) {
   // Profile info
   document.getElementById('profileName').textContent = user.user_metadata?.full_name || 'Usuario';
   document.getElementById('profileEmail').textContent = user.email;
-  await Promise.all([loadSettings(), loadEntries(), loadHydration(), loadFoodsDb(), loadDishes(), loadFoodServings(), loadSupplements()]);
+  await Promise.all([loadSettings(), loadHydration(), loadFoodsDb(), loadDishes(), loadFoodServings(), loadSupplements()]);
+  await loadEntries(); // after dishes so _dishIngs can be populated
   updateClock();
   setInterval(updateClock, 30000);
   checkOnline();
