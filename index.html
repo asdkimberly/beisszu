@@ -1211,6 +1211,12 @@ select { cursor: pointer; }
       <canvas id="chartMacroTrend" height="200"></canvas>
     </div>
 
+    <!-- ③c Tendencia de azúcar y fibra -->
+    <div class="card" id="statsSugarFiberCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Tendencia de azúcar y fibra</div>
+      <canvas id="chartSugarFiber" height="200"></canvas>
+    </div>
+
     <!-- ④ Distribución por comida -->
     <div class="card" id="statsMealCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Promedio de calorías por tiempo de comida</div>
@@ -2711,7 +2717,7 @@ function renderFoodItem(el, i, editing) {
     <div class="food-list-row">
       <div style="flex:1;min-width:0">
         <div class="food-list-name">${f.name}</div>
-        <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g${f.sugar_g ? ' · Az:'+f.sugar_g+'g' : ''}</div>
+        <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g</div>
       </div>
       <div class="food-list-cal">${f.cal} kcal</div>
       <div class="food-list-actions">
@@ -2770,7 +2776,7 @@ function renderFoodsList() {
       el.innerHTML = `<div class="food-list-row">
         <div style="flex:1;min-width:0">
           <div class="food-list-name">${f.name}</div>
-          <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g${f.sugar_g ? ' · Az:'+f.sugar_g+'g' : ''}</div>
+          <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g</div>
         </div>
         <div class="food-list-cal">${f.cal} kcal</div>
       </div>`;
@@ -3527,6 +3533,7 @@ let statsRange = 7;
 const showCharts = true; // always show charts
 let chartTrendInstance = null;
 let chartMacroTrendInstance = null;
+let chartSugarFiberInstance = null;
 let chartMealInstance = null;
 let chartHydInstance = null;
 
@@ -3573,6 +3580,7 @@ async function renderStats() {
     renderStatsOrigin(food);
     renderChartTrend(food);
     renderStatsMacroTrend(food);
+    renderStatsSugarFiber(food);
     document.getElementById('statsReportSection').style.display = 'block';
   } catch(err) {
     console.error('renderStats error:', err);
@@ -4029,6 +4037,63 @@ function renderStatsMacroTrend(food) {
         { label: 'Proteína (g)', data: protData, borderColor: '#a8c060', backgroundColor: 'rgba(168,192,96,0.1)', borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
         { label: 'Carbos (g)',   data: carbData, borderColor: '#5bc0de', backgroundColor: 'rgba(91,192,222,0.1)',  borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
         { label: 'Grasas (g)',   data: fatData,  borderColor: '#e07840', backgroundColor: 'rgba(224,120,64,0.1)',  borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
+      ],
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { color: textColor, font: { size: 11 }, padding: 12, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}g` } },
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { size: 10 }, callback: tickCallback || undefined },
+          grid: { color: gridColor },
+        },
+        y: {
+          ticks: { color: textColor, font: { size: 10 }, callback: v => `${v}g` },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+}
+
+// ── Sugar & Fiber trend chart ──
+function renderStatsSugarFiber(food) {
+  const card = document.getElementById('statsSugarFiberCard');
+  if (!food.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const today = new Date();
+  const labels = [];
+  const sugarData = [], fiberData = [];
+
+  for (let i = statsRange - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    labels.push(d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short' }));
+    const dayEntries = food.filter(e => e.log_date === dateStr);
+    sugarData.push(Math.round(dayEntries.reduce((s, e) => s + (e.sugar_g || 0), 0) * 10) / 10);
+    fiberData.push(Math.round(dayEntries.reduce((s, e) => s + (e.fiber_g || 0), 0) * 10) / 10);
+  }
+
+  if (chartSugarFiberInstance) { chartSugarFiberInstance.destroy(); chartSugarFiberInstance = null; }
+  const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = '#7a8460';
+  const tickCallback = statsRange === 30 ? (val, i) => i % 5 === 0 ? labels[i] : '' : undefined;
+
+  const ctx = document.getElementById('chartSugarFiber').getContext('2d');
+  chartSugarFiberInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Azúcar (g)', data: sugarData, borderColor: '#d4789a', backgroundColor: 'rgba(212,120,154,0.1)', borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
+        { label: 'Fibra (g)',  data: fiberData, borderColor: '#a8c060', backgroundColor: 'rgba(168,192,96,0.1)',  borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
       ],
     },
     options: {
