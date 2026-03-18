@@ -4023,10 +4023,6 @@ function renderStatsMacroTrend(food) {
   const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
   const gridColor = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const textColor = '#7a8460';
-  // For 30 days, only show every 5th label to avoid crowding
-  const tickCallback = statsRange === 30
-    ? (val, i) => i % 5 === 0 ? labels[i] : ''
-    : undefined;
 
   const ctx = document.getElementById('chartMacroTrend').getContext('2d');
   chartMacroTrendInstance = new Chart(ctx, {
@@ -4048,7 +4044,14 @@ function renderStatsMacroTrend(food) {
       },
       scales: {
         x: {
-          ticks: { color: textColor, font: { size: 10 }, callback: tickCallback || undefined },
+          ticks: {
+            color: textColor,
+            font: { size: 10 },
+            maxRotation: 45,
+            minRotation: 0,
+            maxTicksLimit: statsRange === 30 ? 10 : 7,
+            autoSkip: true,
+          },
           grid: { color: gridColor },
         },
         y: {
@@ -4084,7 +4087,6 @@ function renderStatsSugarFiber(food) {
   const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
   const gridColor = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const textColor = '#7a8460';
-  const tickCallback = statsRange === 30 ? (val, i) => i % 5 === 0 ? labels[i] : '' : undefined;
 
   const ctx = document.getElementById('chartSugarFiber').getContext('2d');
   chartSugarFiberInstance = new Chart(ctx, {
@@ -4105,7 +4107,14 @@ function renderStatsSugarFiber(food) {
       },
       scales: {
         x: {
-          ticks: { color: textColor, font: { size: 10 }, callback: tickCallback || undefined },
+          ticks: {
+            color: textColor,
+            font: { size: 10 },
+            maxRotation: 45,
+            minRotation: 0,
+            maxTicksLimit: statsRange === 30 ? 10 : 7,
+            autoSkip: true,
+          },
           grid: { color: gridColor },
         },
         y: {
