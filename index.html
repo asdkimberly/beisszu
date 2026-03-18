@@ -3813,7 +3813,7 @@ function renderChartTrend(food) {
       responsive: true,
       plugins: { legend: { display: false } },
       scales: {
-        x: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor } },
+        x: { ticks: { color: textColor, font:{size:10}, maxRotation:45, minRotation:45, autoSkip:true, maxTicksLimit: statsRange === 30 ? 10 : 7 }, grid: { color: gridColor } },
         y: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor } },
       },
     },
@@ -4048,7 +4048,7 @@ function renderStatsMacroTrend(food) {
             color: textColor,
             font: { size: 10 },
             maxRotation: 45,
-            minRotation: 0,
+            minRotation: 45,
             maxTicksLimit: statsRange === 30 ? 10 : 7,
             autoSkip: true,
           },
@@ -4111,7 +4111,7 @@ function renderStatsSugarFiber(food) {
             color: textColor,
             font: { size: 10 },
             maxRotation: 45,
-            minRotation: 0,
+            minRotation: 45,
             maxTicksLimit: statsRange === 30 ? 10 : 7,
             autoSkip: true,
           },
@@ -4710,7 +4710,7 @@ function openBS(id) {
   if (hydDateInput)  hydDateInput.max  = today;
 
   // Reset dates only when opening the main food/hyd sheets
-  if (id === 'bsFood') { clearFoodDate(); }
+  if (id === 'bsFood') { resetForm(); }
   if (id === 'bsHyd')  { clearHydDate(); }
 
   document.getElementById(id).classList.add('show');
