@@ -1978,6 +1978,7 @@ function selectFood(food) {
   selectedFoodBase = {
     name: food.name, qty: food.qty, unit: food.unit,
     cal: food.cal, p: food.p, c: food.c, f: food.f, fib: food.fib || 0,
+    sug: food.sugar_g || food.sug || 0,
     _isDish: food._isDish || false,
     _dishId: food._dishId || null,
     _dishIngs: food._dishIngs || null,
@@ -1989,6 +1990,7 @@ function selectFood(food) {
   document.getElementById('carbs').value = food.c;
   document.getElementById('fat').value = food.f;
   document.getElementById('fiber').value = food.fib || 0;
+  document.getElementById('sugar').value = food.sugar_g || food.sug || 0;
   updateCalDisplay();
   document.getElementById('autofillBadge').style.display = 'flex';
   // Initialize _servingGrams for the food's default unit
@@ -2058,6 +2060,7 @@ function recalcByQty() {
   document.getElementById('carbs').value    = Math.round(selectedFoodBase.c   * ratio * 10) / 10;
   document.getElementById('fat').value      = Math.round(selectedFoodBase.f   * ratio * 10) / 10;
   document.getElementById('fiber').value    = Math.round(selectedFoodBase.fib * ratio * 10) / 10;
+  document.getElementById('sugar').value    = Math.round(selectedFoodBase.sug * ratio * 10) / 10;
   updateCalDisplay();
 }
 
