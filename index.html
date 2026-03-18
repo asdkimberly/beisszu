@@ -2694,7 +2694,8 @@ async function saveEdit(idx) {
     p:    parseFloat(item.querySelector('.ef-p').value)    || 0,
     c:    parseFloat(item.querySelector('.ef-c').value)    || 0,
     f:    parseFloat(item.querySelector('.ef-f').value)    || 0,
-    fib:  parseFloat(item.querySelector('.ef-fib').value)  || 0,
+    fib:     parseFloat(item.querySelector('.ef-fib').value)  || 0,
+    sugar_g: parseFloat(item.querySelector('.ef-sug').value)  || 0,
   };
   const { error } = await sb.from('custom_foods').update(updated).eq('id', food.id).eq('user_id', currentUser.id);
   if (error) { showToast('Error al actualizar', true); return; }
@@ -2710,7 +2711,7 @@ function renderFoodItem(el, i, editing) {
     <div class="food-list-row">
       <div style="flex:1;min-width:0">
         <div class="food-list-name">${f.name}</div>
-        <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g</div>
+        <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g${f.sugar_g ? ' · Az:'+f.sugar_g+'g' : ''}</div>
       </div>
       <div class="food-list-cal">${f.cal} kcal</div>
       <div class="food-list-actions">
@@ -2729,9 +2730,10 @@ function renderFoodItem(el, i, editing) {
         <div class="macro-input"><label>Proteína</label><input class="ef-p" type="number" value="${f.p}" inputmode="decimal"><div class="macro-unit">g</div></div>
         <div class="macro-input"><label>Carbos</label><input class="ef-c" type="number" value="${f.c}" inputmode="decimal"><div class="macro-unit">g</div></div>
       </div>
-      <div class="two-col">
+      <div class="three-col">
         <div class="macro-input"><label>Grasas</label><input class="ef-f" type="number" value="${f.f}" inputmode="decimal"><div class="macro-unit">g</div></div>
         <div class="macro-input"><label>Fibra</label><input class="ef-fib" type="number" value="${f.fib||0}" inputmode="decimal"><div class="macro-unit">g</div></div>
+        <div class="macro-input"><label>Azúcar</label><input class="ef-sug" type="number" value="${f.sugar_g||0}" inputmode="decimal"><div class="macro-unit">g</div></div>
       </div>
       <div class="food-edit-actions">
         <button class="btn-cancel-edit" onclick="cancelEdit(${i})">Cancelar</button>
@@ -2768,7 +2770,7 @@ function renderFoodsList() {
       el.innerHTML = `<div class="food-list-row">
         <div style="flex:1;min-width:0">
           <div class="food-list-name">${f.name}</div>
-          <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g</div>
+          <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g${f.sugar_g ? ' · Az:'+f.sugar_g+'g' : ''}</div>
         </div>
         <div class="food-list-cal">${f.cal} kcal</div>
       </div>`;
