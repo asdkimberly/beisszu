@@ -3238,7 +3238,15 @@ function addIngredientToDish() {
   if (currentIngDishBase) {
     cal = base.cal * qty; p = base.p * qty; c = base.c * qty; f = base.f * qty;
   } else {
-    const ratio = qty / base.qty;
+    const isGramBased = ['gramos','ml','oz'].includes(unit);
+    let ratio;
+    if (isGramBased) {
+      ratio = qty / base.qty;
+    } else if (base._servingGrams) {
+      ratio = (qty * base._servingGrams) / base.qty;
+    } else {
+      ratio = qty / base.qty;
+    }
     cal = base.cal * ratio; p = base.p * ratio; c = base.c * ratio; f = base.f * ratio;
     fib = (base.fib || 0) * ratio;
   }
