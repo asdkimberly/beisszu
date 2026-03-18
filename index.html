@@ -1014,9 +1014,10 @@ select { cursor: pointer; }
           <div class="macro-input"><label>Proteína</label><input type="number" id="newFoodP" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
           <div class="macro-input"><label>Carbos</label><input type="number" id="newFoodC" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
         </div>
-        <div class="two-col">
+        <div class="three-col">
           <div class="macro-input"><label>Grasas</label><input type="number" id="newFoodF" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
           <div class="macro-input"><label>Fibra</label><input type="number" id="newFoodFib" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
+          <div class="macro-input"><label>Azúcar</label><input type="number" id="newFoodSug" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
         </div>
         <button class="btn-primary" onclick="saveNewFood()">+ Guardar alimento</button>
       </div>
@@ -1202,6 +1203,12 @@ select { cursor: pointer; }
     <div class="card" id="statsTrendCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Tendencia de calorías</div>
       <canvas id="chartTrend" height="180"></canvas>
+    </div>
+
+    <!-- ③b Tendencia de macronutrientes -->
+    <div class="card" id="statsMacroTrendCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Tendencia de macronutrientes</div>
+      <canvas id="chartMacroTrend" height="200"></canvas>
     </div>
 
     <!-- ④ Distribución por comida -->
@@ -2631,12 +2638,13 @@ async function saveNewFood() {
   const c    = parseFloat(document.getElementById('newFoodC').value)    || 0;
   const f    = parseFloat(document.getElementById('newFoodF').value)    || 0;
   const fib  = parseFloat(document.getElementById('newFoodFib').value)  || 0;
+  const sug  = parseFloat(document.getElementById('newFoodSug').value)  || 0;
   if (!name) { showToast('Ingresá el nombre del alimento', true); return; }
   if (!cal && !p && !c && !f) { showToast('Agrega al menos un valor nutricional', true); return; }
-  const { data, error } = await sb.from('custom_foods').insert({ user_id: currentUser.id, name, qty, unit, cal, p, c, f, fib }).select().single();
+  const { data, error } = await sb.from('custom_foods').insert({ user_id: currentUser.id, name, qty, unit, cal, p, c, f, fib, sugar_g: sug }).select().single();
   if (error) { showToast('Error al guardar', true); return; }
   customFoods.push(data);
-  ['newFoodName','newFoodQty','newFoodCal','newFoodP','newFoodC','newFoodF','newFoodFib'].forEach(id => document.getElementById(id).value = '');
+  ['newFoodName','newFoodQty','newFoodCal','newFoodP','newFoodC','newFoodF','newFoodFib','newFoodSug'].forEach(id => document.getElementById(id).value = '');
   renderFoodsList();
   showToast('✓ Alimento guardado');
 }
@@ -3513,6 +3521,7 @@ function renderHomeSuppChecklist() {
 let statsRange = 7;
 const showCharts = true; // always show charts
 let chartTrendInstance = null;
+let chartMacroTrendInstance = null;
 let chartMealInstance = null;
 let chartHydInstance = null;
 
@@ -3558,6 +3567,7 @@ async function renderStats() {
     renderStatsTopDrinks(food);
     renderStatsOrigin(food);
     renderChartTrend(food);
+    renderStatsMacroTrend(food);
     document.getElementById('statsReportSection').style.display = 'block';
   } catch(err) {
     console.error('renderStats error:', err);
@@ -3971,24 +3981,103 @@ function isBeverage(entry) {
   return false;
 }
 
+// ── Macro trend chart ──
+function renderStatsMacroTrend(food) {
+  const card = document.getElementById('statsMacroTrendCard');
+  if (!food.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const today = new Date();
+  const labels = [];
+  const protData = [], carbData = [], fatData = [];
+
+  for (let i = statsRange - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    // For 30 days show shorter labels
+    const label = statsRange === 30
+      ? d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short' })
+      : d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short' });
+    labels.push(label);
+    const dayEntries = food.filter(e => e.log_date === dateStr);
+    protData.push(Math.round(dayEntries.reduce((s, e) => s + (e.protein_g || 0), 0)));
+    carbData.push(Math.round(dayEntries.reduce((s, e) => s + (e.carbs_g   || 0), 0)));
+    fatData.push( Math.round(dayEntries.reduce((s, e) => s + (e.fat_g     || 0), 0)));
+  }
+
+  if (chartMacroTrendInstance) { chartMacroTrendInstance.destroy(); chartMacroTrendInstance = null; }
+  const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = '#7a8460';
+  // For 30 days, only show every 5th label to avoid crowding
+  const tickCallback = statsRange === 30
+    ? (val, i) => i % 5 === 0 ? labels[i] : ''
+    : undefined;
+
+  const ctx = document.getElementById('chartMacroTrend').getContext('2d');
+  chartMacroTrendInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Proteína (g)', data: protData, borderColor: '#a8c060', backgroundColor: 'rgba(168,192,96,0.1)', borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
+        { label: 'Carbos (g)',   data: carbData, borderColor: '#5bc0de', backgroundColor: 'rgba(91,192,222,0.1)',  borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
+        { label: 'Grasas (g)',   data: fatData,  borderColor: '#e07840', backgroundColor: 'rgba(224,120,64,0.1)',  borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
+      ],
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { color: textColor, font: { size: 11 }, padding: 12, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}g` } },
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { size: 10 }, callback: tickCallback || undefined },
+          grid: { color: gridColor },
+        },
+        y: {
+          ticks: { color: textColor, font: { size: 10 }, callback: v => `${v}g` },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+}
+
 function renderStatsTopFoods(food) {
   const card = document.getElementById('statsTopFoodsCard');
-  // Exclude beverages from foods list
+  // Exclude beverages
   const solidFood = food.filter(e => !isBeverage(e));
   if (!solidFood.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
+
   const freq = {};
   solidFood.forEach(e => {
-    if (!freq[e.food_name]) freq[e.food_name] = { count:0, totalCal:0 };
-    freq[e.food_name].count++;
-    freq[e.food_name].totalCal += e.calories||0;
+    // Expand dish ingredients instead of counting the dish itself
+    if (e._dishIngs && e._dishIngs.length) {
+      e._dishIngs.forEach(ing => {
+        const name = ing.food_name || ing.name;
+        if (!name) return;
+        if (!freq[name]) freq[name] = { count: 0, totalCal: 0 };
+        freq[name].count++;
+        freq[name].totalCal += ing.calories || 0;
+      });
+    } else {
+      if (!freq[e.food_name]) freq[e.food_name] = { count: 0, totalCal: 0 };
+      freq[e.food_name].count++;
+      freq[e.food_name].totalCal += e.calories || 0;
+    }
   });
-  const sorted = Object.entries(freq).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
+
+  const sorted = Object.entries(freq).sort((a, b) => b[1].count - a[1].count).slice(0, 8);
   const maxCount = sorted[0]?.[1].count || 1;
 
   document.getElementById('statsTopFoods').innerHTML = sorted.map(([name, data]) => {
-    const pct = Math.round((data.count/maxCount)*100);
-    const avgCal = Math.round(data.totalCal/data.count);
+    const pct = Math.round((data.count / maxCount) * 100);
+    const avgCal = Math.round(data.totalCal / data.count);
     return `<div class="progress-item">
       <div class="progress-header">
         <span class="progress-label" style="font-size:13px">${name}</span>
