@@ -3793,14 +3793,14 @@ function renderChartTrend(food) {
   card.style.display = 'block';
 
   // Build daily cal array for last N days
-  const today = new Date();
+  const todayLocal = new Date();
   const labels = [];
   const calData = [];
   const goalLine = [];
   for (let i = statsRange-1; i >= 0; i--) {
-    const d = new Date(today);
+    const d = new Date(todayLocal);
     d.setDate(d.getDate()-i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const shortLabel = d.toLocaleDateString('es-CR',{day:'numeric',month:'short'});
     labels.push(shortLabel);
     const dayCal = food.filter(e=>e.log_date===dateStr).reduce((s,e)=>s+(e.calories||0),0);
@@ -3957,13 +3957,13 @@ function renderStatsHyd(hyd) {
 
   if (chartHydInstance) { chartHydInstance.destroy(); chartHydInstance = null; }
 
-  const today = new Date();
+  const todayLocal = new Date();
   const labels = [];
   const waterData = [];
   const hidData = [];
   for (let i = statsRange-1; i >= 0; i--) {
-    const d = new Date(today); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().split('T')[0];
+    const d = new Date(todayLocal); d.setDate(d.getDate()-i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
     waterData.push(waterByDate[ds]||0);
     hidData.push(hidByDate[ds]||0);
@@ -4030,14 +4030,14 @@ function renderStatsMacroTrend(food) {
   if (!food.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const today = new Date();
+  const todayLocal = new Date();
   const labels = [];
   const protData = [], carbData = [], fatData = [];
 
   for (let i = statsRange - 1; i >= 0; i--) {
-    const d = new Date(today);
+    const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     // For 30 days show shorter labels
     const label = statsRange === 30
       ? d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short' })
@@ -4099,14 +4099,14 @@ function renderStatsSugarFiber(food) {
   if (!food.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const today = new Date();
+  const todayLocal = new Date();
   const labels = [];
   const sugarData = [], fiberData = [];
 
   for (let i = statsRange - 1; i >= 0; i--) {
-    const d = new Date(today);
+    const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     labels.push(d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short' }));
     const dayEntries = food.filter(e => e.log_date === dateStr);
     sugarData.push(Math.round(dayEntries.reduce((s, e) => s + (e.sugar_g || 0), 0) * 10) / 10);
