@@ -14,7 +14,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 /* ══════════════════════════════════════════
    DARK MODE (default)
@@ -1348,7 +1347,7 @@ select { cursor: pointer; }
       <!-- CSV Export -->
       <div class="section-label" style="margin-top:16px">Exportar datos a CSV</div>
       <div class="card" style="margin-top:4px">
-        <div class="two-col" style="margin-bottom:10px">
+        <div class="two-col" style="margin-bottom:12px">
           <div class="field">
             <label>Desde</label>
             <input type="date" id="exportDateFrom" style="width:100%">
@@ -1358,22 +1357,11 @@ select { cursor: pointer; }
             <input type="date" id="exportDateTo" style="width:100%">
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer">
-            <input type="checkbox" id="expFood"  checked style="accent-color:var(--accent)"> Alimentos
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer">
-            <input type="checkbox" id="expHyd"   checked style="accent-color:var(--accent)"> Hidratación
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer">
-            <input type="checkbox" id="expSupp"  checked style="accent-color:var(--accent)"> Suplementos
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer">
-            <input type="checkbox" id="expNotes" checked style="accent-color:var(--accent)"> Notas del día
-          </label>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          Incluye alimentos, hidratación, suplementos y notas del día en un solo archivo.
         </div>
         <button class="btn-primary" onclick="exportCSV()" style="background:var(--surface2);color:var(--accent);border:1.5px solid var(--accent)">
-          📦 Descargar ZIP con CSVs
+          📥 Descargar CSV
         </button>
       </div>
     </div>
@@ -4982,70 +4970,60 @@ async function exportCSV() {
   if (!from || !to) { showToast('Seleccioná un rango de fechas', true); return; }
   if (from > to)    { showToast('La fecha "desde" debe ser anterior a "hasta"', true); return; }
 
-  const doFood  = document.getElementById('expFood').checked;
-  const doHyd   = document.getElementById('expHyd').checked;
-  const doSupp  = document.getElementById('expSupp').checked;
-  const doNotes = document.getElementById('expNotes').checked;
-
-  if (!doFood && !doHyd && !doSupp && !doNotes) {
-    showToast('Seleccioná al menos una tabla', true); return;
-  }
-
   showToast('Generando exportación…');
-  const zip = new JSZip();
 
-  if (doFood) {
-    const { data } = await sb.from('food_log').select('*')
-      .eq('user_id', currentUser.id).gte('log_date', from).lte('log_date', to)
-      .order('log_date').order('logged_at');
-    if (data?.length) {
-      const cols = ['log_date','meal_type','food_name','quantity','unit','calories','protein_g','carbs_g','fat_g','fiber_g','sugar_g','origin','notes'];
-      zip.file('alimentos.csv', toCSV(data, cols));
-    }
+  const sections = [];
+
+  // Alimentos
+  const { data: food } = await sb.from('food_log').select('*')
+    .eq('user_id', currentUser.id).gte('log_date', from).lte('log_date', to)
+    .order('log_date').order('logged_at');
+  if (food?.length) {
+    sections.push('# ALIMENTOS');
+    sections.push(toCSV(food, ['log_date','meal_type','food_name','quantity','unit','calories','protein_g','carbs_g','fat_g','fiber_g','sugar_g','origin','notes']));
   }
 
-  if (doHyd) {
-    const { data } = await sb.from('hydration_log').select('*')
-      .eq('user_id', currentUser.id).gte('log_date', from).lte('log_date', to)
-      .order('log_date').order('logged_at');
-    if (data?.length) {
-      const cols = ['log_date','drink_id','drink_label','amount','unit','display'];
-      zip.file('hidratacion.csv', toCSV(data, cols));
-    }
+  // Hidratación
+  const { data: hyd } = await sb.from('hydration_log').select('*')
+    .eq('user_id', currentUser.id).gte('log_date', from).lte('log_date', to)
+    .order('log_date').order('logged_at');
+  if (hyd?.length) {
+    if (sections.length) sections.push('');
+    sections.push('# HIDRATACIÓN');
+    sections.push(toCSV(hyd, ['log_date','drink_label','amount','unit']));
   }
 
-  if (doSupp) {
-    const { data } = await sb.from('supplement_log').select('*')
-      .eq('user_id', currentUser.id).gte('log_date', from).lte('log_date', to)
-      .order('log_date');
-    if (data?.length) {
-      const cols = ['log_date','supplement_name','logged_at'];
-      zip.file('suplementos.csv', toCSV(data, cols));
-    }
+  // Suplementos
+  const { data: supp } = await sb.from('supplement_log').select('*')
+    .eq('user_id', currentUser.id).gte('log_date', from).lte('log_date', to)
+    .order('log_date');
+  if (supp?.length) {
+    if (sections.length) sections.push('');
+    sections.push('# SUPLEMENTOS');
+    sections.push(toCSV(supp, ['log_date','supplement_name']));
   }
 
-  if (doNotes) {
-    const { data } = await sb.from('daily_notes').select('*')
-      .eq('user_id', currentUser.id).gte('note_date', from).lte('note_date', to)
-      .order('note_date');
-    if (data?.length) {
-      const cols = ['note_date','note','updated_at'];
-      zip.file('notas.csv', toCSV(data, cols));
-    }
+  // Notas del día
+  const { data: notes } = await sb.from('daily_notes').select('*')
+    .eq('user_id', currentUser.id).gte('note_date', from).lte('note_date', to)
+    .order('note_date');
+  if (notes?.length) {
+    if (sections.length) sections.push('');
+    sections.push('# NOTAS DEL DÍA');
+    sections.push(toCSV(notes, ['note_date','note']));
   }
 
-  if (Object.keys(zip.files).length === 0) {
-    showToast('No hay datos en ese rango de fechas', true); return;
-  }
+  if (!sections.length) { showToast('No hay datos en ese rango de fechas', true); return; }
 
-  const blob = await zip.generateAsync({ type: 'blob' });
+  const csv  = sections.join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `beisszu_${from}_${to}.zip`;
+  a.download = `beisszu_${from}_${to}.csv`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('✓ Exportación descargada');
+  showToast('✓ CSV descargado');
 }
 
 async function generatePDF() {
