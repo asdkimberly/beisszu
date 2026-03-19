@@ -416,6 +416,48 @@ select { cursor: pointer; }
 }
 .log-item-delete:active { opacity: 1; color: var(--warn); }
 
+/* ── Context menu ── */
+.ctx-menu {
+  position: fixed;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  padding: 6px;
+  z-index: 9999;
+  min-width: 190px;
+  animation: fadeIn 0.12s ease;
+}
+.ctx-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s;
+}
+.ctx-menu-item:hover, .ctx-menu-item:active { background: var(--surface3, var(--border)); }
+.ctx-menu-item.danger { color: var(--warn); }
+.ctx-menu-divider {
+  height: 1px; background: var(--border);
+  margin: 4px 6px;
+}
+.ctx-btn {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 18px; padding: 2px 6px;
+  opacity: 0.6; transition: opacity 0.15s;
+  line-height: 1; border-radius: 6px;
+  flex-shrink: 0;
+}
+.ctx-btn:active { opacity: 1; background: var(--border); }
+
 .hyd-log-item {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -1754,6 +1796,15 @@ select { cursor: pointer; }
   </div>
 </div>
 
+<!-- ══ CONTEXT MENU BOTTOM SHEET ══ -->
+<div class="bottom-sheet-overlay" id="bsContext" onclick="closeBSIfOverlay(event,'bsContext')">
+  <div class="bottom-sheet" style="padding-bottom:env(safe-area-inset-bottom,16px)">
+    <div class="bs-handle"></div>
+    <div id="bsContextTitle" style="font-family:var(--font-display);font-size:13px;color:var(--muted);padding:0 20px 12px;border-bottom:1px solid var(--border)"></div>
+    <div id="bsContextActions" style="display:flex;flex-direction:column"></div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -2579,21 +2630,15 @@ async function renderCarouselDay() {
       e._type === 'food' ? makeEditableLogItem(e) : makeHydLogItem(e)
     ).join('');
     const isHydration = key === 'Hidratación';
-    const templateBtns = !isHydration ? `
-      <div style="display:flex;gap:6px;margin-top:6px">
-        <button onclick="openApplyTemplateModal('${key}')"
-          style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-display);font-size:12px;cursor:pointer">
-          📋 Aplicar plantilla
-        </button>
-        ${foodItems.length ? `<button onclick="openSaveTemplateModal('${key}', '${dateStr}')"
-          style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-display);font-size:12px;cursor:pointer">
-          💾 Guardar como plantilla
-        </button>` : ''}
-      </div>` : '';
+    const ctxBtn = !isHydration
+      ? `<button class="ctx-btn" onclick="openMealGroupContextMenu(this,'${key}','${dateStr}')" title="Opciones">⋯</button>`
+      : '';
     return `<div class="meal-group">
-      <div class="meal-group-label">${icon} ${key}</div>
+      <div class="meal-group-label" style="display:flex;align-items:center;justify-content:space-between">
+        <span>${icon} ${key}</span>
+        ${ctxBtn}
+      </div>
       ${items}
-      ${templateBtns}
     </div>`;
   }).join('');
 }
@@ -2683,7 +2728,7 @@ function makeHydLogItem(e) {
         <div style="font-size:12px;color:var(--muted)">${time}</div>
       </div>
     </div>
-    <button class="log-item-delete" onclick="deleteHydEntry(${e.id})">✕</button>
+    <button onclick="openHydEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
   </div>`;
 }
 
@@ -2706,11 +2751,10 @@ function makeEditableLogItem(e) {
   return `<div class="log-item">
     <div class="log-item-top">
       <div class="log-item-name">${displayName}</div>
-      <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:4px">
         <div class="log-item-cal">${Math.round(e.calories||0)} kcal</div>
         ${dishIngs ? `<span id="dish-chevron-${entryId}" onclick="toggleDishExpand('${entryId}')" style="color:var(--muted);font-size:12px;cursor:pointer;transition:transform 0.2s;padding:2px 4px">▼</span>` : ''}
-        <button onclick="openEditModal(${e.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px">✏️</button>
-        <button class="log-item-delete" onclick="deleteEntry(${e.id})">✕</button>
+        <button onclick="openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
       </div>
     </div>
     <div class="log-item-meta">${e.quantity?`${e.quantity} ${e.unit} · `:''}P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g${e.origin==='Fuera'?' · 🌍':''}</div>
@@ -3386,6 +3430,98 @@ function renderTemplatesList() {
         ${t.items.map(i => `<div style="font-size:11px;color:var(--muted)">${i.food_name} · ${i.quantity} ${i.unit} · ${Math.round(i.calories)} kcal</div>`).join('')}
       </div>
     </div>`).join('');
+}
+
+// ══ Context Menu ══
+function openEntryContextMenu(btn, entryId) {
+  openCtxMenu(btn, [
+    { icon: '✏️', label: 'Editar entrada',   action: () => openEditModal(entryId) },
+    'divider',
+    { icon: '🗑', label: 'Eliminar entrada', action: () => deleteEntry(entryId), danger: true },
+  ]);
+}
+
+function openHydEntryContextMenu(btn, entryId) {
+  openCtxMenu(btn, [
+    { icon: '🗑', label: 'Eliminar', action: () => deleteHydEntry(entryId), danger: true },
+  ]);
+}
+
+function openMealGroupContextMenu(btn, mealType, dateStr) {
+  const mealEntries = entries.filter(e => e.log_date === dateStr && e.meal_type === mealType);
+  const items = [
+    { icon: '📋', label: 'Aplicar plantilla', action: () => openApplyTemplateModal(mealType) },
+  ];
+  if (mealEntries.length) {
+    items.push({ icon: '💾', label: 'Guardar como plantilla', action: () => openSaveTemplateModal(mealType, dateStr) });
+  }
+  openCtxMenu(btn, items);
+}
+
+// ══ Context Menu ══
+let _ctxMenu = null;
+
+function openCtxMenu(triggerBtn, items) {
+  closeCtxMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+  menu.id = '_ctxMenu';
+
+  items.forEach(item => {
+    if (item === 'divider') {
+      const d = document.createElement('div');
+      d.className = 'ctx-menu-divider';
+      menu.appendChild(d);
+      return;
+    }
+    const btn = document.createElement('button');
+    btn.className = 'ctx-menu-item' + (item.danger ? ' danger' : '');
+    btn.innerHTML = `<span>${item.icon}</span><span>${item.label}</span>`;
+    btn.onclick = () => { closeCtxMenu(); item.action(); };
+    menu.appendChild(btn);
+  });
+
+  document.body.appendChild(menu);
+  _ctxMenu = menu;
+
+  // Smart positioning
+  const rect = triggerBtn.getBoundingClientRect();
+  const menuH = items.length * 44 + 12;
+  const menuW = 200;
+  const vp = window.innerHeight;
+  const spaceBelow = vp - rect.bottom;
+
+  // Horizontal: align to right edge of trigger, don't overflow viewport
+  let left = rect.right - menuW;
+  if (left < 8) left = 8;
+
+  // Vertical: open downward if space, upward if not
+  let top;
+  if (spaceBelow >= menuH + 8) {
+    top = rect.bottom + 6;
+  } else {
+    top = rect.top - menuH - 6;
+  }
+
+  menu.style.left = `${left}px`;
+  menu.style.top  = `${Math.max(8, top)}px`;
+
+  // Close on outside tap
+  setTimeout(() => {
+    document.addEventListener('click', closeCtxMenu, { once: true });
+  }, 0);
+}
+
+function closeCtxMenu() {
+  const m = document.getElementById('_ctxMenu');
+  if (m) m.remove();
+  _ctxMenu = null;
+}
+
+// ── Entry context menu ──
+function openEntryCtx(btn, id) {
+  openEntryContextMenu(btn, id);
 }
 
 async function clearAllData() {
