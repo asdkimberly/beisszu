@@ -2295,12 +2295,19 @@ function buildCarouselDays(preserveDate = false) {
   ]);
   dateSet.add(getTodayDate());
   carouselDays = [...dateSet].sort();
-  // Restore previous date if preserveDate, otherwise jump to today
+
   if (preserveDate && currentDate) {
+    // After edit/delete — stay on same date
     const idx = carouselDays.indexOf(currentDate);
     carouselIndex = idx !== -1 ? idx : carouselDays.length - 1;
   } else {
-    carouselIndex = carouselDays.length - 1;
+    // On initial load — restore last visited date from localStorage
+    const saved = localStorage.getItem('bz_carousel_date');
+    if (saved && carouselDays.includes(saved)) {
+      carouselIndex = carouselDays.indexOf(saved);
+    } else {
+      carouselIndex = carouselDays.length - 1;
+    }
   }
 }
 
@@ -2308,6 +2315,8 @@ function carouselNavigate(dir) {
   const newIndex = carouselIndex + dir;
   if (newIndex < 0 || newIndex >= carouselDays.length) return;
   carouselIndex = newIndex;
+  // Persist the selected date so it survives a page refresh
+  localStorage.setItem('bz_carousel_date', carouselDays[carouselIndex]);
   renderCarouselDay();
 }
 
@@ -2439,6 +2448,7 @@ async function renderCarouselDay() {
 function renderToday() {
   buildCarouselDays();
   carouselIndex = carouselDays.length - 1;
+  localStorage.removeItem('bz_carousel_date');
   renderCarouselDay();
   initHomeSwipe();
 }
