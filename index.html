@@ -1677,6 +1677,23 @@ select { cursor: pointer; }
   </div>
 </div>
 
+<!-- ══ DUPLICATE DAY MODAL ══ -->
+<div class="modal-overlay" id="duplicateDayModal">
+  <div class="modal" style="max-width:400px;max-height:88dvh;overflow-y:auto">
+    <div class="modal-title" id="dupModalTitle">Copiar entradas a hoy</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="dupModalSubtitle"></div>
+    <div id="dupModalList" style="display:flex;flex-direction:column;gap:4px"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <button onclick="dupSelectAll(true)" style="background:none;border:none;color:var(--accent);font-family:var(--font-display);font-size:13px;cursor:pointer">Seleccionar todo</button>
+      <button onclick="dupSelectAll(false)" style="background:none;border:none;color:var(--muted);font-family:var(--font-display);font-size:13px;cursor:pointer">Deseleccionar todo</button>
+    </div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="modal-cancel" onclick="closeDupModal()">Cancelar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="confirmDuplicateDay()">📋 Copiar seleccionadas</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -2870,55 +2887,95 @@ async function duplicateDay() {
   const sourceEntries = entries.filter(e => e.log_date === sourceDate);
   if (!sourceEntries.length) { showToast('No hay entradas para copiar', true); return; }
 
+  const sourceDateLabel = new Date(sourceDate + 'T12:00:00').toLocaleDateString('es-CR', { weekday:'long', day:'numeric', month:'short' });
   const todayEntries = entries.filter(e => e.log_date === today);
-  const sourceDateLabel = new Date(sourceDate + 'T12:00:00').toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
 
-  const doInsert = async () => {
-    const newEntries = sourceEntries.map(e => ({
-      user_id:   currentUser.id,
-      log_date:  today,
-      meal_type: e.meal_type,
-      food_name: e.food_name,
-      quantity:  e.quantity,
-      unit:      e.unit,
-      calories:  e.calories,
-      protein_g: e.protein_g,
-      carbs_g:   e.carbs_g,
-      fat_g:     e.fat_g,
-      fiber_g:   e.fiber_g,
-      sugar_g:   e.sugar_g,
-      origin:    e.origin,
-      notes:     e.notes,
-      dish_id:   e.dish_id || null,
-    }));
-    const { data, error } = await sb.from('food_log').insert(newEntries).select();
-    if (error) { showToast('Error al duplicar', true); return; }
-    data.forEach(e => entries.push(e));
-    attachDishIngredients();
-    buildCarouselDays(true);
-    // Navigate to today
-    const todayIdx = carouselDays.indexOf(today);
-    if (todayIdx !== -1) carouselIndex = todayIdx;
-    localStorage.setItem('bz_carousel_date', today);
-    renderCarouselDay();
-    showToast(`✓ ${sourceEntries.length} entradas copiadas a hoy`);
-  };
+  // Set modal title and subtitle
+  document.getElementById('dupModalTitle').textContent = `Copiar a hoy`;
+  document.getElementById('dupModalSubtitle').textContent =
+    todayEntries.length
+      ? `${sourceDateLabel} · Hoy ya tiene ${todayEntries.length} entrada${todayEntries.length !== 1 ? 's' : ''}, se agregarán las seleccionadas`
+      : `${sourceDateLabel} · Seleccioná las entradas que querés copiar`;
 
-  if (todayEntries.length) {
-    showConfirm({
-      title: `Copiar ${sourceDateLabel} a hoy`,
-      body: `Hoy ya tenés ${todayEntries.length} entrada${todayEntries.length !== 1 ? 's' : ''}. Las entradas copiadas se agregarán a las existentes.`,
-      label: '📋 Copiar igual',
-      onConfirm: doInsert,
-    });
-  } else {
-    showConfirm({
-      title: `Copiar ${sourceDateLabel} a hoy`,
-      body: `Se copiarán ${sourceEntries.length} entrada${sourceEntries.length !== 1 ? 's' : ''} a hoy.`,
-      label: '📋 Copiar',
-      onConfirm: doInsert,
-    });
-  }
+  // Build checkbox list grouped by meal
+  const MEAL_ORDER = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+  const grouped = {};
+  sourceEntries.forEach(e => {
+    if (!grouped[e.meal_type]) grouped[e.meal_type] = [];
+    grouped[e.meal_type].push(e);
+  });
+
+  const list = document.getElementById('dupModalList');
+  list.innerHTML = MEAL_ORDER
+    .filter(m => grouped[m])
+    .map(meal => {
+      const icon = MEAL_ICONS[meal] || '🍽️';
+      const items = grouped[meal].map(e => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:var(--surface2)">
+          <input type="checkbox" data-entry-id="${e.id}" checked
+            style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
+          <div style="min-width:0">
+            <div style="font-size:13px;color:var(--text);font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.food_name}</div>
+            <div style="font-size:11px;color:var(--muted)">${e.quantity} ${e.unit} · ${Math.round(e.calories||0)} kcal</div>
+          </div>
+        </label>`).join('');
+      return `
+        <div style="margin-bottom:8px">
+          <div style="font-size:11px;color:var(--muted);font-family:var(--font-display);letter-spacing:0.05em;margin-bottom:4px;padding-left:4px">${icon} ${meal.toUpperCase()}</div>
+          <div style="display:flex;flex-direction:column;gap:4px">${items}</div>
+        </div>`;
+    }).join('');
+
+  document.getElementById('duplicateDayModal').classList.add('show');
+}
+
+function closeDupModal() {
+  document.getElementById('duplicateDayModal').classList.remove('show');
+}
+
+function dupSelectAll(checked) {
+  document.querySelectorAll('#dupModalList input[type="checkbox"]').forEach(cb => cb.checked = checked);
+}
+
+async function confirmDuplicateDay() {
+  const today = getTodayDate();
+  const selectedIds = [...document.querySelectorAll('#dupModalList input[type="checkbox"]:checked')]
+    .map(cb => parseInt(cb.dataset.entryId));
+
+  if (!selectedIds.length) { showToast('Seleccioná al menos una entrada', true); return; }
+
+  const selected = entries.filter(e => selectedIds.includes(e.id));
+  const newEntries = selected.map(e => ({
+    user_id:   currentUser.id,
+    log_date:  today,
+    meal_type: e.meal_type,
+    food_name: e.food_name,
+    quantity:  e.quantity,
+    unit:      e.unit,
+    calories:  e.calories,
+    protein_g: e.protein_g,
+    carbs_g:   e.carbs_g,
+    fat_g:     e.fat_g,
+    fiber_g:   e.fiber_g,
+    sugar_g:   e.sugar_g,
+    origin:    e.origin,
+    notes:     e.notes,
+    dish_id:   e.dish_id || null,
+  }));
+
+  const { data, error } = await sb.from('food_log').insert(newEntries).select();
+  if (error) { showToast('Error al duplicar', true); return; }
+
+  closeDupModal();
+  data.forEach(e => entries.push(e));
+  attachDishIngredients();
+  buildCarouselDays(true);
+  const todayIdx = carouselDays.indexOf(today);
+  if (todayIdx !== -1) carouselIndex = todayIdx;
+  localStorage.setItem('bz_carousel_date', today);
+  renderCarouselDay();
+  showToast(`✓ ${data.length} entrada${data.length !== 1 ? 's' : ''} copiada${data.length !== 1 ? 's' : ''} a hoy`);
 }
 
 async function clearAllData() {
