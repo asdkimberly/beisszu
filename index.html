@@ -418,7 +418,7 @@ select { cursor: pointer; }
 
 /* ── Context menu ── */
 .ctx-menu {
-  position: fixed;
+  position: absolute;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -3482,30 +3482,33 @@ function openCtxMenu(triggerBtn, items) {
     menu.appendChild(btn);
   });
 
-  document.body.appendChild(menu);
+  // Anchor to trigger's nearest positioned ancestor (the log-item or meal-group)
+  const anchor = triggerBtn.closest('.log-item, .hyd-log-item, .meal-group') || triggerBtn.parentElement;
+  anchor.style.position = 'relative';
+  anchor.appendChild(menu);
   _ctxMenu = menu;
 
-  // Smart positioning
-  const rect = triggerBtn.getBoundingClientRect();
+  // Smart positioning: measure space and decide up/down, left align to right edge
+  const triggerRect = triggerBtn.getBoundingClientRect();
+  const anchorRect  = anchor.getBoundingClientRect();
   const menuH = items.length * 44 + 12;
   const menuW = 200;
   const vp = window.innerHeight;
-  const spaceBelow = vp - rect.bottom;
+  const spaceBelow = vp - triggerRect.bottom;
 
-  // Horizontal: align to right edge of trigger, don't overflow viewport
-  let left = rect.right - menuW;
-  if (left < 8) left = 8;
-
-  // Vertical: open downward if space, upward if not
+  // Position relative to anchor
+  const right = anchorRect.right - triggerRect.right + 4;
   let top;
   if (spaceBelow >= menuH + 8) {
-    top = rect.bottom + 6;
+    // Open downward: align to bottom of trigger button
+    top = triggerRect.bottom - anchorRect.top + 4;
   } else {
-    top = rect.top - menuH - 6;
+    // Open upward: align to top of trigger button
+    top = triggerRect.top - anchorRect.top - menuH - 4;
   }
 
-  menu.style.left = `${left}px`;
-  menu.style.top  = `${Math.max(8, top)}px`;
+  menu.style.right = `${right}px`;
+  menu.style.top   = `${Math.max(0, top)}px`;
 
   // Close on outside tap
   setTimeout(() => {
