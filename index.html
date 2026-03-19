@@ -922,7 +922,11 @@ select { cursor: pointer; }
     <!-- Carousel header -->
     <div class="carousel-header">
       <button class="carousel-arrow" id="carouselPrev" onclick="carouselNavigate(-1)">‹</button>
-      <div class="carousel-title" id="carouselTitle">Hoy</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="carousel-title" id="carouselTitle">Hoy</div>
+        <button id="duplicateDayBtn" onclick="duplicateDay()" title="Copiar este día a hoy"
+          style="display:none;background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;opacity:0.7;line-height:1">📋</button>
+      </div>
       <button class="carousel-arrow" id="carouselNext" onclick="carouselNavigate(1)">›</button>
     </div>
 
@@ -2337,6 +2341,10 @@ async function renderCarouselDay() {
   // Update title
   document.getElementById('carouselTitle').textContent = getCarouselTitle(dateStr);
 
+  // Show duplicate button only on past days
+  const dupBtn = document.getElementById('duplicateDayBtn');
+  if (dupBtn) dupBtn.style.display = dateStr !== getTodayDate() ? 'inline-block' : 'none';
+
   // Arrow states
   document.getElementById('carouselPrev').disabled = carouselIndex === 0;
   document.getElementById('carouselNext').disabled = carouselIndex === carouselDays.length - 1;
@@ -2852,6 +2860,65 @@ async function saveSettings() {
   if (error) { showToast('Error al guardar', true); return; }
   showToast('Metas guardadas ✓');
   renderCarouselDay();
+}
+
+async function duplicateDay() {
+  const sourceDate = carouselDays[carouselIndex];
+  const today = getTodayDate();
+  if (sourceDate === today) return;
+
+  const sourceEntries = entries.filter(e => e.log_date === sourceDate);
+  if (!sourceEntries.length) { showToast('No hay entradas para copiar', true); return; }
+
+  const todayEntries = entries.filter(e => e.log_date === today);
+  const sourceDateLabel = new Date(sourceDate + 'T12:00:00').toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
+
+  const doInsert = async () => {
+    const newEntries = sourceEntries.map(e => ({
+      user_id:   currentUser.id,
+      log_date:  today,
+      meal_type: e.meal_type,
+      food_name: e.food_name,
+      quantity:  e.quantity,
+      unit:      e.unit,
+      calories:  e.calories,
+      protein_g: e.protein_g,
+      carbs_g:   e.carbs_g,
+      fat_g:     e.fat_g,
+      fiber_g:   e.fiber_g,
+      sugar_g:   e.sugar_g,
+      origin:    e.origin,
+      notes:     e.notes,
+      dish_id:   e.dish_id || null,
+    }));
+    const { data, error } = await sb.from('food_log').insert(newEntries).select();
+    if (error) { showToast('Error al duplicar', true); return; }
+    data.forEach(e => entries.push(e));
+    attachDishIngredients();
+    buildCarouselDays(true);
+    // Navigate to today
+    const todayIdx = carouselDays.indexOf(today);
+    if (todayIdx !== -1) carouselIndex = todayIdx;
+    localStorage.setItem('bz_carousel_date', today);
+    renderCarouselDay();
+    showToast(`✓ ${sourceEntries.length} entradas copiadas a hoy`);
+  };
+
+  if (todayEntries.length) {
+    showConfirm({
+      title: `Copiar ${sourceDateLabel} a hoy`,
+      body: `Hoy ya tenés ${todayEntries.length} entrada${todayEntries.length !== 1 ? 's' : ''}. Las entradas copiadas se agregarán a las existentes.`,
+      label: '📋 Copiar igual',
+      onConfirm: doInsert,
+    });
+  } else {
+    showConfirm({
+      title: `Copiar ${sourceDateLabel} a hoy`,
+      body: `Se copiarán ${sourceEntries.length} entrada${sourceEntries.length !== 1 ? 's' : ''} a hoy.`,
+      label: '📋 Copiar',
+      onConfirm: doInsert,
+    });
+  }
 }
 
 async function clearAllData() {
