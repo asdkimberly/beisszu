@@ -948,6 +948,16 @@ select { cursor: pointer; }
         <div class="summary-card-value" id="todayFat">0</div>
         <div class="summary-card-unit">gramos</div>
       </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Fibra</div>
+        <div class="summary-card-value" id="todayFib">0</div>
+        <div class="summary-card-unit">gramos</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Azúcar</div>
+        <div class="summary-card-value" id="todaySug">0</div>
+        <div class="summary-card-unit">gramos</div>
+      </div>
     </div>
 
     <!-- Metas -->
@@ -2327,10 +2337,14 @@ async function renderCarouselDay() {
   const totProt = dayEntries.reduce((s,e) => s + (e.protein_g||0), 0);
   const totCarb = dayEntries.reduce((s,e) => s + (e.carbs_g||0), 0);
   const totFat  = dayEntries.reduce((s,e) => s + (e.fat_g||0), 0);
+  const totFib  = dayEntries.reduce((s,e) => s + (e.fiber_g||0), 0);
+  const totSug  = dayEntries.reduce((s,e) => s + (e.sugar_g||0), 0);
   document.getElementById('todayCal').textContent   = Math.round(totCal);
   document.getElementById('todayProt').textContent  = totProt.toFixed(1);
   document.getElementById('todayCarbs').textContent = totCarb.toFixed(1);
   document.getElementById('todayFat').textContent   = totFat.toFixed(1);
+  document.getElementById('todayFib').textContent   = totFib.toFixed(1);
+  document.getElementById('todaySug').textContent   = totSug.toFixed(1);
 
   // ── Metas progress bars ──
   const progSection = document.getElementById('homeProgressSection');
