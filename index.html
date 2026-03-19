@@ -1014,6 +1014,7 @@ select { cursor: pointer; }
     <div class="sub-tabs">
       <button class="sub-tab active" id="subTabAlimentos" onclick="switchFoodsTab('alimentos')">🥦 Alimentos</button>
       <button class="sub-tab" id="subTabPlatillos" onclick="switchFoodsTab('platillos')">🍽️ Platillos</button>
+      <button class="sub-tab" id="subTabPlantillas" onclick="switchFoodsTab('plantillas')">📋 Plantillas</button>
     </div>
 
     <!-- ── Sub: ALIMENTOS ── -->
@@ -1143,6 +1144,16 @@ select { cursor: pointer; }
         <div style="display:flex;gap:10px;margin-top:4px">
           <button onclick="cancelDishBuilder()" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">Cancelar</button>
           <button onclick="saveDish()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Guardar platillo</button>
+        </div>
+      </div>
+
+      <!-- ══ PLANTILLAS SECTION ══ -->
+      <div id="sectionPlantillas" style="display:none">
+        <div class="section-label" style="margin-top:4px">Mis plantillas</div>
+        <div id="templatesList" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div id="templatesEmpty" style="display:none" class="empty">
+          <div class="empty-icon">📋</div>
+          <div class="empty-text">Todavía no tenés plantillas.<br>Guardá un tiempo de comida desde Inicio.</div>
         </div>
       </div>
 
@@ -1692,6 +1703,38 @@ select { cursor: pointer; }
   </div>
 </div>
 
+<!-- ══ SAVE TEMPLATE MODAL ══ -->
+<div class="modal-overlay" id="saveTemplateModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">💾 Guardar como plantilla</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="saveTemplateSubtitle"></div>
+    <div class="field">
+      <label>Nombre de la plantilla</label>
+      <input type="text" id="templateNameInput" placeholder="Ej: Desayuno habitual, Almuerzo fit…">
+    </div>
+    <div id="saveTemplateItems" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-cancel" onclick="document.getElementById('saveTemplateModal').classList.remove('show')">Cancelar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="saveTemplate()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APPLY TEMPLATE MODAL ══ -->
+<div class="modal-overlay" id="applyTemplateModal">
+  <div class="modal" style="max-width:400px;max-height:88dvh;overflow-y:auto">
+    <div class="modal-title">📋 Aplicar plantilla</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="applyTemplateSubtitle"></div>
+    <div id="applyTemplateList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div id="applyTemplateEmpty" style="display:none;color:var(--muted);font-size:13px;text-align:center;padding:20px 0">
+      No tenés plantillas para este tiempo de comida.
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-cancel" onclick="document.getElementById('applyTemplateModal').classList.remove('show')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ DUPLICATE DAY MODAL ══ -->
 <div class="modal-overlay" id="duplicateDayModal">
   <div class="modal" style="max-width:400px;max-height:88dvh;overflow-y:auto">
@@ -1932,6 +1975,7 @@ async function initApp(user) {
   await Promise.all([loadSettings(), loadHydration(), loadFoodsDb(), loadDishes(), loadFoodServings(), loadSupplements()]);
   await loadEntries(); // after dishes so _dishIngs can be populated
   await loadDayNotes();
+  await loadTemplates();
   updateClock();
   setInterval(updateClock, 30000);
   checkOnline();
@@ -1967,10 +2011,13 @@ function switchTab(name) {
 }
 
 function switchFoodsTab(tab) {
-  document.getElementById('fsec-alimentos').style.display = tab === 'alimentos' ? 'block' : 'none';
-  document.getElementById('fsec-platillos').style.display = tab === 'platillos' ? 'block' : 'none';
-  document.getElementById('subTabAlimentos').classList.toggle('active', tab === 'alimentos');
-  document.getElementById('subTabPlatillos').classList.toggle('active', tab === 'platillos');
+  document.getElementById('fsec-alimentos').style.display  = tab === 'alimentos'  ? 'block' : 'none';
+  document.getElementById('fsec-platillos').style.display  = tab === 'platillos'  ? 'block' : 'none';
+  document.getElementById('sectionPlantillas').style.display = tab === 'plantillas' ? 'block' : 'none';
+  document.getElementById('subTabAlimentos').classList.toggle('active',  tab === 'alimentos');
+  document.getElementById('subTabPlatillos').classList.toggle('active',  tab === 'platillos');
+  document.getElementById('subTabPlantillas').classList.toggle('active', tab === 'plantillas');
+  if (tab === 'plantillas') renderTemplatesList();
 }
 
 
@@ -2525,12 +2572,26 @@ async function renderCarouselDay() {
 
   mealGroupsEl.innerHTML = orderedKeys.map(key => {
     const icon = MEAL_ICONS[key] || '🍽️';
+    const foodItems = groups[key].filter(e => e._type === 'food');
     const items = groups[key].map(e =>
       e._type === 'food' ? makeEditableLogItem(e) : makeHydLogItem(e)
     ).join('');
+    const isHydration = key === 'Hidratación';
+    const templateBtns = !isHydration ? `
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button onclick="openApplyTemplateModal('${key}')"
+          style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-display);font-size:12px;cursor:pointer">
+          📋 Aplicar plantilla
+        </button>
+        ${foodItems.length ? `<button onclick="openSaveTemplateModal('${key}', '${dateStr}')"
+          style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-display);font-size:12px;cursor:pointer">
+          💾 Guardar como plantilla
+        </button>` : ''}
+      </div>` : '';
     return `<div class="meal-group">
       <div class="meal-group-label">${icon} ${key}</div>
       ${items}
+      ${templateBtns}
     </div>`;
   }).join('');
 }
@@ -3132,6 +3193,197 @@ async function saveDayNote() {
 
   if (status) status.textContent = error ? '⚠ Error al guardar' : '✓ Guardado';
   if (!error) setTimeout(() => { if (status) status.textContent = ''; }, 2000);
+}
+
+// ══ Meal Templates ══
+let templates = [];   // [{ id, name, meal_type, items: [...] }]
+
+async function loadTemplates() {
+  const { data: tmplData } = await sb.from('meal_templates')
+    .select('*, meal_template_items(*)')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: true });
+  templates = (tmplData || []).map(t => ({
+    ...t,
+    items: (t.meal_template_items || []).sort((a, b) => a.sort_order - b.sort_order),
+  }));
+}
+
+// ── Save template from a meal group ──
+function openSaveTemplateModal(mealType, dateStr) {
+  const mealEntries = entries.filter(e => e.log_date === dateStr && e.meal_type === mealType);
+  if (!mealEntries.length) return;
+  document.getElementById('saveTemplateSubtitle').textContent = `${mealType} · ${mealEntries.length} entrada${mealEntries.length !== 1 ? 's' : ''}`;
+  document.getElementById('templateNameInput').value = '';
+  document.getElementById('saveTemplateItems').innerHTML = mealEntries.map(e =>
+    `<div style="font-size:12px;color:var(--muted);padding:4px 8px;background:var(--surface2);border-radius:6px">${e.food_name} · ${e.quantity} ${e.unit}</div>`
+  ).join('');
+  // Store pending data
+  document._pendingTemplate = { mealType, entries: mealEntries };
+  document.getElementById('saveTemplateModal').classList.add('show');
+  setTimeout(() => document.getElementById('templateNameInput').focus(), 100);
+}
+
+async function saveTemplate() {
+  const name = document.getElementById('templateNameInput').value.trim();
+  if (!name) { showToast('Ingresá un nombre para la plantilla', true); return; }
+  const { mealType, entries: mealEntries } = document._pendingTemplate;
+
+  const { data: tmpl, error } = await sb.from('meal_templates')
+    .insert({ user_id: currentUser.id, name, meal_type: mealType })
+    .select().single();
+  if (error) { showToast('Error al guardar plantilla', true); return; }
+
+  const items = mealEntries.map((e, i) => ({
+    template_id: tmpl.id,
+    food_name:  e.food_name,
+    quantity:   e.quantity,
+    unit:       e.unit,
+    calories:   e.calories  || 0,
+    protein_g:  e.protein_g || 0,
+    carbs_g:    e.carbs_g   || 0,
+    fat_g:      e.fat_g     || 0,
+    fiber_g:    e.fiber_g   || 0,
+    sugar_g:    e.sugar_g   || 0,
+    origin:     e.origin    || 'Casa',
+    sort_order: i,
+  }));
+
+  const { error: itemsError } = await sb.from('meal_template_items').insert(items);
+  if (itemsError) { showToast('Error al guardar items', true); return; }
+
+  templates.push({ ...tmpl, items });
+  document.getElementById('saveTemplateModal').classList.remove('show');
+  renderTemplatesList();
+  showToast(`✓ Plantilla "${name}" guardada`);
+}
+
+// ── Apply template to today ──
+function openApplyTemplateModal(mealType) {
+  const relevant = templates.filter(t => t.meal_type === mealType);
+  document.getElementById('applyTemplateSubtitle').textContent = mealType;
+  const list = document.getElementById('applyTemplateList');
+  const empty = document.getElementById('applyTemplateEmpty');
+
+  if (!relevant.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    list.innerHTML = relevant.map(t => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-family:var(--font-display);font-size:14px;color:var(--text)">${t.name}</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="applyTemplate(${t.id})"
+              style="padding:6px 12px;border-radius:8px;border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer">
+              ▶ Aplicar
+            </button>
+            <button onclick="deleteTemplate(${t.id})"
+              style="padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;cursor:pointer">
+              🗑
+            </button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          ${t.items.map(i => `<div style="font-size:11px;color:var(--muted)">${i.food_name} · ${i.quantity} ${i.unit} · ${Math.round(i.calories)} kcal</div>`).join('')}
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('applyTemplateModal').classList.add('show');
+}
+
+async function applyTemplate(templateId) {
+  const tmpl = templates.find(t => t.id === templateId);
+  if (!tmpl) return;
+  const today = getTodayDate();
+
+  const newEntries = tmpl.items.map(item => ({
+    user_id:   currentUser.id,
+    log_date:  today,
+    meal_type: tmpl.meal_type,
+    food_name: item.food_name,
+    quantity:  item.quantity,
+    unit:      item.unit,
+    calories:  item.calories,
+    protein_g: item.protein_g,
+    carbs_g:   item.carbs_g,
+    fat_g:     item.fat_g,
+    fiber_g:   item.fiber_g,
+    sugar_g:   item.sugar_g,
+    origin:    item.origin,
+  }));
+
+  const { data, error } = await sb.from('food_log').insert(newEntries).select();
+  if (error) { showToast('Error al aplicar plantilla', true); return; }
+
+  data.forEach(e => entries.push(e));
+  attachDishIngredients();
+  buildCarouselDays(true);
+  const todayIdx = carouselDays.indexOf(today);
+  if (todayIdx !== -1) carouselIndex = todayIdx;
+  localStorage.setItem('bz_carousel_date', today);
+  document.getElementById('applyTemplateModal').classList.remove('show');
+  renderCarouselDay();
+  showToast(`✓ "${tmpl.name}" aplicada a hoy`);
+}
+
+async function deleteTemplate(templateId) {
+  const tmpl = templates.find(t => t.id === templateId);
+  if (!tmpl) return;
+  showConfirm({
+    title: 'Eliminar plantilla',
+    body: `¿Eliminás la plantilla "${tmpl.name}"?`,
+    label: '🗑 Eliminar',
+    onConfirm: async () => {
+      await sb.from('meal_templates').delete().eq('id', templateId).eq('user_id', currentUser.id);
+      templates = templates.filter(t => t.id !== templateId);
+      renderTemplatesList();
+      // Refresh apply modal if open
+      const applyModal = document.getElementById('applyTemplateModal');
+      if (applyModal.classList.contains('show')) {
+        openApplyTemplateModal(tmpl.meal_type);
+      }
+      showToast('Plantilla eliminada');
+    },
+  });
+}
+
+// ── Templates list in Alimentos tab ──
+function renderTemplatesList() {
+  const list = document.getElementById('templatesList');
+  const empty = document.getElementById('templatesEmpty');
+  if (!list) return;
+  if (!templates.length) {
+    list.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+
+  list.innerHTML = templates.map(t => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:14px;color:var(--text)">${t.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${MEAL_ICONS[t.meal_type]||'🍽️'} ${t.meal_type} · ${t.items.length} item${t.items.length !== 1 ? 's' : ''}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="openApplyTemplateModal('${t.meal_type}')"
+            style="padding:7px 12px;border-radius:8px;border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer">
+            ▶ Aplicar
+          </button>
+          <button onclick="deleteTemplate(${t.id})"
+            style="padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;cursor:pointer">
+            🗑
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        ${t.items.map(i => `<div style="font-size:11px;color:var(--muted)">${i.food_name} · ${i.quantity} ${i.unit} · ${Math.round(i.calories)} kcal</div>`).join('')}
+      </div>
+    </div>`).join('');
 }
 
 async function clearAllData() {
