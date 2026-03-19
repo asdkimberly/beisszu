@@ -930,6 +930,21 @@ select { cursor: pointer; }
       <button class="carousel-arrow" id="carouselNext" onclick="carouselNavigate(1)">›</button>
     </div>
 
+    <!-- Daily notes card -->
+    <div style="margin-bottom:4px">
+      <button onclick="toggleDayNotes()" id="dayNotesToggle"
+        style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;cursor:pointer;font-family:var(--font-display);font-size:13px;color:var(--muted)">
+        <span>📝 <span id="dayNotesToggleLabel">Notas del día</span></span>
+        <span id="dayNotesChevron" style="transition:transform 0.2s;font-size:11px">▼</span>
+      </button>
+      <div id="dayNotesBody" style="display:none;padding:10px 2px 0">
+        <textarea id="dayNotesInput" rows="3" placeholder="Ej: día de viaje, entrené en ayunas, cené tarde…"
+          onblur="saveDayNote()"
+          style="width:100%;resize:none;font-family:var(--font-display);font-size:14px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;box-sizing:border-box;line-height:1.5"></textarea>
+        <div id="dayNoteStatus" style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px;min-height:16px"></div>
+      </div>
+    </div>
+
     <!-- Nutrition summary cards -->
     <div class="summary-grid" id="homeSummaryGrid">
       <div class="summary-card">
@@ -1876,6 +1891,7 @@ async function initApp(user) {
   document.getElementById('profileEmail').textContent = user.email;
   await Promise.all([loadSettings(), loadHydration(), loadFoodsDb(), loadDishes(), loadFoodServings(), loadSupplements()]);
   await loadEntries(); // after dishes so _dishIngs can be populated
+  await loadDayNotes();
   updateClock();
   setInterval(updateClock, 30000);
   checkOnline();
@@ -2361,6 +2377,9 @@ async function renderCarouselDay() {
   // Show duplicate button only on past days
   const dupBtn = document.getElementById('duplicateDayBtn');
   if (dupBtn) dupBtn.style.display = dateStr !== getTodayDate() ? 'inline-block' : 'none';
+
+  // Render day notes
+  renderDayNotes(dateStr);
 
   // Arrow states
   document.getElementById('carouselPrev').disabled = carouselIndex === 0;
@@ -2995,6 +3014,77 @@ async function confirmDuplicateDay() {
   localStorage.setItem('bz_carousel_date', today);
   renderCarouselDay();
   showToast(`✓ ${data.length} entrada${data.length !== 1 ? 's' : ''} copiada${data.length !== 1 ? 's' : ''} a hoy`);
+}
+
+// ══ Daily Notes ══
+let dayNotes = {};      // { 'YYYY-MM-DD': 'note text' }
+let dayNotesOpen = false;
+
+async function loadDayNotes() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const cutoff = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth()+1).padStart(2,'0')}-${String(thirtyDaysAgo.getDate()).padStart(2,'0')}`;
+  const { data } = await sb.from('daily_notes')
+    .select('note_date, note')
+    .eq('user_id', currentUser.id)
+    .gte('note_date', cutoff);
+  dayNotes = {};
+  (data || []).forEach(r => { dayNotes[r.note_date] = r.note; });
+}
+
+function toggleDayNotes() {
+  dayNotesOpen = !dayNotesOpen;
+  document.getElementById('dayNotesBody').style.display = dayNotesOpen ? 'block' : 'none';
+  document.getElementById('dayNotesChevron').style.transform = dayNotesOpen ? 'rotate(180deg)' : '';
+  if (dayNotesOpen) document.getElementById('dayNotesInput').focus();
+}
+
+function renderDayNotes(dateStr) {
+  const note = dayNotes[dateStr] || '';
+  const input = document.getElementById('dayNotesInput');
+  const label = document.getElementById('dayNotesToggleLabel');
+  const status = document.getElementById('dayNoteStatus');
+  if (input) input.value = note;
+  if (status) status.textContent = '';
+  // Show preview in toggle label if note exists
+  if (label) {
+    label.textContent = note
+      ? `Notas del día — ${note.length > 40 ? note.slice(0, 40) + '…' : note}`
+      : 'Notas del día';
+  }
+}
+
+async function saveDayNote() {
+  const dateStr = carouselDays[carouselIndex];
+  if (!dateStr) return;
+  const note = document.getElementById('dayNotesInput').value.trim();
+  const status = document.getElementById('dayNoteStatus');
+  const label = document.getElementById('dayNotesToggleLabel');
+
+  // Update cache
+  dayNotes[dateStr] = note;
+  if (label) {
+    label.textContent = note
+      ? `Notas del día — ${note.length > 40 ? note.slice(0, 40) + '…' : note}`
+      : 'Notas del día';
+  }
+
+  if (!note) {
+    // Delete if empty
+    await sb.from('daily_notes').delete().eq('user_id', currentUser.id).eq('note_date', dateStr);
+    if (status) status.textContent = '';
+    return;
+  }
+
+  const { error } = await sb.from('daily_notes').upsert({
+    user_id:   currentUser.id,
+    note_date: dateStr,
+    note,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,note_date' });
+
+  if (status) status.textContent = error ? '⚠ Error al guardar' : '✓ Guardado';
+  if (!error) setTimeout(() => { if (status) status.textContent = ''; }, 2000);
 }
 
 async function clearAllData() {
