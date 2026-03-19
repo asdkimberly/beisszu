@@ -1629,6 +1629,10 @@ select { cursor: pointer; }
         </select>
       </div>
       <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="editLogDate" max="">
+      </div>
+      <div class="field">
         <label>Origen</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <button id="editOriginHome" onclick="setEditOrigin('Casa')" style="padding:10px;border-radius:10px;border:1.5px solid var(--accent2);background:rgba(212,168,64,0.08);color:var(--accent2);font-family:var(--font-display);font-size:13px;cursor:pointer">🏠 Casa</button>
@@ -2564,6 +2568,9 @@ function openEditModal(id) {
   document.getElementById('editQuantity').value  = e.quantity  || '';
   document.getElementById('editUnit').value       = e.unit      || 'gramos';
   document.getElementById('editMealType').value   = e.meal_type || 'Almuerzo';
+  const dateEl = document.getElementById('editLogDate');
+  dateEl.value = e.log_date || getTodayDate();
+  dateEl.max   = getTodayDate();
   document.getElementById('editCalories').value  = e.calories  || 0;
   document.getElementById('editProtein').value   = e.protein_g || 0;
   document.getElementById('editCarbs').value     = e.carbs_g   || 0;
@@ -2599,6 +2606,7 @@ async function saveEditEntry() {
     quantity:   parseFloat(document.getElementById('editQuantity').value) || null,
     unit:       document.getElementById('editUnit').value,
     meal_type:  document.getElementById('editMealType').value,
+    log_date:   document.getElementById('editLogDate').value || getTodayDate(),
     origin:     editingOrigin,
     calories:   parseFloat(document.getElementById('editCalories').value)  || 0,
     protein_g:  parseFloat(document.getElementById('editProtein').value)   || 0,
