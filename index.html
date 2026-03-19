@@ -1876,16 +1876,56 @@ sb.auth.onAuthStateChange((event, session) => {
     if (!currentUser || currentUser.id !== session.user.id) {
       initApp(session.user);
     }
+    // Token refreshed silently — nothing to show
+    if (event === 'TOKEN_REFRESHED') return;
   } else {
     document.getElementById('authScreen').style.display = 'flex';
     document.getElementById('appScreen').style.display = 'none';
     currentUser = null; entries = []; hydEntries = []; settings = {};
+
+    // Show contextual message depending on why session ended
+    if (event === 'SIGNED_OUT') {
+      // Voluntary logout — no message needed
+    } else if (event === 'TOKEN_REFRESHED') {
+      // Should not reach here without session, ignore
+    } else {
+      // Session expired or invalidated — show friendly message
+      showSessionExpiredMessage();
+    }
   }
 });
+
+function showSessionExpiredMessage() {
+  const authScreen = document.getElementById('authScreen');
+  if (!authScreen) return;
+  // Insert banner above the login form if not already present
+  if (document.getElementById('sessionExpiredBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'sessionExpiredBanner';
+  banner.style.cssText = `
+    background: rgba(224,120,64,0.12);
+    border: 1px solid rgba(224,120,64,0.4);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--accent2);
+    text-align: center;
+    line-height: 1.5;
+  `;
+  banner.innerHTML = '🔒 Tu sesión expiró. <br>Iniciá sesión de nuevo para continuar.';
+  // Insert before the first child of authScreen
+  const form = authScreen.querySelector('.auth-card') || authScreen.firstElementChild;
+  if (form) authScreen.insertBefore(banner, form);
+}
 
 // ══ App init ══
 async function initApp(user) {
   currentUser = user;
+  // Clear session expired banner if present
+  const banner = document.getElementById('sessionExpiredBanner');
+  if (banner) banner.remove();
   // Profile info
   document.getElementById('profileName').textContent = user.user_metadata?.full_name || 'Usuario';
   document.getElementById('profileEmail').textContent = user.email;
@@ -1897,6 +1937,13 @@ async function initApp(user) {
   checkOnline();
   window.addEventListener('online', checkOnline);
   window.addEventListener('offline', checkOnline);
+  // Check session when user returns to the tab after being away
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && currentUser) {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) showSessionExpiredMessage();
+    }
+  });
   initHydration();
   autoSelectMeal();
   renderToday();
