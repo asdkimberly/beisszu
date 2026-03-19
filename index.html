@@ -2912,9 +2912,11 @@ async function duplicateDay() {
     .map(meal => {
       const icon = MEAL_ICONS[meal] || '🍽️';
       const items = grouped[meal].map(e => `
-        <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:var(--surface2)">
-          <input type="checkbox" data-entry-id="${e.id}" checked
-            style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:var(--surface2)" onclick="toggleDupEntry(this)">
+          <input type="checkbox" data-entry-id="${e.id}" checked style="display:none">
+          <div class="dup-check" style="width:22px;height:22px;border-radius:6px;border:2px solid var(--accent);background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s">
+            <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><polyline points="1.5,5 4.5,8 10.5,1.5" stroke="#0e110a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
           <div style="min-width:0">
             <div style="font-size:13px;color:var(--text);font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.food_name}</div>
             <div style="font-size:11px;color:var(--muted)">${e.quantity} ${e.unit} · ${Math.round(e.calories||0)} kcal</div>
@@ -2934,8 +2936,25 @@ function closeDupModal() {
   document.getElementById('duplicateDayModal').classList.remove('show');
 }
 
+function toggleDupEntry(label) {
+  const cb = label.querySelector('input[type="checkbox"]');
+  const box = label.querySelector('.dup-check');
+  cb.checked = !cb.checked;
+  box.style.background   = cb.checked ? 'var(--accent)' : 'transparent';
+  box.style.borderColor  = cb.checked ? 'var(--accent)' : 'var(--border)';
+  box.querySelector('svg').style.opacity = cb.checked ? '1' : '0';
+}
+
 function dupSelectAll(checked) {
-  document.querySelectorAll('#dupModalList input[type="checkbox"]').forEach(cb => cb.checked = checked);
+  document.querySelectorAll('#dupModalList label').forEach(label => {
+    const cb = label.querySelector('input[type="checkbox"]');
+    const box = label.querySelector('.dup-check');
+    if (!cb || !box) return;
+    cb.checked = checked;
+    box.style.background  = checked ? 'var(--accent)' : 'transparent';
+    box.style.borderColor = checked ? 'var(--accent)' : 'var(--border)';
+    box.querySelector('svg').style.opacity = checked ? '1' : '0';
+  });
 }
 
 async function confirmDuplicateDay() {
