@@ -3460,8 +3460,14 @@ function openMealGroupContextMenu(btn, mealType, dateStr) {
 
 // ══ Context Menu ══
 let _ctxMenu = null;
+let _ctxCloseListener = null;
 
 function openCtxMenu(triggerBtn, items) {
+  // Remove previous outside-click listener before doing anything
+  if (_ctxCloseListener) {
+    document.removeEventListener('click', _ctxCloseListener);
+    _ctxCloseListener = null;
+  }
   closeCtxMenu();
 
   const menu = document.createElement('div');
@@ -3488,35 +3494,40 @@ function openCtxMenu(triggerBtn, items) {
   anchor.appendChild(menu);
   _ctxMenu = menu;
 
-  // Smart positioning: measure space and decide up/down, left align to right edge
+  // Smart positioning: measure space and decide up/down
   const triggerRect = triggerBtn.getBoundingClientRect();
   const anchorRect  = anchor.getBoundingClientRect();
-  const menuH = items.length * 44 + 12;
-  const menuW = 200;
+  const menuH = items.filter(i => i !== 'divider').length * 44 + items.filter(i => i === 'divider').length * 13 + 12;
   const vp = window.innerHeight;
   const spaceBelow = vp - triggerRect.bottom;
 
-  // Position relative to anchor
   const right = anchorRect.right - triggerRect.right + 4;
   let top;
   if (spaceBelow >= menuH + 8) {
-    // Open downward: align to bottom of trigger button
     top = triggerRect.bottom - anchorRect.top + 4;
   } else {
-    // Open upward: align to top of trigger button
     top = triggerRect.top - anchorRect.top - menuH - 4;
   }
 
   menu.style.right = `${right}px`;
   menu.style.top   = `${Math.max(0, top)}px`;
 
-  // Close on outside tap
+  // Register outside-click listener with a small delay so this click doesn't trigger it
   setTimeout(() => {
-    document.addEventListener('click', closeCtxMenu, { once: true });
-  }, 0);
+    _ctxCloseListener = (e) => {
+      if (!menu.contains(e.target)) {
+        closeCtxMenu();
+      }
+    };
+    document.addEventListener('click', _ctxCloseListener);
+  }, 50);
 }
 
 function closeCtxMenu() {
+  if (_ctxCloseListener) {
+    document.removeEventListener('click', _ctxCloseListener);
+    _ctxCloseListener = null;
+  }
   const m = document.getElementById('_ctxMenu');
   if (m) m.remove();
   _ctxMenu = null;
