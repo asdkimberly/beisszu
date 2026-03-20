@@ -1957,6 +1957,43 @@ select { cursor: pointer; }
 // ══ Supabase ══
 const SUPA_URL = 'https://nkhecfkqpqqqpxleqoec.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5raGVjZmtxcHFxcXB4bGVxb2VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjAwNDgsImV4cCI6MjA4ODk5NjA0OH0.NLAXuUaZw_uz5XtQh4g0e9xhPF2wz3I7sbNmOtFhXws';
+const FS_PROXY = `${SUPA_URL}/functions/v1/fatsecret-proxy`;
+
+// ── FatSecret API helper ──
+async function fsSearch(query) {
+  try {
+    const res = await fetch(FS_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({
+        method: 'foods.search',
+        params: { search_expression: query, max_results: 5, page_number: 0 },
+      }),
+    });
+    const data = await res.json();
+    const foods = data?.foods?.food;
+    if (!foods) return [];
+    const arr = Array.isArray(foods) ? foods : [foods];
+    return arr.map(f => {
+      // Parse the serving description to extract macros
+      // FatSecret returns: "Per 100g - Calories: 130kcal | Fat: 0.30g | Carbs: 28.17g | Protein: 2.66g"
+      const desc = f.food_description || '';
+      const cal  = parseFloat(desc.match(/Calories:\s*([\d.]+)/i)?.[1] || 0);
+      const fat  = parseFloat(desc.match(/Fat:\s*([\d.]+)/i)?.[1]      || 0);
+      const carb = parseFloat(desc.match(/Carbs:\s*([\d.]+)/i)?.[1]    || 0);
+      const prot = parseFloat(desc.match(/Protein:\s*([\d.]+)/i)?.[1]  || 0);
+      return {
+        name: f.food_name,
+        displayName: `🌐 ${f.food_name}`,
+        qty: 100, unit: 'gramos',
+        cal, p: prot, c: carb, f: fat, fib: 0, sug: 0,
+        _fromFatSecret: true,
+        _fsId: f.food_id,
+        _brandName: f.brand_name || null,
+      };
+    });
+  } catch { return []; }
+}
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ══ State ══
@@ -2384,8 +2421,11 @@ function norm(str) {
   return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+let _fsSearchTimeout = null;
+
 function onFoodInput(val) {
   clearTimeout(dropdownTimeout);
+  clearTimeout(_fsSearchTimeout);
   const dd = document.getElementById('foodDropdown');
   if (!val.trim()) { dd.classList.remove('show'); return; }
   const q = norm(val);
@@ -2403,18 +2443,35 @@ function onFoodInput(val) {
   const pastMatches = pastNames
     .filter(n => norm(n).includes(q) && !dbMatches.find(f => f.name === n))
     .slice(0, 3).map(n => ({ name: n, _past: true }));
-  const all = [...dbMatches, ...pastMatches];
-  if (!all.length) { dd.classList.remove('show'); return; }
-  dd.innerHTML = all.map(f => `
-    <div class="food-option" onmousedown="selectFood(${JSON.stringify(f).replace(/"/g,'&quot;')})">
-      <div class="food-option-name">${f.displayName || f.name}</div>
-      <div class="food-option-meta">
-        ${f._past
-          ? '<span style="color:var(--accent2)">⏱ Reciente</span>'
-          : `${f.qty} ${f.unit} · <span class="food-option-cal">${f.cal} kcal</span> · P:${f.p}g C:${f.c}g G:${f.f}g`}
-      </div>
-    </div>`).join('');
-  dd.classList.add('show');
+  const localAll = [...dbMatches, ...pastMatches];
+
+  // Render local results immediately
+  const renderDropdown = (items, loadingMore = false) => {
+    if (!items.length && !loadingMore) { dd.classList.remove('show'); return; }
+    dd.innerHTML = items.map(f => `
+      <div class="food-option" onmousedown="selectFood(${JSON.stringify(f).replace(/"/g,'&quot;')})">
+        <div class="food-option-name">${f.displayName || f.name}</div>
+        <div class="food-option-meta">
+          ${f._past
+            ? '<span style="color:var(--accent2)">⏱ Reciente</span>'
+            : `${f.qty} ${f.unit} · <span class="food-option-cal">${f.cal} kcal</span> · P:${f.p}g C:${f.c}g G:${f.f}g`}
+        </div>
+      </div>`).join('') +
+      (loadingMore ? `<div style="padding:10px 14px;font-size:12px;color:var(--muted)">🌐 Buscando más resultados…</div>` : '');
+    dd.classList.add('show');
+  };
+
+  renderDropdown(localAll, localAll.length < 3 && val.trim().length >= 2);
+
+  // If few local results and query is meaningful, search FatSecret after 600ms
+  if (localAll.length < 3 && val.trim().length >= 2) {
+    _fsSearchTimeout = setTimeout(async () => {
+      const fsResults = await fsSearch(val.trim());
+      // Filter out duplicates with local results
+      const newResults = fsResults.filter(fr => !localAll.find(l => norm(l.name) === norm(fr.name)));
+      renderDropdown([...localAll, ...newResults]);
+    }, 600);
+  }
 }
 
 function selectFood(food) {
