@@ -1096,6 +1096,17 @@ select { cursor: pointer; }
           <div class="macro-input"><label>Fibra</label><input type="number" id="newFoodFib" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
           <div class="macro-input"><label>Azúcar</label><input type="number" id="newFoodSug" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
         </div>
+        <div class="settings-row" style="margin-top:4px">
+          <div>
+            <div class="settings-label">Bebida alcohólica</div>
+            <div style="font-size:11px;color:var(--muted)">Se incluirá en el análisis de alcohol</div>
+          </div>
+          <div onclick="toggleNewFoodAlcohol()" id="newFoodAlcoholToggle"
+            style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0">
+            <div id="newFoodAlcoholThumb"
+              style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>
+          </div>
+        </div>
         <button class="btn-primary" onclick="saveNewFood()">+ Guardar alimento</button>
       </div>
       <div id="foodsList"></div>
@@ -1199,11 +1210,17 @@ select { cursor: pointer; }
 
     <!-- ══ PLANTILLAS SECTION ══ -->
     <div id="sectionPlantillas" style="display:none">
-      <div class="section-label" style="margin-top:4px">Mis plantillas</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="section-label" style="margin:0">Mis plantillas</div>
+        <button onclick="openNewTemplateBuilder()"
+          style="background:var(--accent);color:#0e110a;border:none;border-radius:8px;padding:7px 12px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer">
+          + Nueva
+        </button>
+      </div>
       <div id="templatesList" style="display:flex;flex-direction:column;gap:10px"></div>
       <div id="templatesEmpty" style="display:none" class="empty">
         <div class="empty-icon">📋</div>
-        <div class="empty-text">Todavía no tenés plantillas.<br>Guardá un tiempo de comida desde Inicio.</div>
+        <div class="empty-text">Todavía no tenés plantillas.<br>Creá una con el botón "+" o guardá un tiempo de comida desde Inicio.</div>
       </div>
     </div>
 
@@ -1219,11 +1236,29 @@ select { cursor: pointer; }
       <div class="profile-email" id="profileEmail">—</div>
     </div>
 
-    <!-- Sub-tabs -->
-    <div class="sub-tabs">
-      <button class="sub-tab active" id="profTabMetas"       onclick="switchProfileTab('metas')">🎯 Metas</button>
-      <button class="sub-tab"        id="profTabSuplementos" onclick="switchProfileTab('suplementos')">💊 Suplementos</button>
-      <button class="sub-tab"        id="profTabCuenta"      onclick="switchProfileTab('cuenta')">👤 Cuenta</button>
+    <!-- Profile nav -->
+    <div id="profNavRows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px">
+      <button id="profTabMetas"       onclick="switchProfileTab('metas')"
+        style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:15px;color:var(--text);cursor:pointer;transition:all 0.2s">
+        <span>🎯 Metas</span><span style="color:var(--muted);font-size:12px">›</span>
+      </button>
+      <button id="profTabSuplementos" onclick="switchProfileTab('suplementos')"
+        style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:15px;color:var(--text);cursor:pointer;transition:all 0.2s">
+        <span>💊 Suplementos</span><span style="color:var(--muted);font-size:12px">›</span>
+      </button>
+      <button id="profTabCuenta"      onclick="switchProfileTab('cuenta')"
+        style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:15px;color:var(--text);cursor:pointer;transition:all 0.2s">
+        <span>👤 Cuenta</span><span style="color:var(--muted);font-size:12px">›</span>
+      </button>
+    </div>
+
+    <!-- Back button (shown when a section is open) -->
+    <div id="profBackRow" style="display:none;align-items:center;gap:10px;margin-bottom:8px">
+      <button onclick="profileGoBack()"
+        style="display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-family:var(--font-display);font-size:14px;cursor:pointer;padding:4px 0">
+        ‹ Perfil
+      </button>
+      <span style="font-size:15px;font-family:var(--font-display);color:var(--text)" id="profBackLabel"></span>
     </div>
 
     <!-- ── Metas ── -->
@@ -1315,6 +1350,13 @@ select { cursor: pointer; }
     <div class="card" id="statsSugarFiberCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Tendencia de azúcar y fibra</div>
       <canvas id="chartSugarFiber" height="200"></canvas>
+    </div>
+
+    <!-- Consumo de alcohol -->
+    <div class="card" id="statsAlcoholCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Días con consumo de alcohol</div>
+      <canvas id="chartAlcohol" height="160"></canvas>
+      <div id="statsAlcoholSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
     </div>
 
     <!-- ④ Distribución por comida -->
@@ -1784,6 +1826,59 @@ select { cursor: pointer; }
   </div>
 </div>
 
+<!-- ══ NEW TEMPLATE MODAL ══ -->
+<div class="modal-overlay" id="newTemplateModal">
+  <div class="modal" style="max-width:400px;max-height:90dvh;overflow-y:auto">
+    <div class="modal-title">📋 Nueva plantilla</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field">
+        <label>Nombre</label>
+        <input type="text" id="newTplName" placeholder="Ej: Desayuno habitual…">
+      </div>
+      <div class="field">
+        <label>Tiempo de comida</label>
+        <select id="newTplMealType" style="font-family:var(--font-display)">
+          <option>Desayuno</option><option>Snack Mañana</option><option>Almuerzo</option>
+          <option>Snack Tarde</option><option>Cena</option><option>Extra</option>
+        </select>
+      </div>
+      <div class="section-label" style="margin:0">Alimentos</div>
+      <div id="newTplItems" style="display:flex;flex-direction:column;gap:6px"></div>
+      <!-- Add item row -->
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div class="field" style="flex:2;margin:0">
+          <label>Alimento</label>
+          <div style="position:relative">
+            <input type="text" id="newTplFoodInput" placeholder="Buscar…" autocomplete="off"
+              oninput="onNewTplFoodInput(this.value)"
+              onblur="setTimeout(()=>document.getElementById('newTplDropdown').classList.remove('show'),200)">
+            <div class="food-dropdown" id="newTplDropdown"></div>
+          </div>
+        </div>
+        <div class="field" style="flex:1;margin:0">
+          <label>Cant.</label>
+          <input type="number" id="newTplQty" placeholder="1" inputmode="decimal" min="0">
+        </div>
+        <div class="field" style="flex:1;margin:0">
+          <label>Unidad</label>
+          <select id="newTplUnit" style="font-family:var(--font-display);font-size:13px">
+            <option>gramos</option><option>ml</option><option>unidades</option>
+            <option>tazas</option><option>cdas</option><option>rebanadas</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="addNewTplItem()"
+        style="padding:10px;border-radius:var(--r);border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-family:var(--font-display);font-size:13px;cursor:pointer">
+        + Agregar alimento
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-cancel" onclick="document.getElementById('newTemplateModal').classList.remove('show')">Cancelar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="saveNewTemplate()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ SAVE TEMPLATE MODAL ══ -->
 <div class="modal-overlay" id="saveTemplateModal">
   <div class="modal" style="max-width:380px">
@@ -1805,7 +1900,13 @@ select { cursor: pointer; }
 <div class="modal-overlay" id="applyTemplateModal">
   <div class="modal" style="max-width:400px;max-height:88dvh;overflow-y:auto">
     <div class="modal-title">📋 Aplicar plantilla</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="applyTemplateSubtitle"></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px" id="applyTemplateSubtitle"></div>
+    <!-- Date picker -->
+    <div class="field" style="margin-bottom:12px">
+      <label>Aplicar al día</label>
+      <input type="date" id="applyTemplateDate" style="width:100%;font-size:14px"
+        max="">
+    </div>
     <div id="applyTemplateList" style="display:flex;flex-direction:column;gap:8px"></div>
     <div id="applyTemplateEmpty" style="display:none;color:var(--muted);font-size:13px;text-align:center;padding:20px 0">
       No tenés plantillas para este tiempo de comida.
@@ -2159,16 +2260,48 @@ function switchTab(name) {
   if (navBtn) navBtn.classList.add('active');
   if (name === 'home')    { renderToday(); }
   if (name === 'foods')   { renderFoodsList(); renderDishesList(); switchFoodsTab('alimentos'); }
-  if (name === 'profile') { loadSettings(); renderSuppList(); switchProfileTab('metas'); }
+  if (name === 'profile') { loadSettings(); renderSuppList(); profileGoBack(); }
   if (name === 'stats')   { renderStats(); }
 }
 
+function toggleNewFoodAlcohol() {
+  const tog = document.getElementById('newFoodAlcoholToggle');
+  const thu = document.getElementById('newFoodAlcoholThumb');
+  const active = tog.dataset.active !== 'true';
+  tog.dataset.active = active;
+  tog.style.background = active ? '#e07840' : 'var(--border)';
+  thu.style.left = active ? '22px' : '2px';
+}
+
 function switchProfileTab(tab) {
-  ['metas','suplementos','cuenta'].forEach(t => {
-    document.getElementById(`profSec-${t}`).style.display    = t === tab ? 'block' : 'none';
-    document.getElementById(`profTab${t.charAt(0).toUpperCase()+t.slice(1)}`).classList.toggle('active', t === tab);
+  const sections = ['metas','suplementos','cuenta'];
+  const navEl = document.querySelector('#page-profile .profile-nav-rows');
+
+  sections.forEach(t => {
+    const sec = document.getElementById(`profSec-${t}`);
+    if (sec) sec.style.display = t === tab ? 'block' : 'none';
   });
+
+  // Hide nav rows, show back button
+  const navRows = document.getElementById('profNavRows');
+  const backRow = document.getElementById('profBackRow');
+  if (navRows) navRows.style.display = tab ? 'none' : 'flex';
+  if (backRow) {
+    backRow.style.display = tab ? 'flex' : 'none';
+    const label = { metas:'🎯 Metas', suplementos:'💊 Suplementos', cuenta:'👤 Cuenta' };
+    document.getElementById('profBackLabel').textContent = label[tab] || '';
+  }
+
   if (tab === 'suplementos') renderSuppList();
+}
+
+function profileGoBack() {
+  ['metas','suplementos','cuenta'].forEach(t => {
+    const sec = document.getElementById(`profSec-${t}`);
+    if (sec) sec.style.display = 'none';
+  });
+  document.getElementById('profNavRows').style.display = 'flex';
+  document.getElementById('profBackRow').style.display = 'none';
 }
 
 function switchFoodsTab(tab) {
@@ -2285,6 +2418,7 @@ function selectFood(food) {
     name: food.name, qty: food.qty, unit: food.unit,
     cal: food.cal, p: food.p, c: food.c, f: food.f, fib: food.fib || 0,
     sug: food.sugar_g || food.sug || 0,
+    isAlcoholic: food.is_alcoholic || false,
     _isDish: food._isDish || false,
     _dishId: food._dishId || null,
     _dishIngs: food._dishIngs || null,
@@ -2433,6 +2567,7 @@ function openFoodConfirm() {
     notes:     document.getElementById('notes').value.trim(),
     origin:    selectedOrigin,
     dish_id:   selectedFoodBase?._dishId || null,
+    is_alcoholic: selectedFoodBase?.isAlcoholic || false,
     _dishIngs: selectedFoodBase?._dishIngs || null,
   };
 
@@ -2487,7 +2622,14 @@ async function confirmAndSaveEntry() {
   attachDishIngredients();
   addToSuggestions(dbEntry.food_name);
   resetForm();
+  // Navigate to the date of the saved entry
+  const savedDate = dbEntry.log_date || getTodayDate();
   buildCarouselDays();
+  const savedIdx = carouselDays.indexOf(savedDate);
+  if (savedIdx !== -1) {
+    carouselIndex = savedIdx;
+    localStorage.setItem('bz_carousel_date', savedDate);
+  }
   renderCarouselDay();
   showToast('✓ Entrada registrada');
 }
@@ -2980,12 +3122,17 @@ async function saveNewFood() {
   const f    = parseFloat(document.getElementById('newFoodF').value)    || 0;
   const fib  = parseFloat(document.getElementById('newFoodFib').value)  || 0;
   const sug  = parseFloat(document.getElementById('newFoodSug').value)  || 0;
+  const isAlc = document.getElementById('newFoodAlcoholToggle').dataset.active === 'true';
   if (!name) { showToast('Ingresá el nombre del alimento', true); return; }
   if (!cal && !p && !c && !f) { showToast('Agrega al menos un valor nutricional', true); return; }
-  const { data, error } = await sb.from('custom_foods').insert({ user_id: currentUser.id, name, qty, unit, cal, p, c, f, fib, sugar_g: sug }).select().single();
+  const { data, error } = await sb.from('custom_foods').insert({ user_id: currentUser.id, name, qty, unit, cal, p, c, f, fib, sugar_g: sug, is_alcoholic: isAlc }).select().single();
   if (error) { showToast('Error al guardar', true); return; }
   customFoods.push(data);
   ['newFoodName','newFoodQty','newFoodCal','newFoodP','newFoodC','newFoodF','newFoodFib','newFoodSug'].forEach(id => document.getElementById(id).value = '');
+  // Reset alcohol toggle
+  const tog = document.getElementById('newFoodAlcoholToggle');
+  const thu = document.getElementById('newFoodAlcoholThumb');
+  tog.dataset.active = 'false'; tog.style.background = 'var(--border)'; thu.style.left = '2px';
   renderFoodsList();
   showToast('✓ Alimento guardado');
 }
@@ -3372,6 +3519,110 @@ function openSaveTemplateModal(mealType, dateStr) {
   setTimeout(() => document.getElementById('templateNameInput').focus(), 100);
 }
 
+// ── New template builder (from Plantillas tab) ──
+let _newTplItems = [];
+
+function openNewTemplateBuilder() {
+  _newTplItems = [];
+  document.getElementById('newTplName').value = '';
+  document.getElementById('newTplFoodInput').value = '';
+  document.getElementById('newTplQty').value = '';
+  document.getElementById('newTplItems').innerHTML = '';
+  document.getElementById('newTemplateModal').classList.add('show');
+}
+
+function onNewTplFoodInput(val) {
+  const dd = document.getElementById('newTplDropdown');
+  if (!val.trim()) { dd.classList.remove('show'); return; }
+  const q = norm(val);
+  const matches = [...customFoods, ...foodsDb].filter(f => norm(f.name).includes(q)).slice(0, 6);
+  if (!matches.length) { dd.classList.remove('show'); return; }
+  dd.innerHTML = matches.map(f => `
+    <div class="food-option" onmousedown="selectNewTplFood('${f.name.replace(/'/g,"\\'")}',${f.qty},'${f.unit}')">
+      <div class="food-option-name">${f.name}</div>
+      <div class="food-option-meta">${f.qty} ${f.unit} · ${f.cal} kcal</div>
+    </div>`).join('');
+  dd.classList.add('show');
+}
+
+function selectNewTplFood(name, qty, unit) {
+  document.getElementById('newTplFoodInput').value = name;
+  document.getElementById('newTplQty').value = qty;
+  document.getElementById('newTplUnit').value = unit;
+  document.getElementById('newTplDropdown').classList.remove('show');
+}
+
+function addNewTplItem() {
+  const name = document.getElementById('newTplFoodInput').value.trim();
+  const qty  = parseFloat(document.getElementById('newTplQty').value) || 0;
+  const unit = document.getElementById('newTplUnit').value;
+  if (!name) { showToast('Ingresá un alimento', true); return; }
+  if (!qty)  { showToast('Ingresá una cantidad', true); return; }
+
+  // Look up macros from DB
+  const food = [...customFoods, ...foodsDb].find(f => f.name === name);
+  const ratio = food ? qty / food.qty : 0;
+  const item = {
+    food_name: name, quantity: qty, unit,
+    calories:  food ? Math.round(food.cal * ratio * 10) / 10 : 0,
+    protein_g: food ? Math.round((food.p || 0) * ratio * 10) / 10 : 0,
+    carbs_g:   food ? Math.round((food.c || 0) * ratio * 10) / 10 : 0,
+    fat_g:     food ? Math.round((food.f || 0) * ratio * 10) / 10 : 0,
+    fiber_g:   food ? Math.round((food.fib || 0) * ratio * 10) / 10 : 0,
+    sugar_g:   food ? Math.round((food.sugar_g || 0) * ratio * 10) / 10 : 0,
+    origin: 'Casa',
+    sort_order: _newTplItems.length,
+  };
+  _newTplItems.push(item);
+
+  // Update items display
+  const list = document.getElementById('newTplItems');
+  list.innerHTML = _newTplItems.map((it, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface2);border-radius:8px">
+      <div>
+        <div style="font-size:13px;color:var(--text)">${it.food_name}</div>
+        <div style="font-size:11px;color:var(--muted)">${it.quantity} ${it.unit} · ${Math.round(it.calories)} kcal</div>
+      </div>
+      <button onclick="_newTplItems.splice(${i},1);addNewTplItem.__refresh()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
+    </div>`).join('');
+
+  // Clear input
+  document.getElementById('newTplFoodInput').value = '';
+  document.getElementById('newTplQty').value = '';
+}
+addNewTplItem.__refresh = () => {
+  const list = document.getElementById('newTplItems');
+  list.innerHTML = _newTplItems.map((it, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface2);border-radius:8px">
+      <div>
+        <div style="font-size:13px;color:var(--text)">${it.food_name}</div>
+        <div style="font-size:11px;color:var(--muted)">${it.quantity} ${it.unit} · ${Math.round(it.calories)} kcal</div>
+      </div>
+      <button onclick="_newTplItems.splice(${i},1);addNewTplItem.__refresh()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
+    </div>`).join('');
+};
+
+async function saveNewTemplate() {
+  const name     = document.getElementById('newTplName').value.trim();
+  const mealType = document.getElementById('newTplMealType').value;
+  if (!name)             { showToast('Ingresá un nombre', true); return; }
+  if (!_newTplItems.length) { showToast('Agregá al menos un alimento', true); return; }
+
+  const { data: tmpl, error } = await sb.from('meal_templates')
+    .insert({ user_id: currentUser.id, name, meal_type: mealType })
+    .select().single();
+  if (error) { showToast('Error al guardar', true); return; }
+
+  const items = _newTplItems.map((it, i) => ({ ...it, template_id: tmpl.id, sort_order: i }));
+  const { error: itemsErr } = await sb.from('meal_template_items').insert(items);
+  if (itemsErr) { showToast('Error al guardar items', true); return; }
+
+  templates.push({ ...tmpl, items });
+  document.getElementById('newTemplateModal').classList.remove('show');
+  renderTemplatesList();
+  showToast(`✓ Plantilla "${name}" guardada`);
+}
+
 async function saveTemplate() {
   const name = document.getElementById('templateNameInput').value.trim();
   if (!name) { showToast('Ingresá un nombre para la plantilla', true); return; }
@@ -3410,7 +3661,13 @@ async function saveTemplate() {
 function openApplyTemplateModal(mealType) {
   const relevant = templates.filter(t => t.meal_type === mealType);
   document.getElementById('applyTemplateSubtitle').textContent = mealType;
-  const list = document.getElementById('applyTemplateList');
+
+  // Set date picker — default to carousel day
+  const dateEl = document.getElementById('applyTemplateDate');
+  dateEl.value = carouselDays[carouselIndex] || getTodayDate();
+  dateEl.max   = getTodayDate();
+
+  const list  = document.getElementById('applyTemplateList');
   const empty = document.getElementById('applyTemplateEmpty');
 
   if (!relevant.length) {
@@ -3444,11 +3701,11 @@ function openApplyTemplateModal(mealType) {
 async function applyTemplate(templateId) {
   const tmpl = templates.find(t => t.id === templateId);
   if (!tmpl) return;
-  const today = getTodayDate();
+  const targetDate = document.getElementById('applyTemplateDate').value || getTodayDate();
 
   const newEntries = tmpl.items.map(item => ({
     user_id:   currentUser.id,
-    log_date:  today,
+    log_date:  targetDate,
     meal_type: tmpl.meal_type,
     food_name: item.food_name,
     quantity:  item.quantity,
@@ -3468,12 +3725,16 @@ async function applyTemplate(templateId) {
   data.forEach(e => entries.push(e));
   attachDishIngredients();
   buildCarouselDays(true);
-  const todayIdx = carouselDays.indexOf(today);
-  if (todayIdx !== -1) carouselIndex = todayIdx;
-  localStorage.setItem('bz_carousel_date', today);
+  const targetIdx = carouselDays.indexOf(targetDate);
+  if (targetIdx !== -1) {
+    carouselIndex = targetIdx;
+    localStorage.setItem('bz_carousel_date', targetDate);
+  }
   document.getElementById('applyTemplateModal').classList.remove('show');
   renderCarouselDay();
-  showToast(`✓ "${tmpl.name}" aplicada a hoy`);
+  const dateLabel = targetDate === getTodayDate() ? 'hoy' :
+    new Date(targetDate + 'T12:00:00').toLocaleDateString('es-CR', { day:'numeric', month:'short' });
+  showToast(`✓ "${tmpl.name}" aplicada al ${dateLabel}`);
 }
 
 async function deleteTemplate(templateId) {
@@ -4361,6 +4622,7 @@ const showCharts = true; // always show charts
 let chartTrendInstance = null;
 let chartMacroTrendInstance = null;
 let chartSugarFiberInstance = null;
+let chartAlcoholInstance = null;
 let chartMealInstance = null;
 let chartHydInstance = null;
 
@@ -4417,6 +4679,7 @@ async function renderStats() {
     renderChartTrend(food);
     renderStatsMacroTrend(food);
     renderStatsSugarFiber(food);
+    renderStatsAlcohol(food);
     document.getElementById('statsReportSection').style.display = 'block';
   } catch(err) {
     console.error('renderStats error:', err);
@@ -4956,6 +5219,71 @@ function renderStatsSugarFiber(food) {
         y: {
           ticks: { color: textColor, font: { size: 10 }, callback: v => `${v}g` },
           grid: { color: gridColor },
+        },
+      },
+    },
+  });
+}
+
+// ── Alcohol chart ──
+function renderStatsAlcohol(food) {
+  const card = document.getElementById('statsAlcoholCard');
+  const alcoholEntries = food.filter(e => e.is_alcoholic);
+  if (!alcoholEntries.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const todayLocal = new Date();
+  const labels = [];
+  const data   = [];
+  let totalDays = 0;
+
+  for (let i = statsRange - 1; i >= 0; i--) {
+    const d = new Date(todayLocal);
+    d.setDate(d.getDate() - i);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
+    const hasAlcohol = alcoholEntries.some(e => e.log_date === dateStr) ? 1 : 0;
+    data.push(hasAlcohol);
+    if (hasAlcohol) totalDays++;
+  }
+
+  document.getElementById('statsAlcoholSummary').textContent =
+    `${totalDays} día${totalDays !== 1 ? 's' : ''} con alcohol en ${statsRange} días (${Math.round(totalDays/statsRange*100)}%)`;
+
+  if (chartAlcoholInstance) { chartAlcoholInstance.destroy(); chartAlcoholInstance = null; }
+  const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor  = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor  = '#7a8460';
+
+  const ctx = document.getElementById('chartAlcohol').getContext('2d');
+  chartAlcoholInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Alcohol',
+        data,
+        backgroundColor: data.map(v => v ? 'rgba(224,120,64,0.7)' : 'rgba(100,100,100,0.15)'),
+        borderColor:     data.map(v => v ? 'rgba(224,120,64,1)'   : 'transparent'),
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw ? ' Con alcohol' : ' Sin alcohol' } },
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45,
+            maxTicksLimit: statsRange === 30 ? 10 : 7, autoSkip: true },
+          grid: { color: gridColor },
+        },
+        y: {
+          display: false,
+          min: 0, max: 1,
         },
       },
     },
