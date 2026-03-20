@@ -676,53 +676,29 @@ select { cursor: pointer; }
 .hyd-card-val { font-size: 16px; font-weight: 400; font-family: var(--font-display); color: var(--text); }
 .hyd-card-label { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
 
-/* ══ FAB ══ */
-#fabOverlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 49;
-  display: none;
+/* ══ Nav register button ══ */
+.nav-btn-register {
+  background: none; border: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 0; padding: 0;
+  position: relative; flex: 1;
 }
-#fabOverlay.show { display: block; }
-#fabContainer {
-  position: fixed;
-  bottom: calc(var(--nav-h) + 16px);
-  right: 20px;
-  display: flex; flex-direction: column-reverse;
-  align-items: flex-end; gap: 12px;
-  z-index: 50;
-}
-.fab-main {
-  width: 56px; height: 56px; border-radius: 50%;
+.nav-register-circle {
+  width: 50px; height: 50px; border-radius: 50%;
   background: var(--accent); color: #0e110a;
-  border: none; font-size: 28px; font-weight: 300;
-  cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-  transition: transform 0.25s, background 0.25s;
   display: flex; align-items: center; justify-content: center;
-  line-height: 1;
+  font-size: 26px; font-weight: 300; line-height: 1;
+  position: absolute;
+  top: -18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  transition: transform 0.2s, background 0.2s;
 }
-.fab-main.open { transform: rotate(45deg); background: var(--warn); }
-.fab-option {
-  display: flex; align-items: center; gap: 10px;
-  animation: fabIn 0.2s ease;
+.nav-btn-register:active .nav-register-circle {
+  transform: scale(0.93);
 }
-.fab-option-label {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px; padding: 6px 14px;
-  font-family: var(--font-display); font-size: 13px;
-  color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  white-space: nowrap;
-}
-.fab-option-btn {
-  width: 44px; height: 44px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  flex-shrink: 0;
-}
-@keyframes fabIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+.nav-register-label {
+  font-size: 10px; color: var(--text2);
+  margin-top: 36px; font-family: var(--font-display);
 }
 
 /* ══ BOTTOM SHEET ══ */
@@ -1334,36 +1310,36 @@ select { cursor: pointer; }
       <div id="statsConsistencyContent"></div>
     </div>
 
-    <!-- ③ Tendencia de macros (Chart) -->
+    <!-- Hidratación -->
+    <div class="card" id="statsHydCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Hidratación promedio</div>
+      <div id="statsHydContent"></div>
+      <canvas id="chartHyd" height="260" style="display:none"></canvas>
+    </div>
+
+    <!-- Tendencia de calorías -->
     <div class="card" id="statsTrendCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Tendencia de calorías</div>
       <canvas id="chartTrend" height="180"></canvas>
     </div>
 
-    <!-- ③b Tendencia de macronutrientes -->
+    <!-- Tendencia de macronutrientes -->
     <div class="card" id="statsMacroTrendCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Tendencia de macronutrientes</div>
       <canvas id="chartMacroTrend" height="200"></canvas>
     </div>
 
-    <!-- ③c Tendencia de azúcar y fibra -->
+    <!-- Tendencia de azúcar y fibra -->
     <div class="card" id="statsSugarFiberCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Tendencia de azúcar y fibra</div>
       <canvas id="chartSugarFiber" height="200"></canvas>
     </div>
 
-    <!-- ④ Distribución por comida -->
+    <!-- Distribución por comida -->
     <div class="card" id="statsMealCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Promedio de calorías por tiempo de comida</div>
       <div id="statsMealContent"></div>
       <canvas id="chartMeal" height="180" style="display:none"></canvas>
-    </div>
-
-    <!-- ⑤ Hidratación -->
-    <div class="card" id="statsHydCard" style="display:none">
-      <div class="section-label" style="margin-bottom:8px">Hidratación promedio</div>
-      <div id="statsHydContent"></div>
-      <canvas id="chartHyd" height="260" style="display:none"></canvas>
     </div>
 
     <!-- ⑥ Alimentos más frecuentes -->
@@ -1433,12 +1409,16 @@ select { cursor: pointer; }
 
   </div>
 
-  <nav class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
+  <nav class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
     <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
       <span class="nav-icon">🏠</span>Inicio
     </button>
     <button class="nav-btn" id="nav-foods" onclick="switchTab('foods')">
       <span class="nav-icon">🥦</span>Alimentos
+    </button>
+    <button class="nav-btn-register" onclick="openRegisterSheet()" aria-label="Registrar">
+      <div class="nav-register-circle">+</div>
+      <span class="nav-register-label">Registrar</span>
     </button>
     <button class="nav-btn" id="nav-stats" onclick="switchTab('stats')">
       <span class="nav-icon">📊</span>Análisis
@@ -1451,6 +1431,42 @@ select { cursor: pointer; }
 </div><!-- end appScreen -->
 
 <!-- ══ BOTTOM SHEETS ══ -->
+
+  <!-- Register bottom sheet -->
+  <div class="bottom-sheet-overlay" id="bsRegister" onclick="closeBSIfOverlay(event,'bsRegister')">
+    <div class="bottom-sheet" style="padding-bottom:env(safe-area-inset-bottom)">
+      <div class="bs-handle"></div>
+      <div class="bs-body" style="padding:16px 20px 24px">
+        <div style="font-family:var(--font-display);font-size:16px;color:var(--text);font-weight:500;margin-bottom:16px">¿Qué querés registrar?</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button onclick="closeBS('bsRegister');openFoodBS()"
+            style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
+            <div style="width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🥗</div>
+            <div>
+              <div style="font-family:var(--font-display);font-size:15px;color:var(--text);font-weight:500">Alimentación</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">Registrá lo que comiste</div>
+            </div>
+          </button>
+          <button onclick="closeBS('bsRegister');openBS('bsHyd')"
+            style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
+            <div style="width:44px;height:44px;border-radius:50%;background:#4a90d9;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💧</div>
+            <div>
+              <div style="font-family:var(--font-display);font-size:15px;color:var(--text);font-weight:500">Hidratación</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">Agua, bebidas, hidratantes</div>
+            </div>
+          </button>
+          <button onclick="closeBS('bsRegister');openBS('bsSupp')"
+            style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
+            <div style="width:44px;height:44px;border-radius:50%;background:#9b59b6;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💊</div>
+            <div>
+              <div style="font-family:var(--font-display);font-size:15px;color:var(--text);font-weight:500">Suplementos</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">Marcá los suplementos del día</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Food bottom sheet -->
   <div class="bottom-sheet-overlay" id="bsFood" onclick="closeBSIfOverlay(event,'bsFood')">
@@ -1678,27 +1694,6 @@ select { cursor: pointer; }
     </div>
   </div>
 
-  <!-- FAB overlay -->
-  <div id="fabOverlay" onclick="closeFAB()"></div>
-
-  <!-- FAB (+) -->
-  <div id="fabContainer">
-    <!-- FAB options -->
-    <div class="fab-option" id="fabOptSupp" style="display:none" onclick="openBS('bsSupp')">
-      <span class="fab-option-label">Suplementos</span>
-      <div class="fab-option-btn" style="background:#9b59b6">💊</div>
-    </div>
-    <div class="fab-option" id="fabOptHyd" style="display:none" onclick="openBS('bsHyd')">
-      <span class="fab-option-label">Hidratación</span>
-      <div class="fab-option-btn" style="background:#4a90d9">💧</div>
-    </div>
-    <div class="fab-option" id="fabOptFood" style="display:none" onclick="openBS('bsFood')">
-      <span class="fab-option-label">Alimentación</span>
-      <div class="fab-option-btn" style="background:var(--accent)">🥗</div>
-    </div>
-    <!-- Main FAB -->
-    <button class="fab-main" id="fabMain" onclick="toggleFAB()">+</button>
-  </div>
 <!-- ══ FOOD CONFIRM MODAL ══ -->
 <div class="modal-overlay" id="foodConfirmModal">
   <div class="modal" style="max-width:380px">
@@ -5984,32 +5979,13 @@ function renderHydDonuts() {
 }
 
 // ══ FAB ══
-let fabOpen = false;
-
-function toggleFAB() {
-  fabOpen = !fabOpen;
-  document.getElementById('fabMain').classList.toggle('open', fabOpen);
-  document.getElementById('fabOverlay').classList.toggle('show', fabOpen);
-  ['fabOptFood','fabOptHyd','fabOptSupp'].forEach((id, i) => {
-    const el = document.getElementById(id);
-    if (fabOpen) {
-      el.style.display = 'flex';
-      el.style.animationDelay = `${i * 0.05}s`;
-    } else {
-      el.style.display = 'none';
-    }
-  });
+function openRegisterSheet() {
+  openBS('bsRegister');
 }
 
-function closeFAB() {
-  if (!fabOpen) return;
-  fabOpen = false;
-  document.getElementById('fabMain').classList.remove('open');
-  document.getElementById('fabOverlay').classList.remove('show');
-  ['fabOptFood','fabOptHyd','fabOptSupp'].forEach(id => {
-    document.getElementById(id).style.display = 'none';
-  });
-}
+// Keep closeFAB as no-op for any legacy references
+function closeFAB() {}
+function toggleFAB() { openRegisterSheet(); }
 
 // ══ BOTTOM SHEETS ══
 // ── Date picker helpers ──
@@ -6099,13 +6075,6 @@ function closeBS(id) {
 function closeBSIfOverlay(event, id) {
   if (event.target === document.getElementById(id)) closeBS(id);
 }
-
-// Close FAB when tapping elsewhere
-document.addEventListener('click', e => {
-  if (fabOpen && !document.getElementById('fabContainer').contains(e.target)) {
-    closeFAB();
-  }
-});
 
 // ══ Init theme on load ══
 initTheme();
