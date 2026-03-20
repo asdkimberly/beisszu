@@ -1352,13 +1352,6 @@ select { cursor: pointer; }
       <canvas id="chartSugarFiber" height="200"></canvas>
     </div>
 
-    <!-- Consumo de alcohol -->
-    <div class="card" id="statsAlcoholCard" style="display:none">
-      <div class="section-label" style="margin-bottom:8px">Días con consumo de alcohol</div>
-      <canvas id="chartAlcohol" height="160"></canvas>
-      <div id="statsAlcoholSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
-    </div>
-
     <!-- ④ Distribución por comida -->
     <div class="card" id="statsMealCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Promedio de calorías por tiempo de comida</div>
@@ -1385,11 +1378,25 @@ select { cursor: pointer; }
       <div id="statsTopDrinks"></div>
     </div>
 
+    <!-- ⑥c Días comiendo fuera -->
+    <div class="card" id="statsEatingOutCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Días comiendo fuera</div>
+      <canvas id="chartEatingOut" height="160"></canvas>
+      <div id="statsEatingOutSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
+    </div>
+
     <!-- ⑦ Origen de comidas -->
     <div class="card" id="statsOriginCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Origen de comidas</div>
       <div id="statsOriginContent"></div>
       <canvas id="chartOrigin" height="180" style="display:none"></canvas>
+    </div>
+
+    <!-- ⑧ Consumo de alcohol -->
+    <div class="card" id="statsAlcoholCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Días con consumo de alcohol</div>
+      <canvas id="chartAlcohol" height="160"></canvas>
+      <div id="statsAlcoholSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
     </div>
 
     <!-- Generar informe -->
@@ -4623,6 +4630,7 @@ let chartTrendInstance = null;
 let chartMacroTrendInstance = null;
 let chartSugarFiberInstance = null;
 let chartAlcoholInstance = null;
+let chartEatingOutInstance = null;
 let chartMealInstance = null;
 let chartHydInstance = null;
 
@@ -4680,6 +4688,7 @@ async function renderStats() {
     renderStatsMacroTrend(food);
     renderStatsSugarFiber(food);
     renderStatsAlcohol(food);
+    renderStatsEatingOut(food);
     document.getElementById('statsReportSection').style.display = 'block';
   } catch(err) {
     console.error('renderStats error:', err);
@@ -5220,6 +5229,68 @@ function renderStatsSugarFiber(food) {
           ticks: { color: textColor, font: { size: 10 }, callback: v => `${v}g` },
           grid: { color: gridColor },
         },
+      },
+    },
+  });
+}
+
+// ── Eating out chart ──
+function renderStatsEatingOut(food) {
+  const card = document.getElementById('statsEatingOutCard');
+  const outsideEntries = food.filter(e => e.origin === 'Fuera');
+  if (!outsideEntries.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const todayLocal = new Date();
+  const labels = [];
+  const data   = [];
+  let totalDays = 0;
+
+  for (let i = statsRange - 1; i >= 0; i--) {
+    const d = new Date(todayLocal);
+    d.setDate(d.getDate() - i);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
+    const hasOut = outsideEntries.some(e => e.log_date === dateStr) ? 1 : 0;
+    data.push(hasOut);
+    if (hasOut) totalDays++;
+  }
+
+  document.getElementById('statsEatingOutSummary').textContent =
+    `${totalDays} día${totalDays !== 1 ? 's' : ''} comiendo fuera en ${statsRange} días (${Math.round(totalDays/statsRange*100)}%)`;
+
+  if (chartEatingOutInstance) { chartEatingOutInstance.destroy(); chartEatingOutInstance = null; }
+  const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor  = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor  = '#7a8460';
+
+  const ctx = document.getElementById('chartEatingOut').getContext('2d');
+  chartEatingOutInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Fuera de casa',
+        data,
+        backgroundColor: data.map(v => v ? 'rgba(91,192,222,0.7)'  : 'rgba(100,100,100,0.15)'),
+        borderColor:     data.map(v => v ? 'rgba(91,192,222,1)'    : 'transparent'),
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw ? ' Comió fuera' : ' En casa' } },
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45,
+            maxTicksLimit: statsRange === 30 ? 10 : 7, autoSkip: true },
+          grid: { color: gridColor },
+        },
+        y: { display: false, min: 0, max: 1 },
       },
     },
   });
