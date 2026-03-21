@@ -1058,8 +1058,18 @@ select { cursor: pointer; }
     <!-- ── Sub: PLATILLOS ── -->
     <div id="fsec-platillos" style="display:none">
 
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Mis platillos</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Combinaciones de alimentos que usás seguido</div>
+        </div>
+        <button onclick="showDishBuilder()"
+          style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:9px 14px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
+          + Nuevo
+        </button>
+      </div>
+
       <div id="dishesList"></div>
-      <button class="btn-primary" onclick="showDishBuilder()">+ Crear platillo</button>
 
       <div id="dishBuilder" style="display:none">
         <div class="card">
@@ -1153,14 +1163,17 @@ select { cursor: pointer; }
 
     <!-- ══ PLANTILLAS SECTION ══ -->
     <div id="sectionPlantillas" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <div class="section-label" style="margin:0">Mis plantillas</div>
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;margin-bottom:4px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Mis plantillas</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Tiempos de comida que repetís frecuentemente</div>
+        </div>
         <button onclick="openNewTemplateBuilder()"
-          style="background:var(--accent);color:#0e110a;border:none;border-radius:8px;padding:7px 12px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer">
+          style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:9px 14px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
           + Nueva
         </button>
       </div>
-      <div id="templatesList" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div id="templatesList" style="display:flex;flex-direction:column;gap:8px"></div>
       <div id="templatesEmpty" style="display:none" class="empty">
         <div class="empty-icon">📋</div>
         <div class="empty-text">Todavía no tenés plantillas.<br>Creá una con el botón "+" o guardá un tiempo de comida desde Inicio.</div>
@@ -2345,8 +2358,8 @@ function toggleFoodExpand(el) {
 
 function openFoodItemCtx(btn, idx) {
   openCtxMenu(btn, [
-    { label: '✏️ Editar',   action: () => editFood(idx) },
-    { label: '🗑 Eliminar', action: () => deleteFood(idx) },
+    { icon: '✏️', label: 'Editar',   action: () => editFood(idx) },
+    { icon: '🗑', label: 'Eliminar', action: () => deleteFood(idx), danger: true },
   ]);
 }
 
@@ -3339,7 +3352,8 @@ function renderFoodItem(el, i, editing) {
     <div class="food-list-row" onclick="toggleFoodExpand(this.closest('.food-list-item'))" style="cursor:pointer">
       <div style="flex:1;min-width:0">
         <div class="food-list-name">${f.name}</div>
-        <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g</div>
+        <div class="food-list-meta">${f.qty} ${f.unit}</div>
+        <div class="food-list-meta" style="margin-top:2px">P:${f.p}g · C:${f.c}g · G:${f.f}g</div>
       </div>
       <div class="food-list-cal">${f.cal} kcal</div>
       <button class="ctx-trigger" onclick="event.stopPropagation();openFoodItemCtx(this,${i})"
@@ -3431,7 +3445,8 @@ function renderFoodsList() {
         <div class="food-list-row" onclick="toggleFoodExpand(this.closest('.food-list-item'))" style="cursor:pointer">
           <div style="flex:1;min-width:0">
             <div class="food-list-name">${f.name}</div>
-            <div class="food-list-meta">${f.qty} ${f.unit} · P:${f.p}g C:${f.c}g G:${f.f}g</div>
+            <div class="food-list-meta">${f.qty} ${f.unit}</div>
+            <div class="food-list-meta" style="margin-top:2px">P:${f.p}g · C:${f.c}g · G:${f.f}g</div>
           </div>
           <div class="food-list-cal">${f.cal} kcal</div>
           <div style="width:30px;flex-shrink:0"></div>
@@ -3960,28 +3975,40 @@ function renderTemplatesList() {
   empty.style.display = 'none';
   const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
 
-  list.innerHTML = templates.map(t => `
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+  list.innerHTML = templates.map(t => {
+    const totCal = Math.round(t.items.reduce((s,i) => s + (i.calories||0), 0));
+    const totP   = t.items.reduce((s,i) => s + (i.protein_g||0), 0).toFixed(1);
+    const totC   = t.items.reduce((s,i) => s + (i.carbs_g||0), 0).toFixed(1);
+    const totF   = t.items.reduce((s,i) => s + (i.fat_g||0), 0).toFixed(1);
+    const itemRows = t.items.map(i => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
         <div>
-          <div style="font-family:var(--font-display);font-size:14px;color:var(--text)">${t.name}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${MEAL_ICONS[t.meal_type]||'🍽️'} ${t.meal_type} · ${t.items.length} item${t.items.length !== 1 ? 's' : ''}</div>
+          <div style="font-size:13px;color:var(--text)">${i.food_name}</div>
+          <div style="font-size:11px;color:var(--muted)">${i.quantity} ${i.unit}</div>
         </div>
-        <div style="display:flex;gap:6px">
-          <button onclick="openApplyTemplateModal('${t.meal_type}')"
-            style="padding:7px 12px;border-radius:8px;border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer">
-            ▶ Aplicar
-          </button>
-          <button onclick="deleteTemplate(${t.id})"
-            style="padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;cursor:pointer">
-            🗑
-          </button>
+        <div style="font-size:13px;color:var(--accent);white-space:nowrap;margin-left:12px">${Math.round(i.calories||0)} kcal</div>
+      </div>`).join('');
+    return `
+    <div class="food-list-item" id="tpl-item-${t.id}">
+      <div class="food-list-row" onclick="toggleTemplateExpand(${t.id})" style="cursor:pointer">
+        <div style="flex:1;min-width:0">
+          <div class="food-list-name">${MEAL_ICONS[t.meal_type]||'🍽️'} ${t.name}</div>
+          <div class="food-list-meta">${t.meal_type} · ${t.items.length} item${t.items.length !== 1 ? 's' : ''}</div>
+          <div class="food-list-meta" style="margin-top:2px">P:${totP}g · C:${totC}g · G:${totF}g</div>
         </div>
+        <div class="food-list-cal">${totCal} kcal</div>
+        <button class="ctx-trigger" onclick="event.stopPropagation();openTemplateCtx(this,${t.id},'${t.meal_type}')"
+          style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 6px;flex-shrink:0;line-height:1">⋯</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px">
-        ${t.items.map(i => `<div style="font-size:11px;color:var(--muted)">${i.food_name} · ${i.quantity} ${i.unit} · ${Math.round(i.calories)} kcal</div>`).join('')}
+      <div id="tpl-expand-${t.id}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        ${itemRows}
+        <button onclick="openApplyTemplateModal('${t.meal_type}')"
+          style="width:100%;margin-top:10px;padding:10px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer">
+          ▶ Aplicar plantilla
+        </button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ══ Context Menu ══
@@ -4313,13 +4340,12 @@ function renderDishesList() {
       <div class="food-list-row" onclick="toggleDishExpand(${d.id})" style="cursor:pointer">
         <div style="flex:1;min-width:0">
           <div class="food-list-name">🍽️ ${d.name}</div>
-          <div class="food-list-meta">${ings.length} ingrediente${ings.length !== 1 ? 's' : ''} · ${Math.round(totCal)} kcal</div>
+          <div class="food-list-meta">${ings.length} ingrediente${ings.length !== 1 ? 's' : ''}</div>
+          <div class="food-list-meta" style="margin-top:2px">P:${totProt.toFixed(1)}g · C:${totCarb.toFixed(1)}g · G:${totFat.toFixed(1)}g</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="food-list-cal">${Math.round(totCal)} kcal</div>
-          <span id="dish-chevron-${d.id}" style="color:var(--muted);font-size:12px;transition:transform 0.2s">▼</span>
-          <button class="food-delete-btn" onclick="event.stopPropagation();deleteDish(${d.id})">🗑</button>
-        </div>
+        <div class="food-list-cal">${Math.round(totCal)} kcal</div>
+        <button class="ctx-trigger" onclick="event.stopPropagation();openDishCtx(this,${d.id})"
+          style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 6px;flex-shrink:0;line-height:1">⋯</button>
       </div>
       <div id="dish-expand-${d.id}" style="display:none;margin-top:8px">
         ${ingRows}
@@ -4327,6 +4353,25 @@ function renderDishesList() {
       </div>
     </div>`;
   }).join('');
+}
+
+function toggleTemplateExpand(id) {
+  const expand = document.getElementById(`tpl-expand-${id}`);
+  if (!expand) return;
+  expand.style.display = expand.style.display !== 'none' ? 'none' : 'block';
+}
+
+function openTemplateCtx(btn, id, mealType) {
+  openCtxMenu(btn, [
+    { icon: '▶', label: 'Aplicar',  action: () => openApplyTemplateModal(mealType) },
+    { icon: '🗑', label: 'Eliminar', action: () => deleteTemplate(id), danger: true },
+  ]);
+}
+
+function openDishCtx(btn, dishId) {
+  openCtxMenu(btn, [
+    { icon: '🗑', label: 'Eliminar', action: () => deleteDish(dishId), danger: true },
+  ]);
 }
 
 // ── Toggle dish expand ──
@@ -4346,15 +4391,16 @@ function showDishBuilder() {
   document.getElementById('dishIngredientsList').innerHTML = '';
   document.getElementById('dishTotalsCard').style.display = 'none';
   document.getElementById('dishBuilder').style.display = 'block';
-  document.querySelector('#fsec-platillos .btn-primary').style.display = 'none';
+  document.getElementById('dishesList').style.display = 'none';
+  document.querySelector('#fsec-platillos .card').style.display = 'none';
   resetIngForm();
-  // Populate dish select
   populateDishSelect();
 }
 
 function cancelDishBuilder() {
   document.getElementById('dishBuilder').style.display = 'none';
-  document.querySelector('#fsec-platillos .btn-primary').style.display = 'block';
+  document.getElementById('dishesList').style.display = 'block';
+  document.querySelector('#fsec-platillos .card').style.display = 'flex';
   currentDishIngredients = [];
 }
 
