@@ -5908,47 +5908,6 @@ function renderStatsOrigin(food) {
       },
     },
   });
-
-  // ③ Fuera entries list — AFTER the chart, using a separate div
-  let fueraDiv = document.getElementById('statsOriginFuera');
-  if (!fueraDiv) {
-    fueraDiv = document.createElement('div');
-    fueraDiv.id = 'statsOriginFuera';
-    card.appendChild(fueraDiv);
-  }
-
-  const fueraEntries = food.filter(e => e.origin === 'Fuera')
-    .sort((a,b) => new Date(b.logged_at) - new Date(a.logged_at));
-
-  if (fueraEntries.length) {
-    const byDate = {};
-    fueraEntries.forEach(e => {
-      if (!byDate[e.log_date]) byDate[e.log_date] = [];
-      byDate[e.log_date].push(e);
-    });
-    const fueraHTML = Object.entries(byDate).map(([date, items]) => {
-      const dateLabel = new Date(date+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'});
-      const rows = items.map(e => `
-        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <div style="font-size:13px;color:var(--text)">${e.food_name}</div>
-            <div style="font-size:11px;color:var(--muted)">${e.meal_type}</div>
-          </div>
-          <div style="font-size:13px;color:var(--accent2)">${Math.round(e.calories||0)} kcal</div>
-        </div>`).join('');
-      return `<div style="margin-top:8px">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">${dateLabel}</div>
-        ${rows}
-      </div>`;
-    }).join('');
-    fueraDiv.innerHTML = `
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:8px">🌍 Comidas fuera de casa</div>
-        ${fueraHTML}
-      </div>`;
-  } else {
-    fueraDiv.innerHTML = '';
-  }
 }
 
 // ══ HYDRATION DONUT CAROUSEL ══
