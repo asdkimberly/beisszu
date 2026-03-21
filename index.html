@@ -5068,13 +5068,26 @@ function buildHeatmapRow(label, days, pctFn, isBoolean) {
     const tip = isBoolean
       ? (val === null ? 'Sin datos' : val ? '✓ Completado' : '✗ No completado')
       : (val === null ? 'Sin datos' : val > 100 ? `${Math.round(val)}% (excede meta)` : `${Math.round(val)}%`);
-    squares.push(`<div title="${dayLabel}: ${tip}"
-      style="flex:1;height:10px;border-radius:3px;background:${bg};min-width:0;cursor:default"></div>`);
+    squares.push({ bg, tip: `${dayLabel}: ${tip}` });
   }
+
+  let grid;
+  if (days === 30) {
+    const row1 = squares.slice(0, 15).map(s =>
+      `<div title="${s.tip}" style="flex:1;height:10px;border-radius:3px;background:${s.bg};min-width:0;cursor:default"></div>`).join('');
+    const row2 = squares.slice(15).map(s =>
+      `<div title="${s.tip}" style="flex:1;height:10px;border-radius:3px;background:${s.bg};min-width:0;cursor:default"></div>`).join('');
+    grid = `<div style="display:flex;gap:3px;margin-bottom:3px">${row1}</div>
+            <div style="display:flex;gap:3px">${row2}</div>`;
+  } else {
+    grid = `<div style="display:flex;gap:3px">${squares.map(s =>
+      `<div title="${s.tip}" style="flex:1;height:10px;border-radius:3px;background:${s.bg};min-width:0;cursor:default"></div>`).join('')}</div>`;
+  }
+
   return `
     <div style="margin-bottom:10px">
       <div style="font-size:12px;color:var(--text2);margin-bottom:5px;font-family:var(--font-display)">${label}</div>
-      <div style="display:flex;gap:3px">${squares.join('')}</div>
+      ${grid}
     </div>`;
 }
 
