@@ -6200,7 +6200,7 @@ async function generatePDF() {
   // Heatmap row — boolean style (accent=active, gray=inactive/no data)
   function heatmapRowBool(label, activeDates){
     const sqW=statsRange===7?8:4.5;
-    const sqH=5; const sqGap=1;
+    const sqH=3; const sqGap=1;
     checkSpace(sqH+8);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
     doc.text(label,margin,y+sqH-1);
@@ -6237,7 +6237,7 @@ async function generatePDF() {
     else              return lerpPDF(stops[2],stops[3],(t-0.66)/0.34);
   }
   function heatmapRowGrad(label,pctFn){
-    const sqW=statsRange===7?8:4.5; const sqH=5; const sqGap=1;
+    const sqW=statsRange===7?8:4.5; const sqH=3; const sqGap=1;
     checkSpace(sqH+8);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
     doc.text(label,margin,y+sqH-1);
@@ -6256,7 +6256,7 @@ async function generatePDF() {
   function heatmapLegendGrad(){
     checkSpace(18); y+=3;
     // Two-segment bar: 0-100% gradient (75% of width) + 100%+ blue zone (25%)
-    const barX=margin+22; const barW=CW-22; const barH=5;
+    const barX=margin+22; const barW=CW-22; const barH=3;
     const gradW=Math.round(barW*0.78);
     const blueW=barW-gradW;
 
@@ -6290,7 +6290,7 @@ async function generatePDF() {
 
   // Supplement boolean heatmap: green=tomado, red=no tomado (si hay datos), gray=sin datos
   function heatmapRowSupp(label, takenDates){
-    const sqW=statsRange===7?8:4.5; const sqH=5; const sqGap=1;
+    const sqW=statsRange===7?8:4.5; const sqH=3; const sqGap=1;
     checkSpace(sqH+8);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
     doc.text(label, margin, y+sqH-1);
@@ -6546,7 +6546,7 @@ async function generatePDF() {
     row('Dias con consumo',`${alcDays} de ${statsRange}  (${Math.round((alcDays/statsRange)*100)}%)`);
     y+=4;
     // FIX 2: accent orange for alcohol days, gray for others
-    const sqW=statsRange===7?8:4.5; const sqH=5; const sqGap=1;
+    const sqW=statsRange===7?8:4.5; const sqH=3; const sqGap=1;
     checkSpace(sqH+8);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
     doc.text('Con alcohol',margin,y+sqH-1);
