@@ -5410,7 +5410,8 @@ function renderStatsMeal(food) {
   const mealAvg = {};
   Object.entries(mealDays).forEach(([meal, byDate]) => {
     const totalCal = Object.values(byDate).reduce((s,v)=>s+v,0);
-    mealAvg[meal] = Math.round(totalCal / statsRange);
+    const daysWithMeal = Object.keys(byDate).length || 1;
+    mealAvg[meal] = Math.round(totalCal / daysWithMeal);
   });
 
   const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
