@@ -1353,7 +1353,7 @@ select { cursor: pointer; }
     <div class="card" id="statsMealCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Promedio de calorías por tiempo de comida</div>
       <div id="statsMealContent"></div>
-      <canvas id="chartMeal" height="180" style="display:none"></canvas>
+      <canvas id="chartMeal" height="240" style="display:none"></canvas>
     </div>
 
     <!-- Origen de comidas -->
@@ -5441,12 +5441,14 @@ function renderStatsMeal(food) {
       },
       options: {
         responsive: true,
-        cutout: '65%',
+        cutout: '62%',
         plugins: {
           legend: {
-            position: 'right',
+            position: 'bottom',
             labels: {
-              color: '#7a8460', font:{ size:11 }, padding:10,
+              color: '#7a8460',
+              font: { size: 11 },
+              padding: 12,
               generateLabels: chart => chart.data.labels.map((label, i) => ({
                 text: `${label}  ~${sorted[i][1]} kcal`,
                 fillStyle: chart.data.datasets[0].backgroundColor[i],
