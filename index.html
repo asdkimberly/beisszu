@@ -5478,9 +5478,9 @@ function renderStatsMeal(food) {
   }).join('');
 
   content.innerHTML = `
-    <div style="display:flex;align-items:center;gap:16px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
       ${donutSVG}
-      <div style="flex:1;min-width:0">${listItems}</div>
+      <div style="width:100%">${listItems}</div>
     </div>`;
 }
 
