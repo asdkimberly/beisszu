@@ -5400,62 +5400,96 @@ function renderStatsMeal(food) {
     return;
   }
 
-  // Group by meal_type and by date to compute daily totals per meal
-  // Then average across days that had that meal
-  const mealDays = {}; // { mealType: { [date]: totalCal } }
+  const mealDays = {};
   food.forEach(e => {
     if (!mealDays[e.meal_type]) mealDays[e.meal_type] = {};
     if (!mealDays[e.meal_type][e.log_date]) mealDays[e.meal_type][e.log_date] = 0;
     mealDays[e.meal_type][e.log_date] += e.calories || 0;
   });
 
-  // Average = total cal for meal type / statsRange (total days in period)
-  // This reflects real weight: a meal eaten 2/7 days shows proportionally lower average
   const mealAvg = {};
   Object.entries(mealDays).forEach(([meal, byDate]) => {
     const totalCal = Object.values(byDate).reduce((s,v)=>s+v,0);
     mealAvg[meal] = Math.round(totalCal / statsRange);
   });
 
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
   const mealColors = {
     'Desayuno':'#a8c060','Snack Mañana':'#d4a840','Almuerzo':'#4a90d9',
     'Snack Tarde':'#e07840','Cena':'#9b59b6','Extra':'#7a8460'
   };
-  const sorted = Object.entries(mealAvg).sort((a,b)=>b[1]-a[1]);
-  const maxVal = sorted[0]?.[1] || 1;
+  const sorted  = Object.entries(mealAvg).sort((a,b)=>b[1]-a[1]);
+  const totalCal = sorted.reduce((s,[,v])=>s+v,0) || 1;
 
   if (showCharts) {
     document.getElementById('statsMealContent').style.display = 'none';
     const canvas = document.getElementById('chartMeal');
     canvas.style.display = 'block';
     if (chartMealInstance) { chartMealInstance.destroy(); chartMealInstance = null; }
-    const ctx = canvas.getContext('2d');
-    chartMealInstance = new Chart(ctx, {
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    chartMealInstance = new Chart(canvas.getContext('2d'), {
       type: 'doughnut',
       data: {
-        labels: sorted.map(([k]) => k),
-        datasets: [{ data: sorted.map(([,v]) => v), backgroundColor: sorted.map(([k]) => mealColors[k]||'#7a8460'), borderWidth: 0 }],
+        labels: sorted.map(([k]) => `${MEAL_ICONS[k]||''} ${k}`),
+        datasets: [{
+          data: sorted.map(([,v]) => v),
+          backgroundColor: sorted.map(([k]) => mealColors[k]||'#7a8460'),
+          borderColor: isDark ? '#1e2414' : '#f5f7f0',
+          borderWidth: 2,
+          hoverOffset: 6,
+        }],
       },
       options: {
         responsive: true,
+        cutout: '65%',
         plugins: {
-          legend: { position:'bottom', labels:{ color:'#7a8460', font:{size:11}, padding:12 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ~${ctx.raw} kcal/día` } },
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#7a8460', font:{ size:11 }, padding:10,
+              generateLabels: chart => chart.data.labels.map((label, i) => ({
+                text: `${label}  ~${sorted[i][1]} kcal`,
+                fillStyle: chart.data.datasets[0].backgroundColor[i],
+                strokeStyle: 'transparent',
+                index: i,
+              })),
+            },
+          },
+          tooltip: { callbacks: { label: c => ` ${c.label}: ~${c.raw} kcal/día (${Math.round((c.raw/totalCal)*100)}%)` } },
         },
-        cutout: '60%',
       },
+      plugins: [{
+        id: 'centerText',
+        afterDraw(chart) {
+          const { ctx, chartArea: { width, height, left, top } } = chart;
+          const cx = left + width/2, cy = top + height/2;
+          ctx.save();
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = isDark ? '#e8edd8' : '#1e2414';
+          ctx.font = `300 22px var(--font-display, sans-serif)`;
+          ctx.fillText(Math.round(totalCal), cx, cy - 7);
+          ctx.font = `normal 10px var(--font-display, sans-serif)`;
+          ctx.fillStyle = '#7a8460';
+          ctx.fillText('kcal/día', cx, cy + 10);
+          ctx.restore();
+        }
+      }],
     });
   } else {
     document.getElementById('chartMeal').style.display = 'none';
     document.getElementById('statsMealContent').style.display = 'block';
+    const maxVal = sorted[0]?.[1] || 1;
     document.getElementById('statsMealContent').innerHTML = sorted.map(([meal, avg]) => {
       const pct = Math.round((avg/maxVal)*100);
-      return `<div class="progress-item">
-        <div class="progress-header">
-          <span class="progress-label">${meal}</span>
-          <span class="progress-value">~${avg} kcal/día</span>
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:16px;flex-shrink:0">${MEAL_ICONS[meal]||'🍽️'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--font-display);font-size:13px;color:var(--text)">${meal}</div>
+          <div style="margin-top:4px;height:4px;border-radius:2px;background:var(--border)">
+            <div style="width:${pct}%;height:100%;border-radius:2px;background:${mealColors[meal]||'#7a8460'}"></div>
+          </div>
         </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${mealColors[meal]||'#7a8460'}"></div></div>
+        <span style="font-family:var(--font-display);font-size:13px;color:var(--muted);flex-shrink:0">~${avg} kcal</span>
       </div>`;
     }).join('');
   }
@@ -5706,85 +5740,110 @@ function renderStatsEatingOut(food) {
   card.style.display = 'block';
 
   const todayLocal = new Date();
-  const labels = [];
-  const data   = [];
-  let totalDays = 0;
+  const datesOut   = new Set(outsideEntries.map(e => e.log_date));
+  let totalDays    = 0;
 
+  // Build pill grid
+  const pills = [];
   for (let i = statsRange - 1; i >= 0; i--) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
-    const hasOut = outsideEntries.some(e => e.log_date === dateStr) ? 1 : 0;
-    data.push(hasOut);
-    if (hasOut) totalDays++;
+    const dateStr  = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const dayLabel = d.toLocaleDateString('es-CR', { day:'numeric', month:'short' });
+    const isOut    = datesOut.has(dateStr);
+    if (isOut) totalDays++;
+    pills.push({ dateStr, dayLabel, isOut });
   }
 
-  document.getElementById('statsEatingOutSummary').textContent =
-    `${totalDays} día${totalDays !== 1 ? 's' : ''} comiendo fuera en ${statsRange} días (${Math.round(totalDays/statsRange*100)}%)`;
+  const pct = Math.round(totalDays/statsRange*100);
 
-  if (chartEatingOutInstance) { chartEatingOutInstance.destroy(); chartEatingOutInstance = null; }
-  const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
-  const gridColor  = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const textColor  = '#7a8460';
+  // Replace canvas with pill grid
+  const canvas = document.getElementById('chartEatingOut');
+  canvas.style.display = 'none';
 
-  const ctx = document.getElementById('chartEatingOut').getContext('2d');
-  chartEatingOutInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Fuera de casa',
-        data,
-        backgroundColor: data.map(v => v ? 'rgba(91,192,222,0.7)'  : 'rgba(100,100,100,0.15)'),
-        borderColor:     data.map(v => v ? 'rgba(91,192,222,1)'    : 'transparent'),
-        borderWidth: 1,
-        borderRadius: 4,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ctx.raw ? ' Comió fuera' : ' En casa' } },
-      },
-      scales: {
-        x: {
-          ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45,
-            maxTicksLimit: statsRange === 30 ? 10 : 7, autoSkip: true },
-          grid: { color: gridColor },
-        },
-        y: { display: false, min: 0, max: 1 },
-      },
-    },
-  });
+  // Summary bar
+  document.getElementById('statsEatingOutSummary').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:13px;color:var(--text2)">${totalDays} día${totalDays!==1?'s':''} comiendo fuera</span>
+      <span style="font-family:var(--font-display);font-size:15px;color:#5bc0de;font-weight:500">${pct}%</span>
+    </div>
+    <div style="height:5px;border-radius:3px;background:var(--border);margin-bottom:14px">
+      <div style="width:${pct}%;height:100%;border-radius:3px;background:#5bc0de;transition:width 0.4s"></div>
+    </div>`;
 
-  // ── Eating out list grouped by date (descending) ──
+  // Pill grid — each day is a labeled pill
+  const pillsHTML = pills.map(p => `
+    <div title="${p.dayLabel}: ${p.isOut ? 'Comió fuera' : 'En casa'}"
+      style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:default">
+      <div style="width:100%;height:22px;border-radius:6px;background:${p.isOut ? '#5bc0de' : 'var(--border)'};
+        opacity:${p.isOut ? '1' : '0.4'};transition:background 0.2s"></div>
+      <span style="font-size:9px;color:var(--muted);white-space:nowrap">${p.dayLabel}</span>
+    </div>`).join('');
+
+  // Wrap pills — for 30 days split in 2 rows of 15
+  let pillGrid;
+  if (statsRange === 30) {
+    const row1 = pills.slice(0,15).map(p=>`<div title="${p.dayLabel}: ${p.isOut?'Comió fuera':'En casa'}" style="flex:1;height:14px;border-radius:4px;background:${p.isOut?'#5bc0de':'var(--border)'};opacity:${p.isOut?'1':'0.35'};cursor:default"></div>`).join('');
+    const row2 = pills.slice(15).map(p=>`<div title="${p.dayLabel}: ${p.isOut?'Comió fuera':'En casa'}" style="flex:1;height:14px;border-radius:4px;background:${p.isOut?'#5bc0de':'var(--border)'};opacity:${p.isOut?'1':'0.35'};cursor:default"></div>`).join('');
+    pillGrid = `
+      <div style="display:flex;gap:3px;margin-bottom:3px">${row1}</div>
+      <div style="display:flex;gap:3px">${row2}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <span style="font-size:9px;color:var(--muted)">${pills[0].dayLabel}</span>
+        <span style="font-size:9px;color:var(--muted)">${pills[14].dayLabel}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:2px">
+        <span style="font-size:9px;color:var(--muted)">${pills[15].dayLabel}</span>
+        <span style="font-size:9px;color:var(--muted)">${pills[29].dayLabel}</span>
+      </div>`;
+  } else {
+    const row = pills.map(p=>`<div title="${p.dayLabel}: ${p.isOut?'Comió fuera':'En casa'}" style="flex:1;height:20px;border-radius:5px;background:${p.isOut?'#5bc0de':'var(--border)'};opacity:${p.isOut?'1':'0.35'};cursor:default"></div>`).join('');
+    pillGrid = `
+      <div style="display:flex;gap:3px;margin-bottom:4px">${row}</div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:9px;color:var(--muted)">${pills[0].dayLabel}</span>
+        <span style="font-size:9px;color:var(--muted)">${pills[pills.length-1].dayLabel}</span>
+      </div>`;
+  }
+
+  // Legend
+  const legend = `<div style="display:flex;align-items:center;gap:12px;margin-top:10px">
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:12px;height:12px;border-radius:3px;background:#5bc0de"></div>
+      <span style="font-size:11px;color:var(--muted)">Comió fuera</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:12px;height:12px;border-radius:3px;background:var(--border);opacity:0.5"></div>
+      <span style="font-size:11px;color:var(--muted)">En casa</span>
+    </div>
+  </div>`;
+
+  document.getElementById('statsEatingOutSummary').innerHTML += pillGrid + legend;
+
+  // List grouped by date
   const byDate = {};
   outsideEntries.forEach(e => {
     if (!byDate[e.log_date]) byDate[e.log_date] = [];
     byDate[e.log_date].push(e);
   });
-  const sortedDates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+  const sortedDates = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
   let grandTotal = 0;
   const listEl = document.getElementById('statsEatingOutList');
   listEl.innerHTML = sortedDates.map(date => {
     const dayEntries = byDate[date];
-    const dayCal = Math.round(dayEntries.reduce((s, e) => s + (e.calories || 0), 0));
+    const dayCal = Math.round(dayEntries.reduce((s,e)=>s+(e.calories||0),0));
     grandTotal += dayCal;
-    const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
+    const dateLabel = new Date(date+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'});
     const items = dayEntries.map(e =>
       `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
         <span style="color:var(--text2)">${e.food_name} · <span style="color:var(--muted)">${e.meal_type}</span></span>
-        <span style="color:var(--muted);flex-shrink:0;margin-left:8px">${Math.round(e.calories || 0)} kcal</span>
-      </div>`
-    ).join('');
+        <span style="color:var(--muted);flex-shrink:0;margin-left:8px">${Math.round(e.calories||0)} kcal</span>
+      </div>`).join('');
     return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-family:var(--font-display);font-size:13px;color:var(--text);font-weight:500">🌍 ${dateLabel}</span>
         <span style="font-family:var(--font-display);font-size:13px;color:var(--accent)">${dayCal} kcal</span>
-      </div>
-      ${items}
+      </div>${items}
     </div>`;
   }).join('');
   listEl.innerHTML += `<div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:4px;border-top:2px solid var(--border)">
@@ -5793,96 +5852,104 @@ function renderStatsEatingOut(food) {
   </div>`;
 }
 
-// ── Alcohol chart ──
 function renderStatsAlcohol(food) {
   const card = document.getElementById('statsAlcoholCard');
   const alcoholEntries = food.filter(e => e.is_alcoholic);
   if (!alcoholEntries.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const todayLocal = new Date();
-  const labels = [];
-  const data   = [];
-  let totalDays = 0;
+  const todayLocal  = new Date();
+  const datesAlc    = new Set(alcoholEntries.map(e => e.log_date));
+  let totalDays     = 0;
 
+  const pills = [];
   for (let i = statsRange - 1; i >= 0; i--) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
-    const hasAlcohol = alcoholEntries.some(e => e.log_date === dateStr) ? 1 : 0;
-    data.push(hasAlcohol);
-    if (hasAlcohol) totalDays++;
+    const dateStr  = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const dayLabel = d.toLocaleDateString('es-CR', { day:'numeric', month:'short' });
+    const hasAlc   = datesAlc.has(dateStr);
+    if (hasAlc) totalDays++;
+    pills.push({ dateStr, dayLabel, hasAlc });
   }
 
-  document.getElementById('statsAlcoholSummary').textContent =
-    `${totalDays} día${totalDays !== 1 ? 's' : ''} con alcohol en ${statsRange} días (${Math.round(totalDays/statsRange*100)}%)`;
+  const pct = Math.round(totalDays/statsRange*100);
+  const canvas = document.getElementById('chartAlcohol');
+  canvas.style.display = 'none';
 
-  if (chartAlcoholInstance) { chartAlcoholInstance.destroy(); chartAlcoholInstance = null; }
-  const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
-  const gridColor  = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const textColor  = '#7a8460';
+  // Summary bar
+  document.getElementById('statsAlcoholSummary').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:13px;color:var(--text2)">${totalDays} día${totalDays!==1?'s':''} con alcohol</span>
+      <span style="font-family:var(--font-display);font-size:15px;color:#e07840;font-weight:500">${pct}%</span>
+    </div>
+    <div style="height:5px;border-radius:3px;background:var(--border);margin-bottom:14px">
+      <div style="width:${pct}%;height:100%;border-radius:3px;background:#e07840;transition:width 0.4s"></div>
+    </div>`;
 
-  const ctx = document.getElementById('chartAlcohol').getContext('2d');
-  chartAlcoholInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Alcohol',
-        data,
-        backgroundColor: data.map(v => v ? 'rgba(224,120,64,0.7)' : 'rgba(100,100,100,0.15)'),
-        borderColor:     data.map(v => v ? 'rgba(224,120,64,1)'   : 'transparent'),
-        borderWidth: 1,
-        borderRadius: 4,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ctx.raw ? ' Con alcohol' : ' Sin alcohol' } },
-      },
-      scales: {
-        x: {
-          ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45,
-            maxTicksLimit: statsRange === 30 ? 10 : 7, autoSkip: true },
-          grid: { color: gridColor },
-        },
-        y: {
-          display: false,
-          min: 0, max: 1,
-        },
-      },
-    },
-  });
+  // Pill grid
+  let pillGrid;
+  if (statsRange === 30) {
+    const row1 = pills.slice(0,15).map(p=>`<div title="${p.dayLabel}: ${p.hasAlc?'Con alcohol':'Sin alcohol'}" style="flex:1;height:14px;border-radius:4px;background:${p.hasAlc?'#e07840':'var(--border)'};opacity:${p.hasAlc?'1':'0.35'};cursor:default"></div>`).join('');
+    const row2 = pills.slice(15).map(p=>`<div title="${p.dayLabel}: ${p.hasAlc?'Con alcohol':'Sin alcohol'}" style="flex:1;height:14px;border-radius:4px;background:${p.hasAlc?'#e07840':'var(--border)'};opacity:${p.hasAlc?'1':'0.35'};cursor:default"></div>`).join('');
+    pillGrid = `
+      <div style="display:flex;gap:3px;margin-bottom:3px">${row1}</div>
+      <div style="display:flex;gap:3px">${row2}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <span style="font-size:9px;color:var(--muted)">${pills[0].dayLabel}</span>
+        <span style="font-size:9px;color:var(--muted)">${pills[14].dayLabel}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:2px">
+        <span style="font-size:9px;color:var(--muted)">${pills[15].dayLabel}</span>
+        <span style="font-size:9px;color:var(--muted)">${pills[29].dayLabel}</span>
+      </div>`;
+  } else {
+    const row = pills.map(p=>`<div title="${p.dayLabel}: ${p.hasAlc?'Con alcohol':'Sin alcohol'}" style="flex:1;height:20px;border-radius:5px;background:${p.hasAlc?'#e07840':'var(--border)'};opacity:${p.hasAlc?'1':'0.35'};cursor:default"></div>`).join('');
+    pillGrid = `
+      <div style="display:flex;gap:3px;margin-bottom:4px">${row}</div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:9px;color:var(--muted)">${pills[0].dayLabel}</span>
+        <span style="font-size:9px;color:var(--muted)">${pills[pills.length-1].dayLabel}</span>
+      </div>`;
+  }
 
-  // ── Alcohol entries list grouped by date (descending) ──
+  const legend = `<div style="display:flex;align-items:center;gap:12px;margin-top:10px">
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:12px;height:12px;border-radius:3px;background:#e07840"></div>
+      <span style="font-size:11px;color:var(--muted)">Con alcohol</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="width:12px;height:12px;border-radius:3px;background:var(--border);opacity:0.5"></div>
+      <span style="font-size:11px;color:var(--muted)">Sin alcohol</span>
+    </div>
+  </div>`;
+
+  document.getElementById('statsAlcoholSummary').innerHTML += pillGrid + legend;
+
+  // List grouped by date
   const byDate = {};
   alcoholEntries.forEach(e => {
     if (!byDate[e.log_date]) byDate[e.log_date] = [];
     byDate[e.log_date].push(e);
   });
-  const sortedDates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+  const sortedDates = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
   let grandTotal = 0;
   const listEl = document.getElementById('statsAlcoholList');
   listEl.innerHTML = sortedDates.map(date => {
     const dayEntries = byDate[date];
-    const dayCal = Math.round(dayEntries.reduce((s, e) => s + (e.calories || 0), 0));
+    const dayCal = Math.round(dayEntries.reduce((s,e)=>s+(e.calories||0),0));
     grandTotal += dayCal;
-    const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
+    const dateLabel = new Date(date+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'});
     const items = dayEntries.map(e =>
       `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
         <span style="color:var(--text2)">${e.food_name} · <span style="color:var(--muted)">${e.meal_type}</span></span>
-        <span style="color:var(--muted);flex-shrink:0;margin-left:8px">${Math.round(e.calories || 0)} kcal</span>
-      </div>`
-    ).join('');
+        <span style="color:var(--muted);flex-shrink:0;margin-left:8px">${Math.round(e.calories||0)} kcal</span>
+      </div>`).join('');
     return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-family:var(--font-display);font-size:13px;color:var(--text);font-weight:500">🍺 ${dateLabel}</span>
         <span style="font-family:var(--font-display);font-size:13px;color:var(--accent)">${dayCal} kcal</span>
-      </div>
-      ${items}
+      </div>${items}
     </div>`;
   }).join('');
   listEl.innerHTML += `<div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:4px;border-top:2px solid var(--border)">
@@ -6449,9 +6516,9 @@ async function generatePDF() {
 let chartOriginInstance = null;
 
 function renderStatsOrigin(food) {
-  const card = document.getElementById('statsOriginCard');
+  const card    = document.getElementById('statsOriginCard');
   const content = document.getElementById('statsOriginContent');
-  const canvas = document.getElementById('chartOrigin');
+  const canvas  = document.getElementById('chartOrigin');
   if (!food.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
@@ -6464,46 +6531,70 @@ function renderStatsOrigin(food) {
   });
   const casaCount  = casaOccasions.size;
   const fueraCount = fueraOccasions.size;
-  const total = casaCount + fueraCount || 1;
-  const casaPct  = Math.round((casaCount/total)*100);
-  const fueraPct = Math.round((fueraCount/total)*100);
+  const total      = casaCount + fueraCount || 1;
+  const casaPct    = Math.round((casaCount/total)*100);
+  const fueraPct   = Math.round((fueraCount/total)*100);
 
-  // ① Summary cards (above chart)
+  // Summary chips above chart
   content.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">🏠 Casa</div>
-        <div style="font-size:22px;font-weight:300;color:var(--accent);font-family:var(--font-display);margin-top:4px">${casaPct}%</div>
-        <div style="font-size:11px;color:var(--muted)">${casaCount} tiempos de comida</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:var(--surface2);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:#a8c060;flex-shrink:0"></div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Casa</div>
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text);line-height:1.1">${casaPct}%</div>
+          <div style="font-size:11px;color:var(--muted)">${casaCount} comidas</div>
+        </div>
       </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">🌍 Fuera</div>
-        <div style="font-size:22px;font-weight:300;color:var(--accent2);font-family:var(--font-display);margin-top:4px">${fueraPct}%</div>
-        <div style="font-size:11px;color:var(--muted)">${fueraCount} tiempos de comida</div>
+      <div style="background:var(--surface2);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:#d4a840;flex-shrink:0"></div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Fuera</div>
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text);line-height:1.1">${fueraPct}%</div>
+          <div style="font-size:11px;color:var(--muted)">${fueraCount} comidas</div>
+        </div>
       </div>
     </div>`;
 
-  // ② Donut chart
   canvas.style.display = 'block';
   if (chartOriginInstance) { chartOriginInstance.destroy(); chartOriginInstance = null; }
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
   chartOriginInstance = new Chart(canvas.getContext('2d'), {
     type: 'doughnut',
     data: {
       labels: ['🏠 Casa', '🌍 Fuera'],
       datasets: [{
         data: [casaCount, fueraCount],
-        backgroundColor: ['rgba(168,192,96,0.8)', 'rgba(212,168,64,0.8)'],
-        borderColor: ['rgba(168,192,96,1)', 'rgba(212,168,64,1)'],
-        borderWidth: 1,
+        backgroundColor: ['#a8c060', '#d4a840'],
+        borderColor: isDark ? '#1e2414' : '#f5f7f0',
+        borderWidth: 2,
+        hoverOffset: 6,
       }],
     },
     options: {
-      responsive: true, cutout: '60%',
+      responsive: true,
+      cutout: '65%',
       plugins: {
         legend: { position:'bottom', labels:{ color:'#7a8460', font:{size:12}, padding:16 } },
-        tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw} tiempos (${Math.round((c.raw/total)*100)}%)` } },
+        tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw} comidas (${Math.round((c.raw/total)*100)}%)` } },
       },
     },
+    plugins: [{
+      id: 'centerText',
+      afterDraw(chart) {
+        const { ctx, chartArea: { width, height, left, top } } = chart;
+        const cx = left + width/2, cy = top + height/2;
+        ctx.save();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = isDark ? '#e8edd8' : '#1e2414';
+        ctx.font = `300 22px var(--font-display, sans-serif)`;
+        ctx.fillText(total, cx, cy - 7);
+        ctx.font = `normal 10px var(--font-display, sans-serif)`;
+        ctx.fillStyle = '#7a8460';
+        ctx.fillText('comidas', cx, cy + 10);
+        ctx.restore();
+      }
+    }],
   });
 }
 
