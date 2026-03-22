@@ -1762,7 +1762,7 @@ select { cursor: pointer; }
       <div class="two-col">
         <div class="field">
           <label>Cantidad</label>
-          <input type="text" id="editQuantity" inputmode="decimal">
+          <input type="text" id="editQuantity" inputmode="decimal" oninput="recalcEditMacros()">
         </div>
         <div class="field">
           <label>Unidad</label>
@@ -1890,6 +1890,22 @@ select { cursor: pointer; }
     </button>
   </div>
   <div id="searchResults" style="flex:1;overflow-y:auto;padding:12px 16px"></div>
+</div>
+
+<!-- ══ SAVE AS CUSTOM FOOD MODAL ══ -->
+<div class="modal-overlay" id="saveAsCustomModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">💾 ¿Guardar alimento?</div>
+    <p style="font-size:14px;color:var(--text2);margin:0 0 12px">
+      <strong id="saveAsCustomName" style="color:var(--text)"></strong> no está en tu base de datos.
+      ¿Querés guardarlo como alimento personalizado para usarlo más fácil la próxima vez?
+    </p>
+    <div style="background:var(--surface2);border-radius:10px;padding:12px;font-size:12px;color:var(--muted)" id="saveAsCustomMacros"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-cancel" onclick="document.getElementById('saveAsCustomModal').classList.remove('show')">No, gracias</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="confirmSaveAsCustom()">💾 Guardar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══ NEW FOOD MODAL ══ -->
@@ -2381,6 +2397,41 @@ function openFoodItemCtx(btn, idx) {
   ]);
 }
 
+// ── Suggest saving as custom food ──
+let _pendingCustomFood = null;
+
+function suggestSaveAsCustomFood(entry) {
+  _pendingCustomFood = {
+    name:     entry.food_name,
+    qty:      entry.quantity || 100,
+    unit:     entry.unit || 'gramos',
+    cal:      entry.calories || 0,
+    p:        entry.protein_g || 0,
+    c:        entry.carbs_g || 0,
+    f:        entry.fat_g || 0,
+    fib:      entry.fiber_g || 0,
+    sugar_g:  entry.sugar_g || 0,
+    is_alcoholic: entry.is_alcoholic || false,
+  };
+  document.getElementById('saveAsCustomName').textContent = entry.food_name;
+  document.getElementById('saveAsCustomMacros').innerHTML =
+    `${_pendingCustomFood.qty} ${_pendingCustomFood.unit} · ${Math.round(_pendingCustomFood.cal)} kcal · ` +
+    `P:${_pendingCustomFood.p}g · C:${_pendingCustomFood.c}g · G:${_pendingCustomFood.f}g`;
+  document.getElementById('saveAsCustomModal').classList.add('show');
+}
+
+async function confirmSaveAsCustom() {
+  if (!_pendingCustomFood) return;
+  const { data, error } = await sb.from('custom_foods')
+    .insert({ user_id: currentUser.id, ..._pendingCustomFood })
+    .select().single();
+  if (error) { showToast('Error al guardar', true); return; }
+  customFoods.push(data);
+  _pendingCustomFood = null;
+  document.getElementById('saveAsCustomModal').classList.remove('show');
+  showToast(`✓ "${data.name}" guardado en Mis alimentos`);
+}
+
 function openNewFoodModal() {
   // Reset form
   ['newFoodName','newFoodQty','newFoodCal','newFoodP','newFoodC','newFoodF','newFoodFib','newFoodSug'].forEach(id => {
@@ -2800,6 +2851,14 @@ async function confirmAndSaveEntry() {
   }
   renderCarouselDay();
   showToast('✓ Entrada registrada');
+
+  // Suggest saving as custom food if not in any DB
+  const nameNorm = norm(dbEntry.food_name);
+  const inCustom = customFoods.some(f => norm(f.name) === nameNorm);
+  const inGlobal = foodsDb.some(f => norm(f.name) === nameNorm);
+  if (!inCustom && !inGlobal && !dbEntry._dishIngs && dbEntry.calories) {
+    suggestSaveAsCustomFood(dbEntry);
+  }
 }
 
 async function submitEntry() { confirmAndSaveEntry(); }
@@ -3192,11 +3251,23 @@ function makeEditableLogItem(e) {
 let editingEntryId = null;
 let editingOrigin  = 'Casa';
 
+let _editBaseEntry = null;
+
 function openEditModal(id) {
   const e = entries.find(e => e.id === id);
   if (!e) return;
   editingEntryId = id;
   editingOrigin  = e.origin || 'Casa';
+  // Store base entry for macro recalculation
+  _editBaseEntry = {
+    quantity:  e.quantity  || 100,
+    calories:  e.calories  || 0,
+    protein_g: e.protein_g || 0,
+    carbs_g:   e.carbs_g   || 0,
+    fat_g:     e.fat_g     || 0,
+    fiber_g:   e.fiber_g   || 0,
+    sugar_g:   e.sugar_g   || 0,
+  };
   document.getElementById('editFoodName').value  = e.food_name || '';
   document.getElementById('editQuantity').value  = e.quantity  || '';
   document.getElementById('editUnit').value       = e.unit      || 'gramos';
@@ -3213,6 +3284,20 @@ function openEditModal(id) {
   document.getElementById('editNotes').value     = e.notes     || '';
   setEditOrigin(editingOrigin);
   document.getElementById('editEntryModal').classList.add('show');
+}
+
+function recalcEditMacros() {
+  if (!_editBaseEntry || !_editBaseEntry.quantity) return;
+  const newQty = parseFloat(document.getElementById('editQuantity').value);
+  if (!newQty || isNaN(newQty)) return;
+  const ratio = newQty / _editBaseEntry.quantity;
+  const round = v => Math.round(v * ratio * 10) / 10;
+  document.getElementById('editCalories').value = round(_editBaseEntry.calories);
+  document.getElementById('editProtein').value  = round(_editBaseEntry.protein_g);
+  document.getElementById('editCarbs').value    = round(_editBaseEntry.carbs_g);
+  document.getElementById('editFat').value      = round(_editBaseEntry.fat_g);
+  document.getElementById('editFiber').value    = round(_editBaseEntry.fiber_g);
+  document.getElementById('editSugar').value    = round(_editBaseEntry.sugar_g);
 }
 
 function setEditOrigin(origin) {
@@ -3355,20 +3440,55 @@ async function saveEdit(idx) {
   if (!name) { showToast('El nombre no puede estar vacío', true); return; }
   const updated = {
     name,
-    qty:  parseFraction(item.querySelector('.ef-qty').value) || food.qty,
-    unit: item.querySelector('.ef-unit').value,
-    cal:  parseFloat(item.querySelector('.ef-cal').value)  || 0,
-    p:    parseFloat(item.querySelector('.ef-p').value)    || 0,
-    c:    parseFloat(item.querySelector('.ef-c').value)    || 0,
-    f:    parseFloat(item.querySelector('.ef-f').value)    || 0,
+    qty:     parseFraction(item.querySelector('.ef-qty').value) || food.qty,
+    unit:    item.querySelector('.ef-unit').value,
+    cal:     parseFloat(item.querySelector('.ef-cal').value)  || 0,
+    p:       parseFloat(item.querySelector('.ef-p').value)    || 0,
+    c:       parseFloat(item.querySelector('.ef-c').value)    || 0,
+    f:       parseFloat(item.querySelector('.ef-f').value)    || 0,
     fib:     parseFloat(item.querySelector('.ef-fib').value)  || 0,
     sugar_g: parseFloat(item.querySelector('.ef-sug').value)  || 0,
   };
+
   const { error } = await sb.from('custom_foods').update(updated).eq('id', food.id).eq('user_id', currentUser.id);
   if (error) { showToast('Error al actualizar', true); return; }
+
+  // Recalculate and update all food_log entries with the old food name
+  const oldName  = food.name;
+  const oldQty   = food.qty;
+  const logToUpdate = entries.filter(e => e.food_name === oldName);
+
+  if (logToUpdate.length) {
+    const calPerUnit = updated.cal / updated.qty;
+    const pPerUnit   = updated.p   / updated.qty;
+    const cPerUnit   = updated.c   / updated.qty;
+    const fPerUnit   = updated.f   / updated.qty;
+    const fibPerUnit = updated.fib / updated.qty;
+    const sugPerUnit = updated.sugar_g / updated.qty;
+
+    for (const e of logToUpdate) {
+      // Convert entry quantity to base unit if needed, then recalculate
+      const entryQty = e.quantity || updated.qty;
+      const ratio = entryQty / updated.qty;
+      const newMacros = {
+        food_name: updated.name,
+        calories:  Math.round(updated.cal * ratio * 10) / 10,
+        protein_g: Math.round(updated.p   * ratio * 10) / 10,
+        carbs_g:   Math.round(updated.c   * ratio * 10) / 10,
+        fat_g:     Math.round(updated.f   * ratio * 10) / 10,
+        fiber_g:   Math.round(updated.fib * ratio * 10) / 10,
+        sugar_g:   Math.round(updated.sugar_g * ratio * 10) / 10,
+      };
+      await sb.from('food_log').update(newMacros).eq('id', e.id).eq('user_id', currentUser.id);
+      Object.assign(e, newMacros);
+    }
+  }
+
   customFoods[idx] = { ...food, ...updated };
   renderFoodsList();
-  showToast('✓ Alimento actualizado');
+  buildCarouselDays(true);
+  renderCarouselDay();
+  showToast(`✓ Alimento actualizado${logToUpdate.length ? ` · ${logToUpdate.length} entrada${logToUpdate.length>1?'s':''} recalculada${logToUpdate.length>1?'s':''}` : ''}`);
 }
 
 function renderFoodItem(el, i, editing) {
