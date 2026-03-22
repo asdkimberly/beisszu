@@ -1344,19 +1344,26 @@ select { cursor: pointer; }
       <canvas id="chartMeal" height="180" style="display:none"></canvas>
     </div>
 
-    <!-- ⑥ Alimentos más frecuentes -->
+    <!-- Origen de comidas -->
+    <div class="card" id="statsOriginCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Origen de comidas</div>
+      <div id="statsOriginContent"></div>
+      <canvas id="chartOrigin" height="180" style="display:none"></canvas>
+    </div>
+
+    <!-- Alimentos más frecuentes -->
     <div class="card" id="statsTopFoodsCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Alimentos más frecuentes</div>
       <div id="statsTopFoods"></div>
     </div>
 
-    <!-- ⑥b Bebidas más frecuentes -->
+    <!-- Bebidas más frecuentes -->
     <div class="card" id="statsTopDrinksCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Bebidas más frecuentes</div>
       <div id="statsTopDrinks"></div>
     </div>
 
-    <!-- ⑥c Días comiendo fuera -->
+    <!-- Días comiendo fuera -->
     <div class="card" id="statsEatingOutCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Días comiendo fuera</div>
       <canvas id="chartEatingOut" height="160"></canvas>
@@ -1364,18 +1371,12 @@ select { cursor: pointer; }
       <div id="statsEatingOutList" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"></div>
     </div>
 
-    <!-- ⑦ Origen de comidas -->
-    <div class="card" id="statsOriginCard" style="display:none">
-      <div class="section-label" style="margin-bottom:8px">Origen de comidas</div>
-      <div id="statsOriginContent"></div>
-      <canvas id="chartOrigin" height="180" style="display:none"></canvas>
-    </div>
-
-    <!-- ⑧ Consumo de alcohol -->
+    <!-- Días con consumo de alcohol -->
     <div class="card" id="statsAlcoholCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Días con consumo de alcohol</div>
       <canvas id="chartAlcohol" height="160"></canvas>
       <div id="statsAlcoholSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
+      <div id="statsAlcoholList" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"></div>
     </div>
 
     <!-- Generar informe -->
@@ -5839,6 +5840,39 @@ function renderStatsAlcohol(food) {
       },
     },
   });
+
+  // ── Alcohol entries list grouped by date (descending) ──
+  const byDate = {};
+  alcoholEntries.forEach(e => {
+    if (!byDate[e.log_date]) byDate[e.log_date] = [];
+    byDate[e.log_date].push(e);
+  });
+  const sortedDates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+  let grandTotal = 0;
+  const listEl = document.getElementById('statsAlcoholList');
+  listEl.innerHTML = sortedDates.map(date => {
+    const dayEntries = byDate[date];
+    const dayCal = Math.round(dayEntries.reduce((s, e) => s + (e.calories || 0), 0));
+    grandTotal += dayCal;
+    const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
+    const items = dayEntries.map(e =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text2)">${e.food_name} · <span style="color:var(--muted)">${e.meal_type}</span></span>
+        <span style="color:var(--muted);flex-shrink:0;margin-left:8px">${Math.round(e.calories || 0)} kcal</span>
+      </div>`
+    ).join('');
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-family:var(--font-display);font-size:13px;color:var(--text);font-weight:500">🍺 ${dateLabel}</span>
+        <span style="font-family:var(--font-display);font-size:13px;color:var(--accent)">${dayCal} kcal</span>
+      </div>
+      ${items}
+    </div>`;
+  }).join('');
+  listEl.innerHTML += `<div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:4px;border-top:2px solid var(--border)">
+    <span style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Total calorías alcohólicas</span>
+    <span style="font-family:var(--font-display);font-size:14px;color:var(--accent);font-weight:500">${grandTotal} kcal</span>
+  </div>`;
 }
 
 function renderStatsTopFoods(food) {
