@@ -6126,66 +6126,103 @@ async function generatePDF() {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  const W = 210; const H = 297; const margin = 14;
-  const CW = W - margin * 2;
-  let y = margin;
-  const now = new Date();
+  const W=210; const H=297; const margin=14; const CW=W-margin*2;
+  let y=margin;
+  const now=new Date();
 
-  const C = {
-    accent: [108,144,60], dark:[30,36,20], muted:[100,110,85],
+  const C={
+    accent:[108,144,60], dark:[30,36,20], muted:[100,110,85],
     light:[243,246,235],  white:[255,255,255], border:[210,215,200],
   };
 
-  function newPage() {
-    doc.addPage(); y = margin;
-    doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
-    doc.line(margin, margin-4, W-margin, margin-4);
-  }
+  // ── Helpers ──
+  function newPage(){ doc.addPage(); y=margin; }
 
-  function checkSpace(needed) { if (y+needed > H-16) newPage(); }
+  // checkSpace: if content doesn't fit, jump to new page
+  function checkSpace(needed){ if(y+needed>H-16) newPage(); }
 
-  function sectionTitle(title) {
-    checkSpace(14); y += 3;
+  // sectionSpace: entire section must start on same page — jump before drawing title
+  function sectionSpace(needed){ if(y+needed>H-16) newPage(); }
+
+  function sectionTitle(title){
+    y+=3;
     doc.setFillColor(...C.accent);
-    doc.roundedRect(margin, y, CW, 9, 1.5, 1.5, 'F');
+    doc.roundedRect(margin,y,CW,9,1.5,1.5,'F');
     doc.setTextColor(...C.white);
     doc.setFont('helvetica','bold'); doc.setFontSize(10);
-    doc.text(title, margin+5, y+6.2);
-    y += 13;
+    doc.text(title,margin+5,y+6.2);
+    y+=13;
   }
 
-  function row(label, val, shade=false) {
+  function row(label,val,shade=false){
     checkSpace(8);
-    doc.setFillColor(shade?240:250, shade?245:251, shade?228:245);
-    doc.roundedRect(margin, y, CW, 7, 1, 1, 'F');
+    doc.setFillColor(shade?240:250,shade?245:251,shade?228:245);
+    doc.roundedRect(margin,y,CW,7,1,1,'F');
     doc.setTextColor(...C.dark);
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
-    doc.text(label, margin+3, y+4.8);
+    doc.text(label,margin+3,y+4.8);
     doc.setFont('helvetica','bold');
-    doc.text(String(val), W-margin-3, y+4.8, {align:'right'});
-    y += 8;
+    doc.text(String(val),W-margin-3,y+4.8,{align:'right'});
+    y+=8;
   }
 
-  function addChartCanvas(canvas, heightMM=55, widthFraction=1) {
-    if (!canvas) return;
-    const img = canvas.toDataURL('image/png',1.0);
-    const cw=canvas.width; const ch=canvas.height; const ratio=cw/ch;
-    let imgW = CW*widthFraction;
-    let imgH = imgW/ratio;
-    if (imgH>heightMM) { imgH=heightMM; imgW=imgH*ratio; }
-    const x = margin+(CW-imgW)/2;
-    checkSpace(imgH+6);
-    doc.addImage(img,'PNG',x,y,imgW,imgH);
-    y += imgH+6;
-  }
-
-  // pct → RGB (same gradient as heatmap)
-  function pctRGB(pct) {
-    if (pct===null) return [210,212,205];
-    if (pct>100) {
-      const ov=Math.min((pct-100)/30,1);
-      return [Math.round(99+55*ov),Math.round(153+7*ov),Math.round(34+187*ov)];
+  // Two-column layout: table on left half, chart on right half
+  function addTwoCol(tableRows, canvas, chartH=60){
+    const colW=(CW-6)/2;
+    const startY=y;
+    // LEFT: table rows
+    tableRows.forEach(([label,val],i)=>{
+      doc.setFillColor(i%2===0?250:240,i%2===0?251:245,i%2===0?245:228);
+      doc.roundedRect(margin,y,colW,7,1,1,'F');
+      doc.setTextColor(...C.dark);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(label,margin+2,y+4.8);
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+      doc.text(String(val),margin+colW-2,y+4.8,{align:'right'});
+      y+=8;
+    });
+    const tableH=y-startY;
+    // RIGHT: chart
+    if(canvas){
+      const img=canvas.toDataURL('image/png',1.0);
+      const cw=canvas.width; const ch=canvas.height; const ratio=cw/ch;
+      let imgW=colW; let imgH=imgW/ratio;
+      if(imgH>chartH){imgH=chartH;imgW=imgH*ratio;}
+      const cx=margin+colW+6+(colW-imgW)/2;
+      const cy=startY+(Math.max(tableH,imgH)-imgH)/2;
+      doc.addImage(img,'PNG',cx,cy,imgW,imgH);
+      // Advance y to max of table or chart bottom
+      y=Math.max(startY+tableH, startY+imgH)+4;
     }
+    y+=4;
+  }
+
+  // Heatmap row — boolean style (accent=active, gray=inactive/no data)
+  function heatmapRowBool(label, activeDates){
+    const sqW=statsRange===7?8:4.5;
+    const sqH=5; const sqGap=1;
+    checkSpace(sqH+8);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
+    doc.text(label,margin,y+sqH-1);
+    let sx=margin+22;
+    const today2=new Date();
+    for(let i=statsRange-1;i>=0;i--){
+      const d=new Date(today2); d.setDate(d.getDate()-i);
+      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const active=activeDates.has(ds);
+      // active=accent blue, inactive=light gray
+      if(active) doc.setFillColor(91,192,222);
+      else        doc.setFillColor(210,212,205);
+      doc.roundedRect(sx,y,sqW,sqH,0.8,0.8,'F');
+      sx+=sqW+sqGap;
+    }
+    y+=sqH+3;
+  }
+
+  // Heatmap row — gradient (for macro/hyd goals)
+  function pctRGB(pct){
+    if(pct===null) return[210,212,205];
+    if(pct>100){const ov=Math.min((pct-100)/30,1);return[Math.round(99+55*ov),Math.round(153+7*ov),Math.round(34+187*ov)];}
     const stops=[[226,75,74],[239,159,39],[151,196,89],[99,153,34]];
     const t=Math.max(0,Math.min(pct,100))/100;
     let s,e2,lt;
@@ -6194,16 +6231,14 @@ async function generatePDF() {
     else{s=stops[2];e2=stops[3];lt=(t-0.66)/0.34;}
     return s.map((v,i)=>Math.round(v+(e2[i]-v)*lt));
   }
-
-  function heatmapRow(label, days, pctFn) {
-    const sqW = statsRange===7 ? 8 : 4.5;
-    const sqH = 5; const sqGap = 1;
+  function heatmapRowGrad(label,pctFn){
+    const sqW=statsRange===7?8:4.5; const sqH=5; const sqGap=1;
     checkSpace(sqH+8);
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-    doc.text(label, margin, y+sqH-1);
-    let sx = margin+22;
-    const today2 = new Date();
-    for (let i=statsRange-1; i>=0; i--) {
+    doc.text(label,margin,y+sqH-1);
+    let sx=margin+22;
+    const today2=new Date();
+    for(let i=statsRange-1;i>=0;i--){
       const d=new Date(today2); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const [r,g,b]=pctRGB(pctFn(ds));
@@ -6213,74 +6248,88 @@ async function generatePDF() {
     y+=sqH+3;
   }
 
-  function heatmapBool(label, days, hasFn) {
-    const sqW=statsRange===7?8:4.5;
-    const sqH=5; const sqGap=1;
-    checkSpace(sqH+8);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-    doc.text(label, margin, y+sqH-1);
-    let sx=margin+22;
-    const today2=new Date();
-    for (let i=statsRange-1; i>=0; i--) {
-      const d=new Date(today2); d.setDate(d.getDate()-i);
-      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      const val=hasFn(ds);
-      if(val===null) doc.setFillColor(210,212,205);
-      else if(val) doc.setFillColor(99,153,34);
-      else doc.setFillColor(226,75,74);
-      doc.roundedRect(sx,y,sqW,sqH,0.8,0.8,'F');
-      sx+=sqW+sqGap;
-    }
-    y+=sqH+3;
+  function heatmapLegendGrad(){
+    checkSpace(10); y+=3;
+    const items=[[210,212,205,'Sin datos'],[226,75,74,'0%'],[239,159,39,'50%'],[151,196,89,'80%'],[99,153,34,'100%'],[55,160,221,'Excede']];
+    let lx=margin;
+    items.forEach(([r,g,b,lbl])=>{
+      doc.setFillColor(r,g,b); doc.roundedRect(lx,y,4,4,0.5,0.5,'F');
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
+      doc.text(lbl,lx+5,y+3.2); lx+=4+doc.getTextWidth(lbl)+6;
+    });
+    y+=8;
   }
 
-  function miniRow(label, val, c=[...C.dark]) {
-    checkSpace(7);
-    doc.setTextColor(...c); doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
-    doc.text(label, margin+3, y+4);
-    doc.setFont('helvetica','bold');
-    doc.text(String(val), W-margin-3, y+4, {align:'right'});
-    y+=6;
+  // Detail list (date header + entries + total row)
+  function detailList(entriesByDate, totalLabel, accentColor=[...C.accent]){
+    const sortedDates=Object.keys(entriesByDate).sort((a,b)=>b.localeCompare(a));
+    let grandTotal=0;
+    sortedDates.forEach(date=>{
+      const dayE=entriesByDate[date];
+      const dayCal=Math.round(dayE.reduce((s,e)=>s+(e.calories||0),0));
+      grandTotal+=dayCal;
+      const dl=new Date(date+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'});
+      checkSpace(9+dayE.length*7);
+      doc.setFillColor(...C.light); doc.roundedRect(margin,y,CW,8,1,1,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...C.dark);
+      doc.text(dl,margin+3,y+5.5);
+      doc.text(`${dayCal} kcal`,W-margin-3,y+5.5,{align:'right'});
+      y+=9;
+      dayE.forEach((e,i)=>{
+        checkSpace(7);
+        doc.setFillColor(i%2===0?250:245,i%2===0?251:248,i%2===0?245:240);
+        doc.roundedRect(margin+3,y,CW-3,6,0.5,0.5,'F');
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
+        const nm=e.food_name.length>32?e.food_name.slice(0,31)+'…':e.food_name;
+        doc.text(`${nm} · ${e.meal_type}`,margin+5,y+4.2);
+        doc.text(`${Math.round(e.calories||0)} kcal`,W-margin-3,y+4.2,{align:'right'});
+        y+=7;
+      });
+    });
+    checkSpace(9);
+    doc.setFillColor(...accentColor); doc.roundedRect(margin,y,CW,8,1,1,'F');
+    doc.setTextColor(...C.white); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text(totalLabel,margin+3,y+5.5);
+    doc.text(`${grandTotal} kcal`,W-margin-3,y+5.5,{align:'right'});
+    y+=12;
   }
 
-  // Strip emoji for jsPDF compatibility
-  const se = str => (str||'').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\uFE0F\u{1F300}-\u{1F9FF}]/gu, '').trim();
+  const disp=v=>v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
 
   // ── COVER ──
   doc.setFillColor(...C.accent); doc.rect(0,0,W,30,'F');
   doc.setTextColor(...C.white);
   doc.setFont('helvetica','bold'); doc.setFontSize(22);
-  doc.text('Beiss zu', margin, 14);
+  doc.text('Beiss zu',margin,14);
   doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text('Informe de nutricion, hidratacion y consistencia', margin, 21);
-  doc.text(now.toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'}), W-margin, 21, {align:'right'});
+  doc.text('Informe de nutricion, hidratacion y consistencia',margin,21);
+  doc.text(now.toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'}),W-margin,21,{align:'right'});
   y=38;
-
   doc.setTextColor(...C.dark); doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  doc.text(currentUser.user_metadata?.full_name||currentUser.email, margin, y); y+=6;
+  doc.text(currentUser.user_metadata?.full_name||currentUser.email,margin,y); y+=6;
   doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...C.muted);
-  doc.text(`Periodo: ultimos ${statsRange} dias`, margin, y); y+=10;
-
-  const notes = document.getElementById('reportNotes')?.value.trim();
-  if (notes) {
+  doc.text(`Periodo: ultimos ${statsRange} dias`,margin,y); y+=10;
+  const notesVal=document.getElementById('reportNotes')?.value.trim();
+  if(notesVal){
     checkSpace(20);
     doc.setFillColor(...C.light); doc.roundedRect(margin,y,CW,14,2,2,'F');
     doc.setTextColor(...C.dark); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
-    doc.text('Notas:', margin+3, y+5);
+    doc.text('Notas:',margin+3,y+5);
     doc.setFont('helvetica','normal');
-    doc.text(doc.splitTextToSize(notes, CW-8), margin+3, y+10);
+    doc.text(doc.splitTextToSize(notesVal,CW-8),margin+3,y+10);
     y+=18;
   }
 
   // ── DATA ──
-  const { food, hyd } = getStatsEntries();
-  const byDate = {};
-  food.forEach(e => {
+  const {food,hyd}=getStatsEntries();
+  const byDate={};
+  food.forEach(e=>{
     if(!byDate[e.log_date]) byDate[e.log_date]={cal:0,p:0,c:0,f:0,fib:0,sug:0};
     byDate[e.log_date].cal+=e.calories||0; byDate[e.log_date].p+=e.protein_g||0;
     byDate[e.log_date].c+=e.carbs_g||0;   byDate[e.log_date].f+=e.fat_g||0;
     byDate[e.log_date].fib+=e.fiber_g||0; byDate[e.log_date].sug+=e.sugar_g||0;
   });
+  // FIX 1: averages over days WITH data, not statsRange
   const days=Object.values(byDate); const n=days.length||1;
   const avg=k=>(days.reduce((s,d)=>s+d[k],0)/n);
 
@@ -6288,80 +6337,72 @@ async function generatePDF() {
   hyd.filter(e=>e.drinkId==='water'||e.drinkId==='hidratante').forEach(e=>{
     hydByDate[e.date]=(hydByDate[e.date]||0)+e.amount;
   });
-  const waterByDate={}, hidByDate={};
+  const waterByDate={}, hidByDate2={};
   hyd.filter(e=>e.drinkId==='water').forEach(e=>{ waterByDate[e.date]=(waterByDate[e.date]||0)+e.amount; });
-  hyd.filter(e=>e.drinkId==='hidratante').forEach(e=>{ hidByDate[e.date]=(hidByDate[e.date]||0)+e.amount; });
-
-  const disp=v=>v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
+  hyd.filter(e=>e.drinkId==='hidratante').forEach(e=>{ hidByDate2[e.date]=(hidByDate2[e.date]||0)+e.amount; });
+  const nHyd=Object.keys(hydByDate).length||1;
+  const avgW=Object.values(waterByDate).length?Math.round(Object.values(waterByDate).reduce((s,v)=>s+v,0)/nHyd):0;
+  const avgHid=Object.values(hidByDate2).length?Math.round(Object.values(hidByDate2).reduce((s,v)=>s+v,0)/nHyd):0;
   const goalHydTotal=(settings.goalWater||0)+(settings.goalIsotonic||0);
 
   // ── ① Promedios diarios ──
-  sectionTitle('1. Promedios diarios de nutricion');
-  row('Dias con registro', `${n} de ${statsRange}`);
-  row('Calorias', `${Math.round(avg('cal'))} kcal${settings.goalCal?'  (meta: '+settings.goalCal+')':''}`, true);
-  row('Proteina', `${avg('p').toFixed(1)} g${settings.goalProtein?'  (meta: '+settings.goalProtein+'g)':''}`);
-  row('Carbohidratos', `${avg('c').toFixed(1)} g${settings.goalCarbs?'  (meta: '+settings.goalCarbs+'g)':''}`, true);
-  row('Grasas', `${avg('f').toFixed(1)} g${settings.goalFat?'  (meta: '+settings.goalFat+'g)':''}`);
-  row('Fibra', `${avg('fib').toFixed(1)} g`);
-  row('Azucar', `${avg('sug').toFixed(1)} g`, true);
+  // Estimate height: title(13) + 7rows*8 + padding = ~69mm
+  sectionSpace(70); sectionTitle('1. Promedios diarios de nutricion');
+  row('Dias con registro',`${n} de ${statsRange}  (promedio sobre dias con datos)`);
+  row('Calorias',`${Math.round(avg('cal'))} kcal${settings.goalCal?'  (meta: '+settings.goalCal+')':''}`,true);
+  row('Proteina',`${avg('p').toFixed(1)} g${settings.goalProtein?'  (meta: '+settings.goalProtein+'g)':''}` );
+  row('Carbohidratos',`${avg('c').toFixed(1)} g${settings.goalCarbs?'  (meta: '+settings.goalCarbs+'g)':''}`,true);
+  row('Grasas',`${avg('f').toFixed(1)} g${settings.goalFat?'  (meta: '+settings.goalFat+'g)':''}` );
+  row('Fibra',`${avg('fib').toFixed(1)} g`);
+  row('Azucar',`${avg('sug').toFixed(1)} g`,true);
   y+=4;
 
   // ── ② Hidratación ──
-  sectionTitle('2. Hidratacion promedio');
-  const avgW=Object.keys(waterByDate).length?Math.round(Object.values(waterByDate).reduce((s,v)=>s+v,0)/statsRange):0;
-  const avgH=Object.keys(hidByDate).length?Math.round(Object.values(hidByDate).reduce((s,v)=>s+v,0)/statsRange):0;
-  const avgTotal=avgW+avgH;
-  row('Agua promedio/dia', `${disp(avgW)}${settings.goalWater?'  (meta: '+disp(settings.goalWater)+')':''}`, true);
-  row('Hidratante promedio/dia', `${disp(avgH)}${settings.goalIsotonic?'  (meta: '+disp(settings.goalIsotonic)+')':''}`);
-  row('Hidratacion total promedio/dia', `${disp(avgTotal)}${goalHydTotal?'  (meta: '+disp(goalHydTotal)+')':''}`, true);
-  y+=4;
-  if (chartHydInstance) {
-    const hydCanvas=document.getElementById('chartHyd');
-    if(hydCanvas&&hydCanvas.style.display!=='none') addChartCanvas(hydCanvas,55);
+  // Two-col: stats left, chart right
+  const hydCanvas=document.getElementById('chartHyd');
+  const hydVisible=hydCanvas&&hydCanvas.style.display!=='none';
+  const hydRows=[
+    ['Agua promedio/dia (dias con datos)',`${disp(avgW)}${settings.goalWater?'  (meta: '+disp(settings.goalWater)+')':''}`],
+    ['Hidratante promedio/dia',`${disp(avgHid)}${settings.goalIsotonic?'  (meta: '+disp(settings.goalIsotonic)+')':''}`],
+    ['Total hidratacion promedio/dia',`${disp(avgW+avgHid)}${goalHydTotal?'  (meta: '+disp(goalHydTotal)+')':''}`],
+  ];
+  sectionSpace(hydVisible?80:55); sectionTitle('2. Hidratacion promedio');
+  if(hydVisible){
+    addTwoCol(hydRows, hydCanvas, 55);
+  } else {
+    hydRows.forEach(([l,v],i)=>row(l,v,i%2===0));
+    y+=4;
   }
-  y+=2;
 
   // ── ③ Consistencia de metas ──
-  sectionTitle('3. Consistencia de metas — heatmap');
   const metricList=[
-    {label:'Calorias', key:'cal', goal:settings.goalCal},
-    {label:'Proteina', key:'p',   goal:settings.goalProtein},
-    {label:'Carbos',   key:'c',   goal:settings.goalCarbs},
-    {label:'Grasas',   key:'f',   goal:settings.goalFat},
+    {label:'Calorias',key:'cal',goal:settings.goalCal},
+    {label:'Proteina',key:'p',goal:settings.goalProtein},
+    {label:'Carbos',key:'c',goal:settings.goalCarbs},
+    {label:'Grasas',key:'f',goal:settings.goalFat},
   ].filter(m=>m.goal);
-
+  const heatH=(metricList.length+(goalHydTotal?1:0)+supplements.length)*8+30;
+  sectionSpace(Math.min(heatH,60)); sectionTitle('3. Consistencia de metas — heatmap');
   metricList.forEach(m=>{
-    heatmapRow(m.label, statsRange, ds=>{
+    heatmapRowGrad(m.label,ds=>{
       const d=byDate[ds]; return d?Math.round((d[m.key]/m.goal)*100):null;
     });
   });
   if(goalHydTotal){
-    heatmapRow('Hidratacion', statsRange, ds=>{
+    heatmapRowGrad('Hidratacion',ds=>{
       const v=hydByDate[ds]; return v!=null?Math.round((v/goalHydTotal)*100):null;
     });
   }
   if(supplements.length){
     const suppLogs=await loadSuppLogRange();
     supplements.forEach(s=>{
-      // Strip emoji — jsPDF helvetica can't render them
-      const cleanName = s.name.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\uFE0F]/gu, '').trim();
       const takenDates=new Set(suppLogs.filter(l=>l.supplement_id===s.id).map(l=>l.log_date));
-      heatmapBool(cleanName, statsRange, ds=>byDate[ds]!=null?takenDates.has(ds):null);
+      heatmapRowBool(s.name,takenDates);
     });
   }
-  // Legend
-  checkSpace(10); y+=3;
-  const legItems=[[210,212,205,'Sin datos'],[226,75,74,'0%'],[239,159,39,'50%'],[151,196,89,'80%'],[99,153,34,'100%'],[55,160,221,'Excede']];
-  let lx=margin;
-  legItems.forEach(([r,g,b,lbl])=>{
-    doc.setFillColor(r,g,b); doc.roundedRect(lx,y,4,4,0.5,0.5,'F');
-    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
-    doc.text(lbl,lx+5,y+3.2); lx+=4+doc.getTextWidth(lbl)+6;
-  });
-  y+=10;
+  heatmapLegendGrad();
 
   // ── ④ Comida por tiempo ──
-  sectionTitle('4. Promedio de calorias por tiempo de comida');
   const mealDays2={};
   food.forEach(e=>{
     if(!mealDays2[e.meal_type]) mealDays2[e.meal_type]={};
@@ -6370,147 +6411,100 @@ async function generatePDF() {
   });
   const mealAvg2={};
   Object.entries(mealDays2).forEach(([meal,bd])=>{
-    mealAvg2[meal]=Math.round(Object.values(bd).reduce((s,v)=>s+v,0)/statsRange);
+    // FIX 1: average over days that had that meal
+    const mealDayCount=Object.keys(bd).length||1;
+    mealAvg2[meal]=Math.round(Object.values(bd).reduce((s,v)=>s+v,0)/mealDayCount);
   });
   const sortedMeals=Object.entries(mealAvg2).sort((a,b)=>b[1]-a[1]);
   const totalMealCal2=sortedMeals.reduce((s,[,v])=>s+v,0)||1;
-  sortedMeals.forEach(([meal,avg2],i)=>{
-    row(se(meal),`~${avg2} kcal/dia  (${Math.round((avg2/totalMealCal2)*100)}%)`,i%2===0);
-  });
-  y+=4;
-  // Chart (always show if available)
   const mealCanvas=document.getElementById('chartMeal');
-  if(chartMealInstance && mealCanvas) {
-    mealCanvas.style.display='block';
-    chartMealInstance.update('none');
-    addChartCanvas(mealCanvas,70,0.7);
-    mealCanvas.style.display='none';
+  const mealVisible=mealCanvas&&mealCanvas.style.display!=='none';
+  const mealRows=sortedMeals.map(([meal,avg2])=>[meal,`~${avg2} kcal/dia  (${Math.round((avg2/totalMealCal2)*100)}%)`]);
+  sectionSpace(mealVisible?90:60); sectionTitle('4. Promedio de calorias por tiempo de comida');
+  if(mealVisible){
+    addTwoCol(mealRows, mealCanvas, 65);
+  } else {
+    mealRows.forEach(([l,v],i)=>row(l,v,i%2===0));
+    y+=4;
   }
-  y+=2;
 
   // ── ⑤ Origen ──
-  sectionTitle('5. Origen de comidas');
   const casaE=food.filter(e=>e.origin==='Casa');
   const fueraE=food.filter(e=>e.origin==='Fuera');
   const casaCal2=Math.round(casaE.reduce((s,e)=>s+(e.calories||0),0));
   const fueraCal2=Math.round(fueraE.reduce((s,e)=>s+(e.calories||0),0));
   const origTot2=casaCal2+fueraCal2||1;
-  const casaPct2=Math.round((casaCal2/origTot2)*100);
-  const fueraPct2=Math.round((fueraCal2/origTot2)*100);
-
-  // Two side-by-side chips
-  const chipW=(CW-6)/2;
-  doc.setFillColor(235,242,220); doc.roundedRect(margin,y,chipW,14,2,2,'F');
-  doc.setTextColor(...C.dark); doc.setFont('helvetica','bold'); doc.setFontSize(11);
-  doc.text(`${casaPct2}%`, margin+chipW/2, y+6, {align:'center'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.muted);
-  doc.text(`Casa · ${casaE.length} comidas`, margin+chipW/2, y+11, {align:'center'});
-
-  doc.setFillColor(250,243,220); doc.roundedRect(margin+chipW+6,y,chipW,14,2,2,'F');
-  doc.setTextColor(...C.dark); doc.setFont('helvetica','bold'); doc.setFontSize(11);
-  doc.text(`${fueraPct2}%`, margin+chipW+6+chipW/2, y+6, {align:'center'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.muted);
-  doc.text(`Fuera · ${fueraE.length} comidas`, margin+chipW+6+chipW/2, y+11, {align:'center'});
-  y+=18;
-
-  // Origin chart
   const origCanvas=document.getElementById('chartOrigin');
-  if(chartOriginInstance && origCanvas){
-    origCanvas.style.display='block';
-    chartOriginInstance.update('none');
-    addChartCanvas(origCanvas,60,0.6);
-    origCanvas.style.display='none';
+  const origVisible=origCanvas&&chartOriginInstance;
+  const origRows=[
+    ['Casa', `${casaE.length} entradas · ${casaCal2} kcal  (${Math.round((casaCal2/origTot2)*100)}%)`],
+    ['Fuera',`${fueraE.length} entradas · ${fueraCal2} kcal  (${Math.round((fueraCal2/origTot2)*100)}%)`],
+  ];
+  sectionSpace(origVisible?80:45); sectionTitle('5. Origen de comidas');
+  if(origVisible){
+    addTwoCol(origRows, origCanvas, 55);
+  } else {
+    origRows.forEach(([l,v],i)=>row(l,v,i%2===0));
+    y+=4;
   }
-  y+=2;
 
   // ── ⑥ Días comiendo fuera ──
   const outsideE=food.filter(e=>e.origin==='Fuera');
   if(outsideE.length){
-    sectionTitle('6. Dias comiendo fuera');
-    const outDays=new Set(outsideE.map(e=>e.log_date)).size;
-    row('Dias comiendo fuera', `${outDays} de ${statsRange}  (${Math.round((outDays/statsRange)*100)}%)`);
-    y+=4;
-    // Pill heatmap
-    const datesOut=new Set(outsideE.map(e=>e.log_date));
-    heatmapBool('Fuera de casa', statsRange, ds=>byDate[ds]!=null?datesOut.has(ds):null);
-    y+=4;
-    // List
     const outByDate={};
     outsideE.forEach(e=>{ if(!outByDate[e.log_date]) outByDate[e.log_date]=[]; outByDate[e.log_date].push(e); });
-    const sortedOut=Object.keys(outByDate).sort((a,b)=>b.localeCompare(a));
-    let outTotal=0;
-    sortedOut.forEach(date=>{
-      const entries=outByDate[date];
-      const dayCal=Math.round(entries.reduce((s,e)=>s+(e.calories||0),0));
-      outTotal+=dayCal;
-      const dl=new Date(date+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'});
-      checkSpace(9);
-      doc.setFillColor(...C.light); doc.roundedRect(margin,y,CW,8,1,1,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...C.dark);
-      doc.text(dl, margin+3, y+5.5);
-      doc.text(`${dayCal} kcal`, W-margin-3, y+5.5, {align:'right'});
-      y+=9;
-      entries.forEach((e,i)=>{
-        checkSpace(7);
-        doc.setFillColor(i%2===0?250:245, i%2===0?251:248, i%2===0?245:240);
-        doc.roundedRect(margin+3,y,CW-3,6,0.5,0.5,'F');
-        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-        const nm=se(e.food_name.length>30?e.food_name.slice(0,29)+'…':e.food_name);
-        doc.text(`${nm} · ${se(e.meal_type)}`, margin+5, y+4.2);
-        doc.text(`${Math.round(e.calories||0)} kcal`, W-margin-3, y+4.2, {align:'right'});
-        y+=7;
-      });
-    });
-    checkSpace(9);
-    doc.setFillColor(...C.accent); doc.roundedRect(margin,y,CW,8,1,1,'F');
-    doc.setTextColor(...C.white); doc.setFont('helvetica','bold'); doc.setFontSize(9);
-    doc.text('Total fuera de casa', margin+3, y+5.5);
-    doc.text(`${outTotal} kcal`, W-margin-3, y+5.5, {align:'right'});
-    y+=12;
+    const outDays=Object.keys(outByDate).length;
+    const datesOut=new Set(outsideE.map(e=>e.log_date));
+    // Estimate section height to avoid mid-section page break
+    sectionSpace(30); sectionTitle('6. Dias comiendo fuera');
+    row('Dias comiendo fuera',`${outDays} de ${statsRange}  (${Math.round((outDays/statsRange)*100)}%)`);
+    y+=4;
+    // FIX 2: heatmap — accent=active, gray=inactive (no red)
+    heatmapRowBool('Fuera de casa', datesOut);
+    // Legend
+    checkSpace(8); y+=2;
+    doc.setFillColor(91,192,222); doc.roundedRect(margin,y,4,4,0.5,0.5,'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
+    doc.text('Comiо fuera',margin+5,y+3.2);
+    doc.setFillColor(210,212,205); doc.roundedRect(margin+35,y,4,4,0.5,0.5,'F');
+    doc.text('En casa / sin datos',margin+40,y+3.2);
+    y+=10;
+    detailList(outByDate,'Total fuera de casa');
   }
 
   // ── ⑦ Días de alcohol ──
   const alcE=food.filter(e=>e.is_alcoholic);
   if(alcE.length){
-    sectionTitle('7. Dias de consumo de alcohol');
-    const alcDays=new Set(alcE.map(e=>e.log_date)).size;
-    row('Dias con consumo', `${alcDays} de ${statsRange}  (${Math.round((alcDays/statsRange)*100)}%)`);
-    y+=4;
-    const datesAlc=new Set(alcE.map(e=>e.log_date));
-    heatmapBool('Con alcohol', statsRange, ds=>byDate[ds]!=null?datesAlc.has(ds):null);
-    y+=4;
     const alcByDate={};
     alcE.forEach(e=>{ if(!alcByDate[e.log_date]) alcByDate[e.log_date]=[]; alcByDate[e.log_date].push(e); });
-    const sortedAlc=Object.keys(alcByDate).sort((a,b)=>b.localeCompare(a));
-    let alcTotal=0;
-    sortedAlc.forEach(date=>{
-      const entries=alcByDate[date];
-      const dayCal=Math.round(entries.reduce((s,e)=>s+(e.calories||0),0));
-      alcTotal+=dayCal;
-      const dl=new Date(date+'T12:00:00').toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'});
-      checkSpace(9);
-      doc.setFillColor(...C.light); doc.roundedRect(margin,y,CW,8,1,1,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...C.dark);
-      doc.text(dl, margin+3, y+5.5);
-      doc.text(`${dayCal} kcal`, W-margin-3, y+5.5, {align:'right'});
-      y+=9;
-      entries.forEach((e,i)=>{
-        checkSpace(7);
-        doc.setFillColor(i%2===0?250:245, i%2===0?251:248, i%2===0?245:240);
-        doc.roundedRect(margin+3,y,CW-3,6,0.5,0.5,'F');
-        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-        const nm=se(e.food_name.length>30?e.food_name.slice(0,29)+'…':e.food_name);
-        doc.text(`${nm} · ${se(e.meal_type)}`, margin+5, y+4.2);
-        doc.text(`${Math.round(e.calories||0)} kcal`, W-margin-3, y+4.2, {align:'right'});
-        y+=7;
-      });
-    });
-    checkSpace(9);
-    doc.setFillColor(...C.accent); doc.roundedRect(margin,y,CW,8,1,1,'F');
-    doc.setTextColor(...C.white); doc.setFont('helvetica','bold'); doc.setFontSize(9);
-    doc.text('Total calorias alcoholicas', margin+3, y+5.5);
-    doc.text(`${alcTotal} kcal`, W-margin-3, y+5.5, {align:'right'});
-    y+=12;
+    const alcDays=Object.keys(alcByDate).length;
+    const datesAlc=new Set(alcE.map(e=>e.log_date));
+    sectionSpace(30); sectionTitle('7. Dias de consumo de alcohol');
+    row('Dias con consumo',`${alcDays} de ${statsRange}  (${Math.round((alcDays/statsRange)*100)}%)`);
+    y+=4;
+    // FIX 2: accent orange for alcohol days, gray for others
+    const sqW=statsRange===7?8:4.5; const sqH=5; const sqGap=1;
+    checkSpace(sqH+8);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
+    doc.text('Con alcohol',margin,y+sqH-1);
+    let sx=margin+22; const today3=new Date();
+    for(let i=statsRange-1;i>=0;i--){
+      const d=new Date(today3); d.setDate(d.getDate()-i);
+      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if(datesAlc.has(ds)) doc.setFillColor(224,120,64);
+      else                  doc.setFillColor(210,212,205);
+      doc.roundedRect(sx,y,sqW,sqH,0.8,0.8,'F'); sx+=sqW+sqGap;
+    }
+    y+=sqH+3;
+    // Legend
+    checkSpace(8); y+=2;
+    doc.setFillColor(224,120,64); doc.roundedRect(margin,y,4,4,0.5,0.5,'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
+    doc.text('Con alcohol',margin+5,y+3.2);
+    doc.setFillColor(210,212,205); doc.roundedRect(margin+35,y,4,4,0.5,0.5,'F');
+    doc.text('Sin alcohol / sin datos',margin+40,y+3.2);
+    y+=10;
+    detailList(alcByDate,'Total calorias alcoholicas');
   }
 
   // ── Footer ──
@@ -6518,7 +6512,7 @@ async function generatePDF() {
   for(let i=1;i<=pages;i++){
     doc.setPage(i);
     doc.setFontSize(7.5); doc.setTextColor(...C.muted);
-    doc.text(`Beiss zu · Informe nutricional · Pagina ${i} de ${pages}`, W/2, H-6, {align:'center'});
+    doc.text(`Beiss zu · Informe nutricional · Pagina ${i} de ${pages}`,W/2,H-6,{align:'center'});
   }
 
   const fname=`beisszu_informe_${now.toISOString().split('T')[0]}.pdf`;
@@ -6527,6 +6521,12 @@ async function generatePDF() {
   btn.disabled=false;
   showToast('✓ Informe descargado');
 }
+
+  const C = {
+    accent: [108,144,60], dark:[30,36,20], muted:[100,110,85],
+    light:[243,246,235],  white:[255,255,255], border:[210,215,200],
+  };
+
 // ── ⑦ Origin chart (Casa vs Fuera) ──
 let chartOriginInstance = null;
 
