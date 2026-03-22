@@ -6219,17 +6219,22 @@ async function generatePDF() {
     y+=sqH+3;
   }
 
-  // Heatmap row — gradient (for macro/hyd goals)
+  // Heatmap gradient — exact same logic as app's heatmapColor+lerpRGB
+  function lerpPDF(a,b,t){ return a.map((v,i)=>Math.round(v+(b[i]-v)*t)); }
   function pctRGB(pct){
-    if(pct===null) return[210,212,205];
-    if(pct>100){const ov=Math.min((pct-100)/30,1);return[Math.round(99+55*ov),Math.round(153+7*ov),Math.round(34+187*ov)];}
+    if(pct===null) return [210,212,205];
+    // >100: green → blue (#639922 → #378ADD)
+    if(pct>100){
+      const t=Math.min((pct-100)/30,1);
+      return lerpPDF([99,153,34],[55,138,221],t);
+    }
+    // 0–100: red→orange→light-green→green
+    // #E24B4A #EF9F27 #97C459 #639922
     const stops=[[226,75,74],[239,159,39],[151,196,89],[99,153,34]];
     const t=Math.max(0,Math.min(pct,100))/100;
-    let s,e2,lt;
-    if(t<=0.33){s=stops[0];e2=stops[1];lt=t/0.33;}
-    else if(t<=0.66){s=stops[1];e2=stops[2];lt=(t-0.33)/0.33;}
-    else{s=stops[2];e2=stops[3];lt=(t-0.66)/0.34;}
-    return s.map((v,i)=>Math.round(v+(e2[i]-v)*lt));
+    if(t<=0.33)       return lerpPDF(stops[0],stops[1],t/0.33);
+    else if(t<=0.66)  return lerpPDF(stops[1],stops[2],(t-0.33)/0.33);
+    else              return lerpPDF(stops[2],stops[3],(t-0.66)/0.34);
   }
   function heatmapRowGrad(label,pctFn){
     const sqW=statsRange===7?8:4.5; const sqH=5; const sqGap=1;
@@ -6429,16 +6434,20 @@ async function generatePDF() {
   }
 
   // ── ⑤ Origen ──
-  const casaE=food.filter(e=>e.origin==='Casa');
-  const fueraE=food.filter(e=>e.origin==='Fuera');
-  const casaCal2=Math.round(casaE.reduce((s,e)=>s+(e.calories||0),0));
-  const fueraCal2=Math.round(fueraE.reduce((s,e)=>s+(e.calories||0),0));
-  const origTot2=casaCal2+fueraCal2||1;
+  // Count by unique date|meal_type combinations (occasions), matching renderStatsOrigin
+  const casaOcc=new Set(); const fueraOcc=new Set();
+  food.forEach(e=>{
+    const key=`${e.log_date}|${e.meal_type}`;
+    if(e.origin==='Fuera') fueraOcc.add(key);
+    else casaOcc.add(key);
+  });
+  const casaCount2=casaOcc.size; const fueraCount2=fueraOcc.size;
+  const origTot2=casaCount2+fueraCount2||1;
   const origCanvas=document.getElementById('chartOrigin');
   const origVisible=origCanvas&&chartOriginInstance;
   const origRows=[
-    ['Casa', `${casaE.length} entradas · ${casaCal2} kcal  (${Math.round((casaCal2/origTot2)*100)}%)`],
-    ['Fuera',`${fueraE.length} entradas · ${fueraCal2} kcal  (${Math.round((fueraCal2/origTot2)*100)}%)`],
+    ['Casa', `${casaCount2} tiempos de comida  (${Math.round((casaCount2/origTot2)*100)}%)`],
+    ['Fuera',`${fueraCount2} tiempos de comida  (${Math.round((fueraCount2/origTot2)*100)}%)`],
   ];
   sectionSpace(origVisible?80:45); sectionTitle('5. Origen de comidas');
   if(origVisible){
