@@ -1902,7 +1902,7 @@ select { cursor: pointer; }
     </p>
     <div style="background:var(--surface2);border-radius:10px;padding:12px;font-size:12px;color:var(--muted)" id="saveAsCustomMacros"></div>
     <div class="modal-actions" style="margin-top:16px">
-      <button class="modal-cancel" onclick="document.getElementById('saveAsCustomModal').classList.remove('show')">No, gracias</button>
+      <button class="modal-cancel" onclick="document.getElementById('saveAsCustomModal').classList.remove('show');showToast('✓ Entrada registrada')">No, gracias</button>
       <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="confirmSaveAsCustom()">💾 Guardar</button>
     </div>
   </div>
@@ -2429,7 +2429,7 @@ async function confirmSaveAsCustom() {
   customFoods.push(data);
   _pendingCustomFood = null;
   document.getElementById('saveAsCustomModal').classList.remove('show');
-  showToast(`✓ "${data.name}" guardado en Mis alimentos`);
+  showToast(`✓ Entrada registrada · "${data.name}" guardado en Mis alimentos`);
 }
 
 function openNewFoodModal() {
@@ -2850,14 +2850,16 @@ async function confirmAndSaveEntry() {
     localStorage.setItem('bz_carousel_date', savedDate);
   }
   renderCarouselDay();
-  showToast('✓ Entrada registrada');
 
   // Suggest saving as custom food if not in any DB
   const nameNorm = norm(dbEntry.food_name);
   const inCustom = customFoods.some(f => norm(f.name) === nameNorm);
   const inGlobal = foodsDb.some(f => norm(f.name) === nameNorm);
-  if (!inCustom && !inGlobal && !dbEntry._dishIngs && dbEntry.calories) {
-    suggestSaveAsCustomFood(dbEntry);
+  const isDish   = !!_dishIngs; // use deconstructed _dishIngs, not dbEntry._dishIngs
+  if (!inCustom && !inGlobal && !isDish && (dbEntry.calories || dbEntry.protein_g || dbEntry.carbs_g || dbEntry.fat_g)) {
+    setTimeout(() => suggestSaveAsCustomFood(dbEntry), 400);
+  } else {
+    showToast('✓ Entrada registrada');
   }
 }
 
