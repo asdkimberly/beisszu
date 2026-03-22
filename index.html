@@ -6254,15 +6254,47 @@ async function generatePDF() {
   }
 
   function heatmapLegendGrad(){
-    checkSpace(10); y+=3;
-    const items=[[210,212,205,'Sin datos'],[226,75,74,'0%'],[239,159,39,'50%'],[151,196,89,'80%'],[99,153,34,'100%'],[55,160,221,'Excede']];
-    let lx=margin;
-    items.forEach(([r,g,b,lbl])=>{
-      doc.setFillColor(r,g,b); doc.roundedRect(lx,y,4,4,0.5,0.5,'F');
-      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
-      doc.text(lbl,lx+5,y+3.2); lx+=4+doc.getTextWidth(lbl)+6;
-    });
-    y+=8;
+    checkSpace(14); y+=3;
+    // Gradient bar matching the app's CSS gradient
+    const barX=margin+22; const barW=CW-22; const barH=4;
+    // Draw gradient as 60 thin slices
+    for(let i=0;i<60;i++){
+      const pct=Math.round((i/60)*110); // 0 to 110 to show blue
+      const [r,g,b]=pctRGB(pct);
+      doc.setFillColor(r,g,b);
+      doc.rect(barX+(barW/60)*i, y, barW/60+0.3, barH, 'F');
+    }
+    // Labels below bar
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
+    doc.text('0%',   barX, y+barH+4);
+    doc.text('50%',  barX+barW*0.45, y+barH+4);
+    doc.text('100%', barX+barW*0.87, y+barH+4);
+    doc.text('100%+',barX+barW-4,    y+barH+4, {align:'right'});
+    // Gray swatch for no data
+    doc.setFillColor(210,212,205); doc.roundedRect(margin,y,4,4,0.5,0.5,'F');
+    doc.text('Sin datos', margin+5, y+3.2);
+    y+=barH+10;
+  }
+
+  // Supplement boolean heatmap: green=tomado, red=no tomado (si hay datos), gray=sin datos
+  function heatmapRowSupp(label, takenDates){
+    const sqW=statsRange===7?8:4.5; const sqH=5; const sqGap=1;
+    checkSpace(sqH+8);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
+    doc.text(label, margin, y+sqH-1);
+    let sx=margin+22;
+    const today2=new Date();
+    for(let i=statsRange-1;i>=0;i--){
+      const d=new Date(today2); d.setDate(d.getDate()-i);
+      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const hasFood=byDate[ds]!=null;
+      if(!hasFood)               doc.setFillColor(210,212,205); // gray: sin datos
+      else if(takenDates.has(ds)) doc.setFillColor(99,153,34);  // green: tomado
+      else                        doc.setFillColor(226,75,74);  // red: no tomado
+      doc.roundedRect(sx,y,sqW,sqH,0.8,0.8,'F');
+      sx+=sqW+sqGap;
+    }
+    y+=sqH+3;
   }
 
   // Detail list (date header + entries + total row)
@@ -6402,8 +6434,18 @@ async function generatePDF() {
     const suppLogs=await loadSuppLogRange();
     supplements.forEach(s=>{
       const takenDates=new Set(suppLogs.filter(l=>l.supplement_id===s.id).map(l=>l.log_date));
-      heatmapRowBool(s.name,takenDates);
+      heatmapRowSupp(s.name, takenDates);
     });
+    // Boolean legend for supplements
+    checkSpace(8); y+=2;
+    doc.setFillColor(99,153,34);  doc.roundedRect(margin,y,4,4,0.5,0.5,'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
+    doc.text('Tomado', margin+5, y+3.2);
+    doc.setFillColor(226,75,74); doc.roundedRect(margin+28,y,4,4,0.5,0.5,'F');
+    doc.text('No tomado', margin+33, y+3.2);
+    doc.setFillColor(210,212,205); doc.roundedRect(margin+62,y,4,4,0.5,0.5,'F');
+    doc.text('Sin datos', margin+67, y+3.2);
+    y+=8;
   }
   heatmapLegendGrad();
 
