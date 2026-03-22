@@ -2851,20 +2851,22 @@ async function confirmAndSaveEntry() {
   renderCarouselDay();
 
   // Suggest saving as custom food if not in any DB
-  const entryName  = dbEntry.food_name.trim().toLowerCase();
-  const inCustom   = customFoods.some(f => f.name.trim().toLowerCase() === entryName);
-  const inGlobal   = foodsDb.some(f => f.name.trim().toLowerCase() === entryName);
-  const isDish     = !!_dishIngs;
-  const hasMacros  = dbEntry.calories || dbEntry.protein_g || dbEntry.carbs_g || dbEntry.fat_g;
-
-  if (!inCustom && !inGlobal && !isDish && hasMacros) {
-    // Ensure all sheets/modals are closed before showing
-    ['bsFood','bsRegister','bsHyd','bsSupp'].forEach(id => closeBS(id));
-    document.getElementById('foodConfirmModal').classList.remove('show');
-    setTimeout(() => suggestSaveAsCustomFood(dbEntry), 300);
-  } else {
-    showToast('✓ Entrada registrada');
+  if (!_dishIngs) {
+    const n = dbEntry.food_name.trim().toLowerCase();
+    const knownNames = [
+      ...customFoods.map(f => f.name.trim().toLowerCase()),
+      ...foodsDb.map(f => f.name.trim().toLowerCase()),
+    ];
+    if (!knownNames.includes(n)) {
+      ['bsFood','bsRegister','bsHyd','bsSupp'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('show');
+      });
+      setTimeout(() => suggestSaveAsCustomFood(dbEntry), 350);
+      return;
+    }
   }
+  showToast('✓ Entrada registrada');
 }
 
 async function submitEntry() { confirmAndSaveEntry(); }
