@@ -1359,7 +1359,6 @@ select { cursor: pointer; }
     <div class="card" id="statsOriginCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Origen de comidas</div>
       <div id="statsOriginContent"></div>
-      <canvas id="chartOrigin" height="180" style="display:none"></canvas>
     </div>
 
     <!-- Días comiendo fuera -->
@@ -5415,72 +5414,52 @@ function renderStatsMeal(food) {
     mealAvg[meal] = Math.round(totalCal / daysWithMeal);
   });
 
-  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+  const MEAL_ORDER  = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
+  const MEAL_ICONS  = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
   const MEAL_COLORS = {
     'Desayuno':'#a8c060','Snack Mañana':'#d4a840','Almuerzo':'#4a90d9',
     'Snack Tarde':'#e07840','Cena':'#9b59b6','Extra':'#7a8460'
   };
 
-  const sorted = Object.entries(mealAvg).sort((a,b) => b[1]-a[1]);
-  const totalCal = sorted.reduce((s,[,v]) => s+v, 0) || 1;
+  // Sort chronologically, extras at end
+  const sorted = MEAL_ORDER.filter(m => mealAvg[m] != null).map(m => [m, mealAvg[m]]);
+  Object.entries(mealAvg).forEach(([m,v]) => { if (!MEAL_ORDER.includes(m)) sorted.push([m,v]); });
 
-  // ── SVG donut ──
-  const R = 44; const CX = 54; const CY = 54;
-  const circumference = 2 * Math.PI * R;
-  let offset = 0;
-  const slices = sorted.map(([meal, val]) => {
-    const pct = val / totalCal;
-    const dash = pct * circumference;
-    const slice = { meal, val, pct, dash, offset };
-    offset += dash;
-    return slice;
-  });
+  const maxVal   = Math.max(...sorted.map(([,v]) => v)) || 1;
+  const totalCal = sorted.reduce((s,[,v]) => s+v, 0);
 
-  // Gap between slices (1.5px)
-  const GAP = 1.5;
-  const svgSlices = slices.map(s => {
-    const gapOffset = GAP / 2;
-    const color = MEAL_COLORS[s.meal] || '#7a8460';
-    return `<circle cx="${CX}" cy="${CY}" r="${R}"
-      fill="none" stroke="${color}" stroke-width="16"
-      stroke-dasharray="${Math.max(0, s.dash - GAP)} ${circumference - Math.max(0, s.dash - GAP)}"
-      stroke-dashoffset="${-(s.offset + gapOffset - circumference / 4)}"
-      stroke-linecap="butt"/>`;
-  }).join('');
-
-  const donutSVG = `
-    <svg width="108" height="108" viewBox="0 0 108 108" style="flex-shrink:0">
-      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
-        stroke="var(--border)" stroke-width="16"/>
-      ${svgSlices}
-      <text x="${CX}" y="${CY-7}" text-anchor="middle" dominant-baseline="middle"
-        style="font-size:17px;font-weight:300;fill:var(--text);font-family:var(--font-display)">
-        ${Math.round(totalCal)}
-      </text>
-      <text x="${CX}" y="${CY+10}" text-anchor="middle" dominant-baseline="middle"
-        style="font-size:9px;fill:var(--muted);font-family:var(--font-display)">
-        kcal/día
-      </text>
-    </svg>`;
-
-  // ── Side list ──
-  const listItems = sorted.map(([meal, val]) => {
-    const pct = Math.round((val / totalCal) * 100);
+  const rows = sorted.map(([meal, avg], i) => {
+    const pct   = Math.round((avg / maxVal)   * 100);
+    const share = Math.round((avg / totalCal) * 100);
     const color = MEAL_COLORS[meal] || '#7a8460';
     const icon  = MEAL_ICONS[meal]  || '🍽️';
+    const isLast = i === sorted.length - 1;
     return `
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-      <div style="width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0"></div>
-      <span style="font-size:12px;color:var(--text2);flex:1">${icon} ${meal}</span>
-      <span style="font-size:12px;font-weight:500;color:var(--text);flex-shrink:0">${val}</span>
-      <span style="font-size:11px;color:var(--muted);width:30px;text-align:right;flex-shrink:0">${pct}%</span>
+    <div style="display:flex;align-items:stretch;gap:0">
+      <div style="display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0">
+        <div style="width:12px;height:12px;border-radius:50%;background:${color};flex-shrink:0;border:2px solid var(--surface);margin-top:4px;z-index:1"></div>
+        ${!isLast ? `<div style="flex:1;width:2px;background:var(--border);margin-top:2px;margin-bottom:2px"></div>` : ''}
+      </div>
+      <div style="flex:1;min-width:0;padding:2px 0 ${isLast ? '0' : '12px'} 10px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:13px;color:var(--text)">${icon} ${meal}</span>
+          <div style="display:flex;align-items:baseline;gap:6px;flex-shrink:0">
+            <span style="font-family:var(--font-display);font-size:14px;font-weight:500;color:var(--text)">${avg}</span>
+            <span style="font-size:11px;color:var(--muted)">kcal · ${share}%</span>
+          </div>
+        </div>
+        <div style="height:5px;border-radius:3px;background:var(--border)">
+          <div style="width:${pct}%;height:100%;border-radius:3px;background:${color}"></div>
+        </div>
+      </div>
     </div>`;
   }).join('');
 
   content.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
-      ${donutSVG}
-      <div style="width:100%">${listItems}</div>
+    <div style="padding-top:4px">${rows}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <span style="font-size:12px;color:var(--muted)">Total promedio diario</span>
+      <span style="font-family:var(--font-display);font-size:16px;font-weight:500;color:var(--text)">${totalCal} kcal</span>
     </div>`;
 }
 
@@ -6534,19 +6513,56 @@ async function generatePDF() {
   });
   const casaCount2=casaOcc.size; const fueraCount2=fueraOcc.size;
   const origTot2=casaCount2+fueraCount2||1;
-  const origCanvas=document.getElementById('chartOrigin');
-  const origVisible=origCanvas&&chartOriginInstance;
-  const origRows=[
-    ['Casa', `${casaCount2} tiempos de comida  (${Math.round((casaCount2/origTot2)*100)}%)`],
-    ['Fuera',`${fueraCount2} tiempos de comida  (${Math.round((fueraCount2/origTot2)*100)}%)`],
-  ];
-  sectionSpace(origVisible?80:45); sectionTitle('5. Origen de comidas');
-  if(origVisible){
-    addTwoCol(origRows, origCanvas, 55);
-  } else {
-    origRows.forEach(([l,v],i)=>row(l,v,i%2===0));
-    y+=4;
+  const casaPct2=Math.round((casaCount2/origTot2)*100);
+  const fueraPct2=Math.round((fueraCount2/origTot2)*100);
+
+  sectionSpace(55); sectionTitle('5. Origen de comidas');
+
+  // Half-arc: draw from 180°→360° (left→right)
+  const oCX=margin+25; const oCY=y+22; const oR=18; const oStroke=7;
+  const oArcLen=Math.PI*oR; // half circumference
+  const oFullCirc=2*Math.PI*oR;
+  const oGap=1.5;
+
+  // Track (gray half)
+  doc.setDrawColor(220,220,210); doc.setLineWidth(oStroke);
+  doc.arc(oCX,oCY,oR,oR,180,360,'S');
+
+  // Casa arc (green) — starts at 180°
+  const casaSweep=(casaCount2/origTot2)*180;
+  if(casaSweep>1){
+    doc.setDrawColor(168,192,96); doc.setLineWidth(oStroke);
+    doc.arc(oCX,oCY,oR,oR,180,180+casaSweep-0.8,'S');
   }
+  // Fuera arc (amber) — starts after casa
+  const fueraSweep=(fueraCount2/origTot2)*180;
+  if(fueraSweep>1){
+    doc.setDrawColor(212,168,64); doc.setLineWidth(oStroke);
+    doc.arc(oCX,oCY,oR,oR,180+casaSweep+0.8,360,'S');
+  }
+
+  // Center label
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...C.dark);
+  doc.text(String(origTot2),oCX,oCY-2,{align:'center'});
+  doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+  doc.text('tiempos',oCX,oCY+4,{align:'center'});
+
+  // Stats on the right
+  const oListX=margin+52; const oListW=CW-52;
+  let oly=y+4;
+  [[168,192,96,'Casa',casaPct2,casaCount2],[212,168,64,'Fuera',fueraPct2,fueraCount2]].forEach(([r,g,b,lbl,pct,cnt],i)=>{
+    doc.setFillColor(i===0?240:250,i===0?245:251,i===0?228:245);
+    doc.roundedRect(oListX,oly,oListW,10,1,1,'F');
+    doc.setFillColor(r,g,b); doc.roundedRect(oListX+2,oly+3.5,3,3,0.5,0.5,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...C.dark);
+    doc.text(`${pct}%`,oListX+8,oly+7);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.muted);
+    doc.text(`${lbl} · ${cnt} tiempos`,oListX+26,oly+7);
+    oly+=12;
+  });
+
+  y=Math.max(oCY+oR+oStroke/2+4, oly+2);
+  y+=4;
 
   // ── ⑥ Días comiendo fuera ──
   const outsideE=food.filter(e=>e.origin==='Fuera');
@@ -6633,84 +6649,83 @@ let chartOriginInstance = null;
 function renderStatsOrigin(food) {
   const card    = document.getElementById('statsOriginCard');
   const content = document.getElementById('statsOriginContent');
-  const canvas  = document.getElementById('chartOrigin');
   if (!food.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const casaOccasions  = new Set();
-  const fueraOccasions = new Set();
+  const casaOcc = new Set(); const fueraOcc = new Set();
   food.forEach(e => {
     const key = `${e.log_date}|${e.meal_type}`;
-    if (e.origin === 'Fuera') fueraOccasions.add(key);
-    else casaOccasions.add(key);
+    if (e.origin === 'Fuera') fueraOcc.add(key);
+    else casaOcc.add(key);
   });
-  const casaCount  = casaOccasions.size;
-  const fueraCount = fueraOccasions.size;
+  const casaCount  = casaOcc.size;
+  const fueraCount = fueraOcc.size;
   const total      = casaCount + fueraCount || 1;
-  const casaPct    = Math.round((casaCount/total)*100);
-  const fueraPct   = Math.round((fueraCount/total)*100);
+  const casaPct    = Math.round((casaCount  / total) * 100);
+  const fueraPct   = Math.round((fueraCount / total) * 100);
 
-  // Summary chips above chart
-  content.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+  // Half-donut geometry
+  // Arc from 180° to 360° (left to right along bottom)
+  // cx=90, cy=90, r=70 — viewBox "0 0 180 100"
+  const cx = 90; const cy = 90; const r = 68;
+  const arcLen = Math.PI * r; // half circumference
+
+  const casaArc  = (casaCount  / total) * arcLen;
+  const fueraArc = (fueraCount / total) * arcLen;
+  const fullCirc = 2 * Math.PI * r;
+  const GAP = 2;
+
+  // stroke-dasharray on a full circle: we only show the top half via rotation
+  // Rotate -180deg so arc starts at 9-o'clock going clockwise
+  const casaDash  = `${Math.max(0, casaArc  - GAP)} ${fullCirc - Math.max(0, casaArc  - GAP)}`;
+  const fueraDash = `${Math.max(0, fueraArc - GAP)} ${fullCirc - Math.max(0, fueraArc - GAP)}`;
+  const casaOff   = -(fullCirc / 4);                   // start at 9-o'clock
+  const fueraOff  = -(fullCirc / 4) - casaArc;         // start after casa
+
+  const halfSVG = `
+    <svg width="100%" viewBox="0 0 180 100" style="display:block;max-width:260px;margin:0 auto">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+        stroke="var(--border)" stroke-width="13"
+        stroke-dasharray="${arcLen - 2} ${fullCirc - arcLen + 2}"
+        stroke-dashoffset="${-(fullCirc/4)}"
+        stroke-linecap="butt"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+        stroke="#a8c060" stroke-width="13"
+        stroke-dasharray="${casaDash}"
+        stroke-dashoffset="${casaOff}"
+        stroke-linecap="butt"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+        stroke="#d4a840" stroke-width="13"
+        stroke-dasharray="${fueraDash}"
+        stroke-dashoffset="${fueraOff}"
+        stroke-linecap="butt"/>
+      <text x="${cx}" y="${cy - 6}" text-anchor="middle"
+        style="font-size:20px;font-weight:300;fill:var(--text);font-family:var(--font-display)">${total}</text>
+      <text x="${cx}" y="${cy + 10}" text-anchor="middle"
+        style="font-size:9px;fill:var(--muted);font-family:var(--font-display)">tiempos totales</text>
+    </svg>`;
+
+  const statCards = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <div style="background:var(--surface2);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px">
         <div style="width:10px;height:10px;border-radius:50%;background:#a8c060;flex-shrink:0"></div>
         <div>
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Casa</div>
-          <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text);line-height:1.1">${casaPct}%</div>
-          <div style="font-size:11px;color:var(--muted)">${casaCount} comidas</div>
+          <div style="font-family:var(--font-display);font-size:22px;font-weight:300;color:var(--text);line-height:1.1">${casaPct}%</div>
+          <div style="font-size:11px;color:var(--muted)">${casaCount} tiempos</div>
         </div>
       </div>
       <div style="background:var(--surface2);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px">
         <div style="width:10px;height:10px;border-radius:50%;background:#d4a840;flex-shrink:0"></div>
         <div>
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Fuera</div>
-          <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text);line-height:1.1">${fueraPct}%</div>
-          <div style="font-size:11px;color:var(--muted)">${fueraCount} comidas</div>
+          <div style="font-family:var(--font-display);font-size:22px;font-weight:300;color:var(--text);line-height:1.1">${fueraPct}%</div>
+          <div style="font-size:11px;color:var(--muted)">${fueraCount} tiempos</div>
         </div>
       </div>
     </div>`;
 
-  canvas.style.display = 'block';
-  if (chartOriginInstance) { chartOriginInstance.destroy(); chartOriginInstance = null; }
-  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-  chartOriginInstance = new Chart(canvas.getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels: ['🏠 Casa', '🌍 Fuera'],
-      datasets: [{
-        data: [casaCount, fueraCount],
-        backgroundColor: ['#a8c060', '#d4a840'],
-        borderColor: isDark ? '#1e2414' : '#f5f7f0',
-        borderWidth: 2,
-        hoverOffset: 6,
-      }],
-    },
-    options: {
-      responsive: true,
-      cutout: '65%',
-      plugins: {
-        legend: { position:'bottom', labels:{ color:'#7a8460', font:{size:12}, padding:16 } },
-        tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw} comidas (${Math.round((c.raw/total)*100)}%)` } },
-      },
-    },
-    plugins: [{
-      id: 'centerText',
-      afterDraw(chart) {
-        const { ctx, chartArea: { width, height, left, top } } = chart;
-        const cx = left + width/2, cy = top + height/2;
-        ctx.save();
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = isDark ? '#e8edd8' : '#1e2414';
-        ctx.font = `300 22px var(--font-display, sans-serif)`;
-        ctx.fillText(total, cx, cy - 7);
-        ctx.font = `normal 10px var(--font-display, sans-serif)`;
-        ctx.fillStyle = '#7a8460';
-        ctx.fillText('comidas', cx, cy + 10);
-        ctx.restore();
-      }
-    }],
-  });
+  content.innerHTML = halfSVG + statCards;
 }
 
 // ══ HYDRATION DONUT CAROUSEL ══
