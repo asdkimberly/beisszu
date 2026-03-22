@@ -1258,6 +1258,26 @@ select { cursor: pointer; }
         <button class="logout-btn" onclick="confirmLogout()">Cerrar sesión</button>
         <button onclick="clearAllData()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:var(--r);padding:14px;font-family:var(--font-display);font-size:14px;cursor:pointer;width:100%;margin-top:8px">🗑 Borrar todos mis datos</button>
       </div>
+
+      <div class="section-label" style="margin-top:12px">Exportar datos</div>
+      <div class="card" style="margin-top:4px">
+        <div class="two-col" style="margin-bottom:12px">
+          <div class="field">
+            <label>Desde</label>
+            <input type="date" id="exportDateFrom" style="width:100%;font-size:13px">
+          </div>
+          <div class="field">
+            <label>Hasta</label>
+            <input type="date" id="exportDateTo" style="width:100%;font-size:13px">
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          Incluye alimentos, hidratación, suplementos y notas del día en un solo archivo.
+        </div>
+        <button class="btn-primary" onclick="exportCSV()" style="background:var(--surface2);color:var(--accent);border:1.5px solid var(--accent)">
+          📥 Descargar CSV
+        </button>
+      </div>
     </div>
 
   </div>
@@ -1369,25 +1389,6 @@ select { cursor: pointer; }
       </button>
 
       <!-- CSV Export -->
-      <div class="section-label" style="margin-top:16px">Exportar datos a CSV</div>
-      <div class="card" style="margin-top:4px">
-        <div class="two-col" style="margin-bottom:12px">
-          <div class="field">
-            <label>Desde</label>
-            <input type="date" id="exportDateFrom" style="width:100%;font-size:13px">
-          </div>
-          <div class="field">
-            <label>Hasta</label>
-            <input type="date" id="exportDateTo" style="width:100%;font-size:13px">
-          </div>
-        </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-          Incluye alimentos, hidratación, suplementos y notas del día en un solo archivo.
-        </div>
-        <button class="btn-primary" onclick="exportCSV()" style="background:var(--surface2);color:var(--accent);border:1.5px solid var(--accent)">
-          📥 Descargar CSV
-        </button>
-      </div>
     </div>
 
   </div>
@@ -2484,6 +2485,16 @@ function switchProfileTab(tab) {
   }
 
   if (tab === 'suplementos') renderSuppList();
+  if (tab === 'cuenta') {
+    const todayStr = getTodayDate();
+    const exportTo   = document.getElementById('exportDateTo');
+    const exportFrom = document.getElementById('exportDateFrom');
+    if (exportTo   && !exportTo.value)   exportTo.value = todayStr;
+    if (exportFrom && !exportFrom.value) {
+      const d = new Date(); d.setDate(d.getDate() - 30);
+      exportFrom.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+  }
 }
 
 function profileGoBack() {
@@ -5982,218 +5993,390 @@ async function generatePDF() {
   btn.disabled = true;
 
   const { jsPDF } = window.jspdf;
+  // Use landscape for charts — more horizontal space for 30-day x-axis
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  const W = 210; const margin = 15;
+  const W = 210; const H = 297; const margin = 14;
+  const CW = W - margin * 2;  // content width = 182mm
   let y = margin;
-
-  const accent = [108, 144, 60];
-  const dark   = [30, 36, 20];
-  const muted  = [120, 130, 96];
-  const light  = [245, 247, 240];
-
-  // ── Header ──
-  doc.setFillColor(...accent);
-  doc.rect(0, 0, W, 28, 'F');
-  doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(20);
-  doc.text('Beiß zu', margin, 12);
-  doc.setFontSize(9);
-  doc.setFont('helvetica','normal');
-  doc.text('Informe de nutrición e hidratación', margin, 19);
   const now = new Date();
-  doc.text(`Generado: ${now.toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'})}`, W-margin, 19, {align:'right'});
-  y = 36;
 
-  // ── Patient info ──
-  doc.setTextColor(...dark);
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(11);
-  doc.text(`Usuario: ${currentUser.user_metadata?.full_name || currentUser.email}`, margin, y);
-  y += 6;
-  doc.setFont('helvetica','normal');
-  doc.setFontSize(9);
-  doc.setTextColor(...muted);
-  doc.text(`Período analizado: últimos ${statsRange} días`, margin, y);
-  y += 10;
+  const C = {
+    accent: [108, 144, 60],
+    dark:   [30,  36,  20],
+    muted:  [100, 110, 85],
+    light:  [243, 246, 235],
+    white:  [255, 255, 255],
+    border: [210, 215, 200],
+  };
 
-  // ── Notes ──
-  const notes = document.getElementById('reportNotes').value.trim();
-  if (notes) {
-    doc.setFillColor(...light);
-    doc.roundedRect(margin, y, W-margin*2, 16, 2, 2, 'F');
-    doc.setTextColor(...dark);
-    doc.setFontSize(9);
-    doc.setFont('helvetica','bold');
-    doc.text('Notas del paciente:', margin+4, y+5);
-    doc.setFont('helvetica','normal');
-    const noteLines = doc.splitTextToSize(notes, W-margin*2-8);
-    doc.text(noteLines, margin+4, y+10);
-    y += 20;
+  // ── Helpers ──
+  function newPage() {
+    doc.addPage();
+    y = margin;
+    // subtle top rule
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(0.3);
+    doc.line(margin, margin - 4, W - margin, margin - 4);
   }
 
-  // ── Section helper ──
+  function checkSpace(needed) {
+    if (y + needed > H - 16) newPage();
+  }
+
   function sectionTitle(title) {
-    y += 4;
-    doc.setFillColor(...accent);
-    doc.rect(margin, y, 3, 5, 'F');
-    doc.setTextColor(...dark);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(11);
-    doc.text(title, margin+6, y+4);
-    y += 10;
+    checkSpace(14);
+    y += 3;
+    doc.setFillColor(...C.accent);
+    doc.roundedRect(margin, y, CW, 9, 1.5, 1.5, 'F');
+    doc.setTextColor(...C.white);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(title, margin + 5, y + 6.2);
+    y += 13;
   }
 
-  function tableRow(label, val, highlight=false) {
-    if (highlight) doc.setFillColor(235,242,220);
-    else doc.setFillColor(250,251,248);
-    doc.roundedRect(margin, y, W-margin*2, 7, 1, 1, 'F');
-    doc.setTextColor(...dark);
-    doc.setFontSize(9);
-    doc.setFont('helvetica','normal');
-    doc.text(label, margin+4, y+5);
-    doc.setFont('helvetica','bold');
-    doc.text(String(val), W-margin-4, y+5, {align:'right'});
+  function row(label, val, shade = false) {
+    checkSpace(8);
+    doc.setFillColor(shade ? 240 : 250, shade ? 245 : 251, shade ? 228 : 245);
+    doc.roundedRect(margin, y, CW, 7, 1, 1, 'F');
+    doc.setTextColor(...C.dark);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text(label, margin + 3, y + 4.8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(val), W - margin - 3, y + 4.8, { align: 'right' });
     y += 8;
   }
 
-  // ── Summary ──
+  // Add chart image centered, proportional
+  async function addChart(canvas, label, heightMM = 55) {
+    if (!canvas) return;
+    checkSpace(heightMM + 12);
+    // Label
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...C.muted);
+    doc.text(label, W / 2, y, { align: 'center' });
+    y += 5;
+    const img = canvas.toDataURL('image/png', 1.0);
+    // Preserve aspect ratio: scale to fit CW × heightMM
+    const cw = canvas.width; const ch = canvas.height;
+    const ratio = cw / ch;
+    let imgW = CW;
+    let imgH = imgW / ratio;
+    if (imgH > heightMM) { imgH = heightMM; imgW = imgH * ratio; }
+    const x = margin + (CW - imgW) / 2;
+    doc.addImage(img, 'PNG', x, y, imgW, imgH);
+    y += imgH + 6;
+  }
+
+  // ── Cover header ──
+  doc.setFillColor(...C.accent);
+  doc.rect(0, 0, W, 30, 'F');
+  doc.setTextColor(...C.white);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.text('Beiß zu', margin, 14);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Informe de nutrición, hidratación y consistencia', margin, 21);
+  doc.text(now.toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric' }), W - margin, 21, { align: 'right' });
+  y = 38;
+
+  // User + period
+  doc.setTextColor(...C.dark);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(currentUser.user_metadata?.full_name || currentUser.email, margin, y);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...C.muted);
+  doc.text(`Período: últimos ${statsRange} días`, margin, y);
+  y += 10;
+
+  // Notes
+  const notes = document.getElementById('reportNotes')?.value.trim();
+  if (notes) {
+    checkSpace(20);
+    doc.setFillColor(...C.light);
+    doc.roundedRect(margin, y, CW, 14, 2, 2, 'F');
+    doc.setTextColor(...C.dark);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('Notas:', margin + 3, y + 5);
+    doc.setFont('helvetica', 'normal');
+    const nl = doc.splitTextToSize(notes, CW - 8);
+    doc.text(nl, margin + 3, y + 10);
+    y += 18;
+  }
+
+  // ── ① Promedios diarios ──
   const { food, hyd } = getStatsEntries();
   const byDate = {};
   food.forEach(e => {
-    if (!byDate[e.log_date]) byDate[e.log_date]={cal:0,p:0,c:0,f:0};
-    byDate[e.log_date].cal += e.calories||0;
-    byDate[e.log_date].p   += e.protein_g||0;
-    byDate[e.log_date].c   += e.carbs_g||0;
-    byDate[e.log_date].f   += e.fat_g||0;
+    if (!byDate[e.log_date]) byDate[e.log_date] = { cal:0, p:0, c:0, f:0, fib:0, sug:0 };
+    byDate[e.log_date].cal += e.calories  || 0;
+    byDate[e.log_date].p   += e.protein_g || 0;
+    byDate[e.log_date].c   += e.carbs_g   || 0;
+    byDate[e.log_date].f   += e.fat_g     || 0;
+    byDate[e.log_date].fib += e.fiber_g   || 0;
+    byDate[e.log_date].sug += e.sugar_g   || 0;
   });
   const days = Object.values(byDate);
   const n = days.length || 1;
-  const avgCal  = Math.round(days.reduce((s,d)=>s+d.cal,0)/n);
-  const avgProt = (days.reduce((s,d)=>s+d.p,0)/n).toFixed(1);
-  const avgCarb = (days.reduce((s,d)=>s+d.c,0)/n).toFixed(1);
-  const avgFat  = (days.reduce((s,d)=>s+d.f,0)/n).toFixed(1);
+  const avg = k => (days.reduce((s,d) => s + d[k], 0) / n);
 
   sectionTitle('① Promedios diarios de nutrición');
-  tableRow('Días con registro', `${n} de ${statsRange}`);
-  tableRow('Calorías promedio/día', `${avgCal} kcal${settings.goalCal ? ' (meta: '+settings.goalCal+')' : ''}`, true);
-  tableRow('Proteína promedio/día', `${avgProt} g${settings.goalProtein ? ' (meta: '+settings.goalProtein+'g)' : ''}`);
-  tableRow('Carbohidratos promedio/día', `${avgCarb} g${settings.goalCarbs ? ' (meta: '+settings.goalCarbs+'g)' : ''}`, true);
-  tableRow('Grasas promedio/día', `${avgFat} g${settings.goalFat ? ' (meta: '+settings.goalFat+'g)' : ''}`);
+  row('Días con registro', `${n} de ${statsRange}`);
+  row('Calorías', `${Math.round(avg('cal'))} kcal${settings.goalCal ? '  (meta: '+settings.goalCal+')' : ''}`, true);
+  row('Proteína', `${avg('p').toFixed(1)} g${settings.goalProtein ? '  (meta: '+settings.goalProtein+'g)' : ''}`);
+  row('Carbohidratos', `${avg('c').toFixed(1)} g${settings.goalCarbs ? '  (meta: '+settings.goalCarbs+'g)' : ''}`, true);
+  row('Grasas', `${avg('f').toFixed(1)} g${settings.goalFat ? '  (meta: '+settings.goalFat+'g)' : ''}`);
+  row('Fibra', `${avg('fib').toFixed(1)} g`);
+  row('Azúcar', `${avg('sug').toFixed(1)} g`, true);
+  y += 4;
 
-  // ── Consistency ──
+  // ── ② Consistencia de metas (heatmap as color table) ──
   sectionTitle('② Consistencia de metas');
+
+  const today = new Date();
   const metrics = [
-    { label:'Calorías', key:'cal', goal:settings.goalCal },
-    { label:'Proteína', key:'p',   goal:settings.goalProtein },
-    { label:'Carbos',   key:'c',   goal:settings.goalCarbs },
-    { label:'Grasas',   key:'f',   goal:settings.goalFat },
+    { label: 'Calorías',  key: 'cal', goal: settings.goalCal },
+    { label: 'Proteína',  key: 'p',   goal: settings.goalProtein },
+    { label: 'Carbos',    key: 'c',   goal: settings.goalCarbs },
+    { label: 'Grasas',    key: 'f',   goal: settings.goalFat },
   ].filter(m => m.goal);
 
-  if (metrics.length) {
-    metrics.forEach((m,i) => {
-      const met = days.filter(d => d[m.key] >= m.goal*0.9 && d[m.key] <= m.goal*1.1).length;
-      const pct = Math.round((met/n)*100);
-      tableRow(`Meta de ${m.label}`, `${met}/${n} días (${pct}%)`, i%2===0);
-    });
-  } else {
-    tableRow('Sin metas configuradas', '—');
+  // Helper: pct → RGB
+  function pctRGB(pct) {
+    if (pct === null) return [210, 212, 205];
+    const stops = [[226,75,74],[239,159,39],[151,196,89],[99,153,34]];
+    const t = Math.max(0, Math.min(pct, 100)) / 100;
+    let s, e2, lt;
+    if (t <= 0.33) { s=stops[0]; e2=stops[1]; lt=t/0.33; }
+    else if (t <= 0.66) { s=stops[1]; e2=stops[2]; lt=(t-0.33)/0.33; }
+    else { s=stops[2]; e2=stops[3]; lt=(t-0.66)/0.34; }
+    if (pct > 100) {
+      const over = Math.min((pct-100)/30, 1);
+      return [Math.round(99+(55)*over), Math.round(153+(7)*over), Math.round(34+(187)*over)];
+    }
+    return s.map((v,i) => Math.round(v + (e2[i]-v)*lt));
   }
 
-  // ── Meal distribution ──
+  const sqW   = statsRange === 7 ? 8 : 4.5;
+  const sqH   = 5;
+  const sqGap = 1;
+
+  metrics.forEach(m => {
+    checkSpace(sqH + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...C.dark);
+    doc.text(m.label, margin, y + sqH - 1);
+    let sx = margin + 22;
+    for (let i = statsRange - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const dayData = byDate[ds];
+      const pct = dayData ? Math.round((dayData[m.key] / m.goal) * 100) : null;
+      const [r,g,b] = pctRGB(pct);
+      doc.setFillColor(r, g, b);
+      doc.roundedRect(sx, y, sqW, sqH, 0.8, 0.8, 'F');
+      sx += sqW + sqGap;
+    }
+    y += sqH + 3;
+  });
+
+  // Hydration heatmap
+  const hydByDate = {};
+  hyd.filter(e => e.drinkId==='water'||e.drinkId==='hidratante').forEach(e => {
+    hydByDate[e.date] = (hydByDate[e.date]||0) + e.amount;
+  });
+  const goalHydTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
+  if (goalHydTotal) {
+    checkSpace(sqH + 6);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
+    doc.text('Hidratación', margin, y + sqH - 1);
+    let sx = margin + 22;
+    for (let i = statsRange - 1; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const v = hydByDate[ds];
+      const pct = v != null ? Math.round((v/goalHydTotal)*100) : null;
+      const [r,g,b] = pctRGB(pct);
+      doc.setFillColor(r,g,b); doc.roundedRect(sx, y, sqW, sqH, 0.8, 0.8, 'F');
+      sx += sqW + sqGap;
+    }
+    y += sqH + 3;
+  }
+
+  // Supplements boolean heatmap
+  if (supplements.length) {
+    const suppLogs = await loadSuppLogRange();
+    supplements.forEach(s => {
+      checkSpace(sqH + 6);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
+      const label = s.name.length > 14 ? s.name.slice(0,13)+'…' : s.name;
+      doc.text(`💊 ${label}`, margin, y + sqH - 1);
+      const takenDates = new Set(suppLogs.filter(l => l.supplement_id===s.id).map(l=>l.log_date));
+      let sx = margin + 22;
+      for (let i = statsRange - 1; i >= 0; i--) {
+        const d = new Date(today); d.setDate(d.getDate()-i);
+        const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const hasFoodThatDay = !!byDate[ds];
+        const taken = takenDates.has(ds);
+        if (!hasFoodThatDay) doc.setFillColor(210,212,205);
+        else if (taken)     doc.setFillColor(99,153,34);
+        else                doc.setFillColor(226,75,74);
+        doc.roundedRect(sx, y, sqW, sqH, 0.8, 0.8, 'F');
+        sx += sqW + sqGap;
+      }
+      y += sqH + 3;
+    });
+  }
+
+  // Heatmap legend
+  checkSpace(10);
+  y += 3;
+  const legItems = [[210,212,205,'Sin datos'],[226,75,74,'0%'],[239,159,39,'50%'],[151,196,89,'80%'],[99,153,34,'100%'],[55,160,221,'Excede']];
+  let lx = margin;
+  legItems.forEach(([r,g,b,lbl]) => {
+    doc.setFillColor(r,g,b); doc.roundedRect(lx, y, 4, 4, 0.5, 0.5, 'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
+    doc.text(lbl, lx+5, y+3.2);
+    lx += 4 + doc.getTextWidth(lbl) + 6;
+  });
+  y += 10;
+
+  // ── ③ Distribución por comida ──
   sectionTitle('③ Distribución de calorías por comida');
   const meals = {};
   food.forEach(e => { meals[e.meal_type]=(meals[e.meal_type]||0)+(e.calories||0); });
-  const totalCal = Object.values(meals).reduce((s,v)=>s+v,0)||1;
-  Object.entries(meals).sort((a,b)=>b[1]-a[1]).forEach(([meal, cal],i) => {
-    tableRow(meal, `${Math.round(cal)} kcal (${Math.round((cal/totalCal)*100)}%)`, i%2===0);
+  const totalMealCal = Object.values(meals).reduce((s,v)=>s+v,0)||1;
+  Object.entries(meals).sort((a,b)=>b[1]-a[1]).forEach(([meal,cal],i) => {
+    row(meal, `${Math.round(cal)} kcal  (${Math.round((cal/totalMealCal)*100)}%)`, i%2===0);
   });
+  y += 4;
 
-  // ── Hydration ──
+  // ── ④ Hidratación ──
   sectionTitle('④ Hidratación');
-  const waterByDate2 = {};
-  hyd.filter(e=>e.drinkId==='water').forEach(e=>{ waterByDate2[e.date]=(waterByDate2[e.date]||0)+e.amount; });
-  const waterVals = Object.values(waterByDate2);
+  const waterVals = Object.values(hydByDate);
   const avgWater = waterVals.length ? Math.round(waterVals.reduce((s,v)=>s+v,0)/statsRange) : 0;
-  const waterGoalDays = waterVals.filter(v=>v>=(settings.goalWater||Infinity)).length;
   const disp = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
-  tableRow('Agua promedio/día', `${disp(avgWater)}${settings.goalWater?' (meta: '+disp(settings.goalWater)+')':''}`, true);
-  if (settings.goalWater) tableRow('Días alcanzando meta de agua', `${waterGoalDays}/${statsRange}`);
+  const waterGoalDays = waterVals.filter(v=>v>=(settings.goalWater||Infinity)).length;
+  row('Agua + hidratante promedio/día', `${disp(avgWater)}${settings.goalWater?'  (meta: '+disp(settings.goalWater)+')':''}`, true);
+  if (settings.goalWater) row('Días alcanzando meta', `${waterGoalDays} de ${statsRange}`);
+  y += 4;
 
-  // ── Supplements (via consistency section) ──
+  // ── ⑤ Suplementos ──
   if (supplements.length) {
     sectionTitle('⑤ Consistencia de suplementos');
-    const suppLogs = await loadSuppLogRange();
-    supplements.forEach((s, i) => {
-      const taken = suppLogs.filter(l => l.supplement_id === s.id).length;
-      const pct = Math.round((taken/statsRange)*100);
-      tableRow(`💊 ${s.name}`, `${taken}/${statsRange} días (${pct}%)`, i%2===0);
+    const suppLogs2 = await loadSuppLogRange();
+    supplements.forEach((s,i) => {
+      const taken = suppLogs2.filter(l=>l.supplement_id===s.id).length;
+      row(`💊 ${s.name}`, `${taken}/${statsRange} días  (${Math.round((taken/statsRange)*100)}%)`, i%2===0);
     });
+    y += 4;
   }
 
-  // ── Top foods ──
+  // ── ⑥ Alimentos más frecuentes ──
   sectionTitle('⑥ Alimentos más frecuentes');
   const freq = {};
   food.forEach(e => {
-    if (!freq[e.food_name]) freq[e.food_name]={count:0,totalCal:0};
+    if (!freq[e.food_name]) freq[e.food_name]={count:0,cal:0};
     freq[e.food_name].count++;
-    freq[e.food_name].totalCal+=e.calories||0;
+    freq[e.food_name].cal += e.calories||0;
   });
-  Object.entries(freq).sort((a,b)=>b[1].count-a[1].count).slice(0,8).forEach(([name,data],i) => {
-    tableRow(name, `${data.count}x · ~${Math.round(data.totalCal/data.count)} kcal promedio`, i%2===0);
+  Object.entries(freq).sort((a,b)=>b[1].count-a[1].count).slice(0,10).forEach(([name,d],i) => {
+    row(name, `${d.count}× · ~${Math.round(d.cal/d.count)} kcal promedio`, i%2===0);
   });
+  y += 4;
 
-  // ── Origin ──
+  // ── ⑦ Origen ──
   sectionTitle('⑦ Origen de comidas');
-  const casaEntries  = food.filter(e => e.origin === 'Casa');
-  const fueraEntries = food.filter(e => e.origin === 'Fuera');
-  const casaCal  = Math.round(casaEntries.reduce((s,e)=>s+(e.calories||0),0));
-  const fueraCal = Math.round(fueraEntries.reduce((s,e)=>s+(e.calories||0),0));
-  const origTotal = casaCal + fueraCal || 1;
-  tableRow('🏠 Casa',  `${casaEntries.length} entradas · ${casaCal} kcal (${Math.round((casaCal/origTotal)*100)}%)`, true);
-  tableRow('🌍 Fuera', `${fueraEntries.length} entradas · ${fueraCal} kcal (${Math.round((fueraCal/origTotal)*100)}%)`);
+  const casaE  = food.filter(e=>e.origin==='Casa');
+  const fueraE = food.filter(e=>e.origin==='Fuera');
+  const casaCal  = Math.round(casaE.reduce((s,e)=>s+(e.calories||0),0));
+  const fueraCal = Math.round(fueraE.reduce((s,e)=>s+(e.calories||0),0));
+  const origTot  = casaCal+fueraCal||1;
+  row('Casa',  `${casaE.length} entradas · ${casaCal} kcal  (${Math.round((casaCal/origTot)*100)}%)`, true);
+  row('Fuera', `${fueraE.length} entradas · ${fueraCal} kcal  (${Math.round((fueraCal/origTot)*100)}%)`);
+  y += 4;
 
-  // ── Charts ──
-  const trendCanvas  = document.getElementById('chartTrend');
-  const mealCanvas   = document.getElementById('chartMeal');
-  const hydCanvas    = document.getElementById('chartHyd');
-  const originCanvas = document.getElementById('chartOrigin');
-  if (trendCanvas && chartTrendInstance) {
-    doc.addPage();
-    y = margin;
-    sectionTitle('Gráficos');
-    const trendImg = trendCanvas.toDataURL('image/png');
-    doc.addImage(trendImg, 'PNG', margin, y, W-margin*2, 60);
-    y += 68;
-    if (chartMealInstance) {
-      const mealImg = mealCanvas.toDataURL('image/png');
-      doc.addImage(mealImg, 'PNG', margin+(W-margin*2)/4, y, (W-margin*2)/2, 60);
-      y += 68;
-    }
-    if (chartHydInstance && hydCanvas) {
-      const hydImg = hydCanvas.toDataURL('image/png');
-      doc.addImage(hydImg, 'PNG', margin, y, W-margin*2, 60);
-      y += 68;
-    }
-    if (chartOriginInstance && originCanvas) {
-      if (y > 220) { doc.addPage(); y = margin; }
-      const originImg = originCanvas.toDataURL('image/png');
-      doc.addImage(originImg, 'PNG', margin+(W-margin*2)/4, y, (W-margin*2)/2, 60);
-    }
+  // ── ⑧ Alcohol ──
+  const alcoholEntries = food.filter(e=>e.is_alcoholic);
+  if (alcoholEntries.length) {
+    sectionTitle('⑧ Consumo de alcohol');
+    const alcoholDays = new Set(alcoholEntries.map(e=>e.log_date)).size;
+    row('Días con consumo', `${alcoholDays} de ${statsRange}  (${Math.round((alcoholDays/statsRange)*100)}%)`);
+    y += 4;
+  }
+
+  // ── Página de gráficos ──
+  // Build charts with ALL dates shown on x-axis for 30-day view
+  // First re-render charts with maxTicksLimit removed for PDF
+  const chartConfigs = [
+    { instance: chartTrendInstance,     canvas: document.getElementById('chartTrend'),      label: 'Tendencia de calorías',          h: 52 },
+    { instance: chartMacroTrendInstance,canvas: document.getElementById('chartMacroTrend'), label: 'Tendencia de macronutrientes',    h: 52 },
+    { instance: chartSugarFiberInstance,canvas: document.getElementById('chartSugarFiber'), label: 'Tendencia de azúcar y fibra',     h: 52 },
+    { instance: chartMealInstance,      canvas: document.getElementById('chartMeal'),        label: 'Calorías por tiempo de comida',   h: 52, center: true },
+    { instance: chartHydInstance,       canvas: document.getElementById('chartHyd'),         label: 'Hidratación',                    h: 60 },
+    { instance: chartOriginInstance,    canvas: document.getElementById('chartOrigin'),      label: 'Origen de comidas',              h: 52, center: true },
+    { instance: chartEatingOutInstance, canvas: document.getElementById('chartEatingOut'),   label: 'Días comiendo fuera',             h: 40 },
+    { instance: chartAlcoholInstance,   canvas: document.getElementById('chartAlcohol'),     label: 'Días con consumo de alcohol',     h: 40 },
+  ];
+
+  newPage();
+  doc.setFillColor(...C.accent);
+  doc.rect(0, 0, W, 10, 'F');
+  doc.setTextColor(...C.white);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text('Gráficos', margin, 7);
+  y = 18;
+
+  for (const cfg of chartConfigs) {
+    if (!cfg.instance || !cfg.canvas) continue;
+    // For line/bar charts with dates: temporarily remove maxTicksLimit
+    const ds = cfg.instance.config?.options?.scales?.x?.ticks;
+    let oldLimit;
+    if (ds) { oldLimit = ds.maxTicksLimit; ds.maxTicksLimit = statsRange; cfg.instance.update('none'); }
+
+    checkSpace(cfg.h + 14);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...C.muted);
+    doc.text(cfg.label, W/2, y, {align:'center'});
+    y += 4;
+
+    const img = cfg.canvas.toDataURL('image/png',1.0);
+    const cw = cfg.canvas.width; const ch = cfg.canvas.height;
+    const ratio = cw/ch;
+    // center: use 60% width; full: use full CW
+    let imgW = cfg.center ? CW*0.6 : CW;
+    let imgH = imgW/ratio;
+    if (imgH > cfg.h) { imgH = cfg.h; imgW = imgH*ratio; }
+    const x = margin + (CW-imgW)/2;
+    doc.addImage(img,'PNG',x,y,imgW,imgH);
+    y += imgH + 8;
+
+    // Restore maxTicksLimit
+    if (ds) { ds.maxTicksLimit = oldLimit; cfg.instance.update('none'); }
   }
 
   // ── Footer ──
   const pages = doc.getNumberOfPages();
   for (let i=1;i<=pages;i++) {
     doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(...muted);
-    doc.text(`Beiß zu · Informe nutricional · Página ${i} de ${pages}`, W/2, 290, {align:'center'});
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C.muted);
+    doc.text(`Beiß zu · Informe nutricional · Página ${i} de ${pages}`, W/2, H-6, {align:'center'});
   }
 
   const fname = `beisszu_informe_${now.toISOString().split('T')[0]}.pdf`;
   doc.save(fname);
-
   btn.textContent = '📄 Descargar informe PDF';
   btn.disabled = false;
   showToast('✓ Informe descargado');
