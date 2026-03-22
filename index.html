@@ -929,6 +929,8 @@ select { cursor: pointer; }
       <div class="logo-text">Beiß<span> zu</span></div>
     </div>
     <div class="header-right">
+      <button onclick="openSearch()" title="Buscar"
+        style="background:none;border:none;cursor:pointer;font-size:17px;padding:2px 6px;color:var(--text2);line-height:1;opacity:0.8">🔍</button>
       <div class="time-badge" id="timeBadge">--:--</div>
       <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Cambiar tema">🌙</button>
     </div>
@@ -949,8 +951,6 @@ select { cursor: pointer; }
         <div class="carousel-title" id="carouselTitle">Hoy</div>
         <button id="duplicateDayBtn" onclick="duplicateDay()" title="Copiar este día a hoy"
           style="display:none;background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;opacity:0.7;line-height:1">📋</button>
-        <button onclick="openSearch()" title="Buscar"
-          style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;color:var(--muted);line-height:1;opacity:0.7">🔍</button>
       </div>
       <button class="carousel-arrow" id="carouselNext" onclick="carouselNavigate(1)">›</button>
     </div>
@@ -2857,6 +2857,7 @@ async function confirmAndSaveEntry() {
       ...customFoods.map(f => f.name.trim().toLowerCase()),
       ...foodsDb.map(f => f.name.trim().toLowerCase()),
     ];
+    console.log('[BZ] food_name:', n, '| knownNames count:', knownNames.length, '| found:', knownNames.includes(n));
     if (!knownNames.includes(n)) {
       ['bsFood','bsRegister','bsHyd','bsSupp'].forEach(id => {
         const el = document.getElementById(id);
