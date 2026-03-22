@@ -1337,6 +1337,18 @@ select { cursor: pointer; }
       <canvas id="chartSugarFiber" height="200"></canvas>
     </div>
 
+    <!-- Alimentos más frecuentes -->
+    <div class="card" id="statsTopFoodsCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Alimentos más frecuentes</div>
+      <div id="statsTopFoods"></div>
+    </div>
+
+    <!-- Bebidas más frecuentes -->
+    <div class="card" id="statsTopDrinksCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Bebidas más frecuentes</div>
+      <div id="statsTopDrinks"></div>
+    </div>
+
     <!-- Distribución por comida -->
     <div class="card" id="statsMealCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Promedio de calorías por tiempo de comida</div>
@@ -1351,16 +1363,20 @@ select { cursor: pointer; }
       <canvas id="chartOrigin" height="180" style="display:none"></canvas>
     </div>
 
-    <!-- Alimentos más frecuentes -->
-    <div class="card" id="statsTopFoodsCard" style="display:none">
-      <div class="section-label" style="margin-bottom:8px">Alimentos más frecuentes</div>
-      <div id="statsTopFoods"></div>
+    <!-- Días comiendo fuera -->
+    <div class="card" id="statsEatingOutCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Días comiendo fuera</div>
+      <canvas id="chartEatingOut" height="160"></canvas>
+      <div id="statsEatingOutSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
+      <div id="statsEatingOutList" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"></div>
     </div>
 
-    <!-- Bebidas más frecuentes -->
-    <div class="card" id="statsTopDrinksCard" style="display:none">
-      <div class="section-label" style="margin-bottom:8px">Bebidas más frecuentes</div>
-      <div id="statsTopDrinks"></div>
+    <!-- Días con consumo de alcohol -->
+    <div class="card" id="statsAlcoholCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Días con consumo de alcohol</div>
+      <canvas id="chartAlcohol" height="160"></canvas>
+      <div id="statsAlcoholSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
+      <div id="statsAlcoholList" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"></div>
     </div>
 
     <!-- Días comiendo fuera -->
@@ -5877,14 +5893,12 @@ function renderStatsAlcohol(food) {
 
 function renderStatsTopFoods(food) {
   const card = document.getElementById('statsTopFoodsCard');
-  // Exclude beverages
   const solidFood = food.filter(e => !isBeverage(e));
   if (!solidFood.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
   const freq = {};
   solidFood.forEach(e => {
-    // Expand dish ingredients instead of counting the dish itself
     if (e._dishIngs && e._dishIngs.length) {
       e._dishIngs.forEach(ing => {
         const name = ing.food_name || ing.name;
@@ -5903,22 +5917,29 @@ function renderStatsTopFoods(food) {
   const sorted = Object.entries(freq).sort((a, b) => b[1].count - a[1].count).slice(0, 8);
   const maxCount = sorted[0]?.[1].count || 1;
 
-  document.getElementById('statsTopFoods').innerHTML = sorted.map(([name, data]) => {
-    const pct = Math.round((data.count / maxCount) * 100);
+  document.getElementById('statsTopFoods').innerHTML = sorted.map(([name, data], i) => {
+    const pct    = Math.round((data.count / maxCount) * 100);
     const avgCal = Math.round(data.totalCal / data.count);
-    return `<div class="progress-item">
-      <div class="progress-header">
-        <span class="progress-label" style="font-size:13px">${name}</span>
-        <span class="progress-value">${data.count}x · ~${avgCal} kcal</span>
+    const rank   = ['🥇','🥈','🥉'][i] || `<span style="font-size:11px;color:var(--muted);font-weight:500;min-width:18px;text-align:center;display:inline-block">${i+1}</span>`;
+    return `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:16px;flex-shrink:0;width:22px;text-align:center">${rank}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+        <div style="margin-top:5px;height:4px;border-radius:2px;background:var(--border)">
+          <div style="width:${pct}%;height:100%;border-radius:2px;background:var(--accent);transition:width 0.4s"></div>
+        </div>
       </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:var(--accent)"></div></div>
+      <div style="flex-shrink:0;text-align:right">
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--text);font-weight:500">${data.count}×</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">~${avgCal} kcal</div>
+      </div>
     </div>`;
   }).join('');
 }
 
 function renderStatsTopDrinks(food) {
   const card = document.getElementById('statsTopDrinksCard');
-  // Filter food_log entries that are beverages
   const beverages = food.filter(e => isBeverage(e));
   if (!beverages.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
@@ -5932,15 +5953,23 @@ function renderStatsTopDrinks(food) {
   const sorted = Object.entries(freq).sort((a,b)=>b[1].count-a[1].count).slice(0,6);
   const maxCount = sorted[0]?.[1].count || 1;
 
-  document.getElementById('statsTopDrinks').innerHTML = sorted.map(([name, data]) => {
-    const pct = Math.round((data.count/maxCount)*100);
+  document.getElementById('statsTopDrinks').innerHTML = sorted.map(([name, data], i) => {
+    const pct    = Math.round((data.count/maxCount)*100);
     const avgCal = Math.round(data.totalCal/data.count);
-    return `<div class="progress-item" style="margin-bottom:10px">
-      <div class="progress-header">
-        <span class="progress-label">🥤 ${name}</span>
-        <span class="progress-value">${data.count}x · ~${avgCal} kcal</span>
+    const rank   = ['🥇','🥈','🥉'][i] || `<span style="font-size:11px;color:var(--muted);font-weight:500;min-width:18px;text-align:center;display:inline-block">${i+1}</span>`;
+    return `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:16px;flex-shrink:0;width:22px;text-align:center">${rank}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💧 ${name}</div>
+        <div style="margin-top:5px;height:4px;border-radius:2px;background:var(--border)">
+          <div style="width:${pct}%;height:100%;border-radius:2px;background:#4a90d9;transition:width 0.4s"></div>
+        </div>
       </div>
-      <div class="progress-bar" style="margin-top:6px"><div class="progress-fill" style="width:${pct}%;background:#4a90d9"></div></div>
+      <div style="flex-shrink:0;text-align:right">
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--text);font-weight:500">${data.count}×</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">~${avgCal} kcal</div>
+      </div>
     </div>`;
   }).join('');
 }
