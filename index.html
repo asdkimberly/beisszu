@@ -3497,14 +3497,17 @@ async function renderCarouselDay() {
       items = keyEntries.map(e =>
         e._type === 'food' ? makeSmartLogItem(e) : makeHydLogItem(e)
       ).join('');
-
-      // Add-to-meal button at bottom (only for food groups)
-      if (!isHyd) {
-        items += `<button class="meal-add-btn" onclick="openFoodForMeal('${key}')">＋ Agregar a ${key}</button>`;
-      }
     }
 
-    return `<div class="meal-group">${header}${items}</div>`;
+    let itemsWrapped;
+    if (keyEntries.length === 0 && !isHyd) {
+      itemsWrapped = items; // empty slot — no card needed
+    } else {
+      const addBtn = !isHyd ? `<button class="meal-add-btn" onclick="openFoodForMeal('${key}')">＋ Agregar a ${key}</button>` : '';
+      itemsWrapped = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 12px;margin-bottom:4px">${items}${addBtn}</div>`;
+    }
+
+    return `<div class="meal-group">${header}${itemsWrapped}</div>`;
   }).join('');
 
   // Next meal suggestion banner (if today and next meal has templates)
@@ -3716,12 +3719,12 @@ function makeLogItem(e) {
 
 function makeHydLogItem(e) {
   const time = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR', { hour:'2-digit', minute:'2-digit' }) : '';
-  return `<div class="hyd-log-item">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:20px">${e.drinkIcon||'💧'}</span>
-      <div>
-        <div style="font-size:14px;color:var(--text)">${e.drinkLabel} · ${e.display}</div>
-        <div style="font-size:12px;color:var(--muted)">${time}</div>
+  return `<div class="log-item-compact">
+    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+      <span style="font-size:18px;flex-shrink:0">${e.drinkIcon||'💧'}</span>
+      <div style="min-width:0">
+        <div style="font-size:13px;color:var(--text);font-family:var(--font-display)">${e.drinkLabel}</div>
+        <div style="font-size:11px;color:var(--muted)">${e.display}${time?' · '+time:''}</div>
       </div>
     </div>
     <button onclick="openHydEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
@@ -4745,8 +4748,53 @@ function openMealGroupContextMenu(btn, mealType, dateStr) {
   ];
   if (mealEntries.length) {
     items.push({ icon: '💾', label: 'Guardar como plantilla', action: () => openSaveTemplateModal(mealType, dateStr) });
+    items.push({ icon: '📄', label: 'Copiar entradas al portapapeles', action: () => copyMealToClipboard(mealType, dateStr) });
+  }
+  // Check if clipboard has meal data to paste
+  const clip = _mealClipboard;
+  if (clip) {
+    items.push({ icon: '📌', label: `Pegar "${clip.mealType}" (${clip.entries.length} entradas)`, action: () => pasteMealFromClipboard(mealType, dateStr) });
   }
   openCtxMenu(btn, items);
+}
+
+// Clipboard for meal copy/paste
+let _mealClipboard = null;
+
+function copyMealToClipboard(mealType, dateStr) {
+  const mealEntries = entries.filter(e => e.log_date === dateStr && e.meal_type === mealType);
+  if (!mealEntries.length) return;
+  _mealClipboard = {
+    mealType,
+    entries: mealEntries.map(e => ({
+      food_name: e.food_name, quantity: e.quantity, unit: e.unit,
+      calories: e.calories, protein_g: e.protein_g, carbs_g: e.carbs_g,
+      fat_g: e.fat_g, fiber_g: e.fiber_g, sugar_g: e.sugar_g,
+      origin: e.origin || 'Casa', is_alcoholic: e.is_alcoholic || false,
+    })),
+    copiedFrom: dateStr,
+  };
+  const totalCal = Math.round(mealEntries.reduce((s,e)=>s+(e.calories||0),0));
+  showToast(`📄 ${mealType} copiado (${mealEntries.length} entradas · ${totalCal} kcal)`);
+}
+
+async function pasteMealFromClipboard(targetMealType, targetDate) {
+  if (!_mealClipboard) return;
+  const newEntries = _mealClipboard.entries.map(e => ({
+    user_id:   currentUser.id,
+    log_date:  targetDate,
+    meal_type: targetMealType,
+    ...e,
+  }));
+  const { data, error } = await sb.from('food_log').insert(newEntries).select();
+  if (error) { showToast('Error al pegar entradas', true); return; }
+  data.forEach(e => entries.push(e));
+  attachDishIngredients();
+  buildCarouselDays(true);
+  const idx = carouselDays.indexOf(targetDate);
+  if (idx !== -1) { carouselIndex = idx; localStorage.setItem('bz_carousel_date', targetDate); }
+  renderCarouselDay();
+  showToast(`✓ ${newEntries.length} entradas pegadas en ${targetMealType}`);
 }
 
 // ══ Context Menu ══
