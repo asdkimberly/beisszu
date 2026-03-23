@@ -1004,6 +1004,18 @@ select { cursor: pointer; }
       </div>
     </div>
 
+    <!-- Calorías quemadas -->
+    <div style="margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
+        <span style="font-size:15px;flex-shrink:0">🔥</span>
+        <span style="font-family:var(--font-display);font-size:13px;color:var(--muted);flex:1">Calorías quemadas</span>
+        <input type="number" id="burnedCalInput" min="0" max="9999" placeholder="0"
+          onchange="saveBurnedCals()" oninput="updateBurnedPreview()"
+          style="width:70px;text-align:right;font-family:var(--font-display);font-size:15px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none;-moz-appearance:textfield">
+        <span style="font-size:11px;color:var(--muted)">kcal</span>
+      </div>
+    </div>
+
     <!-- Metas -->
     <div id="homeProgressSection" style="display:none">
       <div class="section-header-row">
@@ -1323,6 +1335,14 @@ select { cursor: pointer; }
     <div class="card" id="statsTrendCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Tendencia de calorías</div>
       <canvas id="chartTrend" height="180"></canvas>
+    </div>
+
+    <!-- Gasto vs consumo calórico -->
+    <div class="card" id="statsBurnCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Gasto vs consumo calórico</div>
+      <div id="statsBurnContent"></div>
+      <canvas id="chartBurn" height="200" style="margin-top:12px"></canvas>
+      <canvas id="chartBurnBalance" height="130" style="margin-top:12px"></canvas>
     </div>
 
     <!-- Tendencia de macronutrientes -->
@@ -2362,6 +2382,7 @@ async function initApp(user) {
   await Promise.all([loadSettings(), loadHydration(), loadFoodsDb(), loadDishes(), loadFoodServings(), loadSupplements()]);
   await loadEntries(); // after dishes so _dishIngs can be populated
   await loadDayNotes();
+  await loadBurnedCals();
   await loadTemplates();
   updateClock();
   setInterval(updateClock, 30000);
@@ -3037,6 +3058,7 @@ async function renderCarouselDay() {
 
   // Render day notes
   renderDayNotes(dateStr);
+  renderBurnedInput(dateStr);
 
   // Arrow states
   document.getElementById('carouselPrev').disabled = carouselIndex === 0;
@@ -3872,6 +3894,53 @@ async function saveDayNote() {
 
   if (status) status.textContent = error ? '⚠ Error al guardar' : '✓ Guardado';
   if (!error) setTimeout(() => { if (status) status.textContent = ''; }, 2000);
+}
+
+// ══ Calorías Quemadas ══
+let burnedCals = {}; // { 'YYYY-MM-DD': number }
+
+async function loadBurnedCals() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const cutoff = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth()+1).padStart(2,'0')}-${String(thirtyDaysAgo.getDate()).padStart(2,'0')}`;
+  const { data } = await sb.from('daily_calories_burned')
+    .select('log_date, calories_burned')
+    .eq('user_id', currentUser.id)
+    .gte('log_date', cutoff);
+  burnedCals = {};
+  (data || []).forEach(r => { burnedCals[r.log_date] = r.calories_burned; });
+}
+
+function renderBurnedInput(dateStr) {
+  const input = document.getElementById('burnedCalInput');
+  if (!input) return;
+  input.value = burnedCals[dateStr] || '';
+}
+
+function updateBurnedPreview() {
+  // real-time visual feedback — nothing needed beyond the input itself
+}
+
+async function saveBurnedCals() {
+  const dateStr = carouselDays[carouselIndex];
+  if (!dateStr || !currentUser) return;
+  const input = document.getElementById('burnedCalInput');
+  const val = parseInt(input?.value) || 0;
+
+  burnedCals[dateStr] = val;
+
+  if (val <= 0) {
+    await sb.from('daily_calories_burned').delete()
+      .eq('user_id', currentUser.id).eq('log_date', dateStr);
+  } else {
+    await sb.from('daily_calories_burned').upsert({
+      user_id: currentUser.id,
+      log_date: dateStr,
+      calories_burned: val,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,log_date' });
+  }
+  showToast('🔥 Gasto calórico guardado');
 }
 
 // ══ Meal Templates ══
@@ -5034,7 +5103,9 @@ function renderHomeSuppChecklist() {
 // ══════════════════════════════════════════
 let statsRange = 7;
 const showCharts = true; // always show charts
-let chartTrendInstance = null;
+let chartTrendInstance    = null;
+let chartBurnInstance     = null;
+let chartBurnBalInstance  = null;
 let chartMacroTrendInstance = null;
 let chartSugarFiberInstance = null;
 let chartAlcoholInstance = null;
@@ -5093,6 +5164,7 @@ async function renderStats() {
     renderStatsTopDrinks(food);
     renderStatsOrigin(food);
     renderChartTrend(food);
+    await renderStatsBurn(food);
     renderStatsMacroTrend(food);
     renderStatsSugarFiber(food);
     renderStatsAlcohol(food);
@@ -5566,6 +5638,143 @@ function isBeverage(entry) {
     return DRINK_KEYWORDS.some(k => n.includes(norm(k)));
   }
   return false;
+}
+
+// ── Gasto vs consumo calórico ──
+async function renderStatsBurn(food) {
+  const card = document.getElementById('statsBurnCard');
+
+  // Reload burned data for the current range
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - statsRange);
+  const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth()+1).padStart(2,'0')}-${String(cutoffDate.getDate()).padStart(2,'0')}`;
+  const { data: burnData } = await sb.from('daily_calories_burned')
+    .select('log_date, calories_burned')
+    .eq('user_id', currentUser.id)
+    .gte('log_date', cutoffStr);
+  const burnByDate = {};
+  (burnData || []).forEach(r => { burnByDate[r.log_date] = r.calories_burned; });
+
+  // Check if we have any burned data
+  const hasBurn = Object.keys(burnByDate).length > 0;
+  if (!hasBurn) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  // Build daily consumed calories
+  const consumedByDate = {};
+  food.forEach(e => {
+    consumedByDate[e.log_date] = (consumedByDate[e.log_date] || 0) + (e.calories || 0);
+  });
+
+  // Build aligned date arrays
+  const today = new Date();
+  const labels = [], consumed = [], burned = [], balance = [];
+  for (let i = statsRange - 1; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
+    const c = Math.round(consumedByDate[ds] || 0);
+    const b = burnByDate[ds] || 0;
+    consumed.push(c);
+    burned.push(b);
+    balance.push(b > 0 ? c - b : null); // null = no burn data that day
+  }
+
+  // Summary chips
+  const daysWithBurn = burned.filter(v => v > 0).length;
+  const avgConsumed  = Math.round(consumed.filter(v=>v>0).reduce((s,v)=>s+v,0) / (consumed.filter(v=>v>0).length||1));
+  const avgBurned    = Math.round(burned.filter(v=>v>0).reduce((s,v)=>s+v,0) / (daysWithBurn||1));
+  const avgBalance   = avgConsumed - avgBurned;
+  const balColor     = avgBalance > 0 ? '#e07840' : '#a8c060';
+  const balLabel     = avgBalance > 0 ? 'superávit' : 'déficit';
+
+  document.getElementById('statsBurnContent').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+      <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Consumo prom.</div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:var(--text)">${avgConsumed}</div>
+        <div style="font-size:10px;color:var(--muted)">kcal/día</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Gasto prom.</div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:var(--text)">${avgBurned}</div>
+        <div style="font-size:10px;color:var(--muted)">kcal/día</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Balance prom.</div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:${balColor}">${avgBalance > 0 ? '+' : ''}${avgBalance}</div>
+        <div style="font-size:10px;color:var(--muted)">${balLabel}</div>
+      </div>
+    </div>`;
+
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = '#7a8460';
+  const tickOpts  = { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45,
+                      maxTicksLimit: statsRange === 30 ? 10 : 7 };
+
+  // ── Chart 1: Grouped bars (consumed vs burned) ──
+  if (chartBurnInstance) { chartBurnInstance.destroy(); chartBurnInstance = null; }
+  chartBurnInstance = new Chart(document.getElementById('chartBurn').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Consumidas', data: consumed,
+          backgroundColor: isDark ? 'rgba(74,144,217,0.7)' : 'rgba(74,144,217,0.8)',
+          borderColor: '#4a90d9', borderWidth: 1, borderRadius: 3 },
+        { label: 'Quemadas',   data: burned,
+          backgroundColor: isDark ? 'rgba(224,120,64,0.7)' : 'rgba(224,120,64,0.8)',
+          borderColor: '#e07840', borderWidth: 1, borderRadius: 3 },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:'top', labels:{ color: textColor, font:{size:11}, padding:10 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.raw} kcal` } },
+      },
+      scales: {
+        x: { ticks: tickOpts, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor },
+             title: { display: true, text: 'kcal', color: textColor, font:{size:10} } },
+      },
+    },
+  });
+
+  // ── Chart 2: Net balance per day ──
+  if (chartBurnBalInstance) { chartBurnBalInstance.destroy(); chartBurnBalInstance = null; }
+  chartBurnBalInstance = new Chart(document.getElementById('chartBurnBalance').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Balance neto',
+        data: balance,
+        backgroundColor: balance.map(v => v === null ? 'transparent' : v > 0 ? 'rgba(224,120,64,0.7)' : 'rgba(168,192,96,0.7)'),
+        borderColor:     balance.map(v => v === null ? 'transparent' : v > 0 ? '#e07840' : '#a8c060'),
+        borderWidth: 1, borderRadius: 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: c => c.raw === null ? ' Sin datos de gasto' :
+            ` ${c.raw > 0 ? 'Superávit' : 'Déficit'}: ${Math.abs(c.raw)} kcal`
+        }},
+      },
+      scales: {
+        x: { ticks: tickOpts, grid: { color: gridColor } },
+        y: {
+          ticks: { color: textColor, font:{size:10} },
+          grid: { color: gridColor },
+          title: { display: true, text: 'Balance (kcal)', color: textColor, font:{size:10} },
+        },
+      },
+    },
+  });
 }
 
 // ── Macro trend chart ──
