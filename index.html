@@ -1341,8 +1341,10 @@ select { cursor: pointer; }
     <div class="card" id="statsBurnCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Gasto vs consumo calórico</div>
       <div id="statsBurnContent"></div>
-      <canvas id="chartBurn" height="200" style="margin-top:12px"></canvas>
-      <canvas id="chartBurnBalance" height="130" style="margin-top:12px"></canvas>
+      <canvas id="chartBurn" height="200" style="margin-top:8px"></canvas>
+      <div id="statsBurnLegend" style="margin-top:10px"></div>
+      <div style="font-size:11px;color:var(--muted);margin:14px 0 6px;font-family:var(--font-display)">Balance neto diario</div>
+      <canvas id="chartBurnBalance" height="110"></canvas>
     </div>
 
     <!-- Tendencia de macronutrientes -->
@@ -5644,7 +5646,7 @@ function isBeverage(entry) {
 async function renderStatsBurn(food) {
   const card = document.getElementById('statsBurnCard');
 
-  // Reload burned data for the current range
+  // Load burned data for range
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - statsRange);
   const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth()+1).padStart(2,'0')}-${String(cutoffDate.getDate()).padStart(2,'0')}`;
@@ -5655,18 +5657,13 @@ async function renderStatsBurn(food) {
   const burnByDate = {};
   (burnData || []).forEach(r => { burnByDate[r.log_date] = r.calories_burned; });
 
-  // Check if we have any burned data
-  const hasBurn = Object.keys(burnByDate).length > 0;
-  if (!hasBurn) { card.style.display = 'none'; return; }
+  if (!Object.keys(burnByDate).length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  // Build daily consumed calories
+  // Build series
   const consumedByDate = {};
-  food.forEach(e => {
-    consumedByDate[e.log_date] = (consumedByDate[e.log_date] || 0) + (e.calories || 0);
-  });
+  food.forEach(e => { consumedByDate[e.log_date] = (consumedByDate[e.log_date]||0) + (e.calories||0); });
 
-  // Build aligned date arrays
   const today = new Date();
   const labels = [], consumed = [], burned = [], balance = [];
   for (let i = statsRange - 1; i >= 0; i--) {
@@ -5676,63 +5673,88 @@ async function renderStatsBurn(food) {
     const c = Math.round(consumedByDate[ds] || 0);
     const b = burnByDate[ds] || 0;
     consumed.push(c);
-    burned.push(b);
-    balance.push(b > 0 ? c - b : null); // null = no burn data that day
+    burned.push(b || null);   // null = no burn data (don't draw)
+    balance.push(b > 0 ? c - b : null);
   }
 
-  // Summary chips
-  const daysWithBurn = burned.filter(v => v > 0).length;
+  // Stats
+  const daysWithBurn = burned.filter(v => v).length || 1;
   const avgConsumed  = Math.round(consumed.filter(v=>v>0).reduce((s,v)=>s+v,0) / (consumed.filter(v=>v>0).length||1));
-  const avgBurned    = Math.round(burned.filter(v=>v>0).reduce((s,v)=>s+v,0) / (daysWithBurn||1));
+  const avgBurned    = Math.round(burned.filter(v=>v).reduce((s,v)=>s+v,0) / daysWithBurn);
   const avgBalance   = avgConsumed - avgBurned;
-  const balColor     = avgBalance > 0 ? '#e07840' : '#a8c060';
-  const balLabel     = avgBalance > 0 ? 'superávit' : 'déficit';
+  const isDeficit    = avgBalance <= 0;
+  const balColor     = isDeficit ? '#a8c060' : '#e07840';
+  const balLabel     = isDeficit ? 'déficit' : 'superávit';
 
+  // Summary chips
   document.getElementById('statsBurnContent').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
       <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Consumo prom.</div>
-        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:var(--text)">${avgConsumed}</div>
-        <div style="font-size:10px;color:var(--muted)">kcal/día</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Consumo</div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text)">${avgConsumed}</div>
+        <div style="font-size:10px;color:var(--muted)">kcal prom.</div>
       </div>
       <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Gasto prom.</div>
-        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:var(--text)">${avgBurned}</div>
-        <div style="font-size:10px;color:var(--muted)">kcal/día</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Gasto</div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text)">${avgBurned}</div>
+        <div style="font-size:10px;color:var(--muted)">kcal prom.</div>
       </div>
       <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Balance prom.</div>
-        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:${balColor}">${avgBalance > 0 ? '+' : ''}${avgBalance}</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Balance</div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:${balColor}">${avgBalance > 0 ? '+' : ''}${avgBalance}</div>
         <div style="font-size:10px;color:var(--muted)">${balLabel}</div>
       </div>
     </div>`;
 
-  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const isDark    = document.documentElement.getAttribute('data-theme') !== 'light';
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const textColor = '#7a8460';
-  const tickOpts  = { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45,
+  const tickOpts  = { color: textColor, font:{ size:10 }, maxRotation:45, minRotation:45,
                       maxTicksLimit: statsRange === 30 ? 10 : 7 };
 
-  // ── Chart 1: Grouped bars (consumed vs burned) ──
+  // ── Chart 1: Stacked area — burned (background) + consumed (foreground) ──
   if (chartBurnInstance) { chartBurnInstance.destroy(); chartBurnInstance = null; }
   chartBurnInstance = new Chart(document.getElementById('chartBurn').getContext('2d'), {
-    type: 'bar',
+    type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Consumidas', data: consumed,
-          backgroundColor: isDark ? 'rgba(74,144,217,0.7)' : 'rgba(74,144,217,0.8)',
-          borderColor: '#4a90d9', borderWidth: 1, borderRadius: 3 },
-        { label: 'Quemadas',   data: burned,
-          backgroundColor: isDark ? 'rgba(224,120,64,0.7)' : 'rgba(224,120,64,0.8)',
-          borderColor: '#e07840', borderWidth: 1, borderRadius: 3 },
+        {
+          label: 'Quemadas',
+          data: burned,
+          fill: true,
+          backgroundColor: isDark ? 'rgba(224,120,64,0.12)' : 'rgba(224,120,64,0.10)',
+          borderColor: '#e07840',
+          borderWidth: 1.5,
+          borderDash: [5, 3],
+          pointRadius: 3,
+          pointBackgroundColor: '#e07840',
+          tension: 0.35,
+          spanGaps: false,
+          order: 2,
+        },
+        {
+          label: 'Consumidas',
+          data: consumed,
+          fill: true,
+          backgroundColor: isDark ? 'rgba(74,144,217,0.25)' : 'rgba(74,144,217,0.18)',
+          borderColor: '#4a90d9',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#4a90d9',
+          tension: 0.35,
+          order: 1,
+        },
       ],
     },
     options: {
       responsive: true,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position:'top', labels:{ color: textColor, font:{size:11}, padding:10 } },
-        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.raw} kcal` } },
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: c => ` ${c.dataset.label}: ${c.raw ?? '—'} kcal`,
+        }},
       },
       scales: {
         x: { ticks: tickOpts, grid: { color: gridColor } },
@@ -5742,7 +5764,24 @@ async function renderStatsBurn(food) {
     },
   });
 
-  // ── Chart 2: Net balance per day ──
+  // Legend
+  document.getElementById('statsBurnLegend').innerHTML = `
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:5px">
+        <div style="width:16px;height:2px;background:#4a90d9"></div>
+        <span style="font-size:11px;color:var(--muted)">Consumidas</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <div style="width:16px;height:0;border-top:2px dashed #e07840"></div>
+        <span style="font-size:11px;color:var(--muted)">Quemadas</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <div style="width:12px;height:10px;border-radius:2px;background:#a8c060;opacity:0.5"></div>
+        <span style="font-size:11px;color:var(--muted)">Zona déficit</span>
+      </div>
+    </div>`;
+
+  // ── Chart 2: Net balance bars (green=deficit, orange=surplus) ──
   if (chartBurnBalInstance) { chartBurnBalInstance.destroy(); chartBurnBalInstance = null; }
   chartBurnBalInstance = new Chart(document.getElementById('chartBurnBalance').getContext('2d'), {
     type: 'bar',
@@ -5751,9 +5790,10 @@ async function renderStatsBurn(food) {
       datasets: [{
         label: 'Balance neto',
         data: balance,
-        backgroundColor: balance.map(v => v === null ? 'transparent' : v > 0 ? 'rgba(224,120,64,0.7)' : 'rgba(168,192,96,0.7)'),
-        borderColor:     balance.map(v => v === null ? 'transparent' : v > 0 ? '#e07840' : '#a8c060'),
-        borderWidth: 1, borderRadius: 3,
+        backgroundColor: balance.map(v => v === null ? 'transparent' : v <= 0 ? 'rgba(168,192,96,0.75)' : 'rgba(224,120,64,0.75)'),
+        borderColor:     balance.map(v => v === null ? 'transparent' : v <= 0 ? '#a8c060' : '#e07840'),
+        borderWidth: 1,
+        borderRadius: 3,
       }],
     },
     options: {
@@ -5761,17 +5801,14 @@ async function renderStatsBurn(food) {
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: {
-          label: c => c.raw === null ? ' Sin datos de gasto' :
-            ` ${c.raw > 0 ? 'Superávit' : 'Déficit'}: ${Math.abs(c.raw)} kcal`
+          label: c => c.raw === null ? ' Sin datos' :
+            ` ${c.raw <= 0 ? 'Déficit' : 'Superávit'}: ${Math.abs(c.raw)} kcal`,
         }},
       },
       scales: {
         x: { ticks: tickOpts, grid: { color: gridColor } },
-        y: {
-          ticks: { color: textColor, font:{size:10} },
-          grid: { color: gridColor },
-          title: { display: true, text: 'Balance (kcal)', color: textColor, font:{size:10} },
-        },
+        y: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor },
+             title: { display: true, text: 'Balance (kcal)', color: textColor, font:{size:10} } },
       },
     },
   });
