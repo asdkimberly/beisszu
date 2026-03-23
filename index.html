@@ -355,6 +355,142 @@ select { cursor: pointer; }
 .cal-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
 
 /* ══ SUMMARY CARDS ══ */
+/* ══ HOME — DAY SUMMARY CARD ══ */
+.day-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 8px;
+}
+.day-card-hero {
+  display: flex; align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.day-hero-cal {
+  font-family: var(--font-display);
+  font-size: 42px; font-weight: 300;
+  color: var(--text); line-height: 1;
+}
+.day-hero-sub {
+  font-size: 11px; color: var(--muted); margin-top: 3px;
+}
+.day-cal-bar {
+  height: 4px; border-radius: 2px;
+  background: var(--border); margin-bottom: 12px;
+}
+.day-cal-fill {
+  height: 100%; border-radius: 2px;
+  transition: width 0.4s ease;
+}
+/* Macro rings row */
+.macro-rings {
+  display: flex; justify-content: space-between;
+  gap: 4px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.macro-ring {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 3px; flex: 1;
+}
+.macro-ring-val {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 500; color: var(--text);
+}
+.macro-ring-lbl {
+  font-size: 9px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+/* Day meta row (burn, supp) */
+.day-meta-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  font-size: 11px; color: var(--muted);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.day-meta-row:last-child { border-bottom: none; }
+/* Inline note */
+.day-note-inline {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0 0;
+  font-size: 13px; color: var(--text2);
+  cursor: text;
+}
+.day-note-inline input {
+  flex: 1; background: transparent; border: none;
+  outline: none; font-family: var(--font-display);
+  font-size: 13px; color: var(--text2);
+}
+.day-note-inline input::placeholder { color: var(--muted); }
+
+/* ══ HOME — MEAL GROUP REDESIGN ══ */
+.meal-group-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 6px;
+}
+.meal-group-title {
+  font-size: 11px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  font-family: var(--font-display);
+}
+.meal-group-total {
+  font-size: 11px; color: var(--muted);
+}
+/* Empty meal slot */
+.meal-empty-slot {
+  border: 1.5px dashed var(--border);
+  border-radius: 12px; padding: 10px 14px;
+  margin-bottom: 8px;
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+.meal-empty-actions {
+  display: flex; gap: 6px;
+}
+.meal-quick-btn {
+  padding: 5px 10px; border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  font-family: var(--font-display);
+  font-size: 11px; color: var(--text2);
+  cursor: pointer; white-space: nowrap;
+}
+.meal-quick-btn:active { background: var(--accent); color: #0e110a; border-color: var(--accent); }
+/* Add-to-meal button */
+.meal-add-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 6px;
+  border: none; background: none;
+  font-size: 11px; color: var(--muted);
+  cursor: pointer; border-radius: 8px;
+  font-family: var(--font-display);
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+.meal-add-btn:active { background: var(--surface2); }
+/* Template badge on log items */
+.tmpl-badge {
+  font-size: 9px; padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(155,89,182,0.15);
+  color: #9b59b6;
+  font-family: var(--font-display);
+  vertical-align: middle;
+  margin-left: 4px;
+}
+/* Compact log item (for simple foods) */
+.log-item-compact {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.log-item-compact:last-of-type { border-bottom: none; }
+
 .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 
 .summary-card {
@@ -955,83 +1091,91 @@ select { cursor: pointer; }
       <button class="carousel-arrow" id="carouselNext" onclick="carouselNavigate(1)">›</button>
     </div>
 
-    <!-- Nutrition summary cards -->
-    <div class="summary-grid" id="homeSummaryGrid">
-      <div class="summary-card">
-        <div class="summary-card-label">Calorías</div>
-        <div class="summary-card-value" id="todayCal">0</div>
-        <div class="summary-card-unit">kcal</div>
+    <!-- Day summary card (replaces grid + progress + supp + notes + burn) -->
+    <div class="day-card" id="homeDayCard">
+      <!-- Hero calories -->
+      <div class="day-card-hero">
+        <div>
+          <div class="day-hero-cal" id="todayCal">0</div>
+          <div class="day-hero-sub" id="todayCalSub">kcal</div>
+        </div>
+        <div id="todayCalBadge" style="display:none;text-align:right">
+          <div id="todayCalPct" style="font-family:var(--font-display);font-size:22px;font-weight:300"></div>
+          <div style="font-size:10px;color:var(--muted)">de meta</div>
+        </div>
       </div>
-      <div class="summary-card">
-        <div class="summary-card-label">Proteína</div>
-        <div class="summary-card-value" id="todayProt">0</div>
-        <div class="summary-card-unit">gramos</div>
+      <div class="day-cal-bar" id="todayCalBarWrap" style="display:none">
+        <div class="day-cal-fill" id="todayCalBar"></div>
       </div>
-      <div class="summary-card">
-        <div class="summary-card-label">Carbos</div>
-        <div class="summary-card-value" id="todayCarbs">0</div>
-        <div class="summary-card-unit">gramos</div>
+
+      <!-- Macro rings -->
+      <div class="macro-rings" id="homeMacroRings">
+        <div class="macro-ring">
+          <svg width="38" height="38" viewBox="0 0 38 38" id="ringProt">
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="#4a90d9" stroke-width="5"
+              stroke-dasharray="94.2" stroke-dashoffset="94.2"
+              id="ringProtFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
+          </svg>
+          <div class="macro-ring-val" id="todayProt">0</div>
+          <div class="macro-ring-lbl">Prot</div>
+        </div>
+        <div class="macro-ring">
+          <svg width="38" height="38" viewBox="0 0 38 38">
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="#d4a840" stroke-width="5"
+              stroke-dasharray="94.2" stroke-dashoffset="94.2"
+              id="ringCarbFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
+          </svg>
+          <div class="macro-ring-val" id="todayCarbs">0</div>
+          <div class="macro-ring-lbl">Carbos</div>
+        </div>
+        <div class="macro-ring">
+          <svg width="38" height="38" viewBox="0 0 38 38">
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="#e07840" stroke-width="5"
+              stroke-dasharray="94.2" stroke-dashoffset="94.2"
+              id="ringFatFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
+          </svg>
+          <div class="macro-ring-val" id="todayFat">0</div>
+          <div class="macro-ring-lbl">Grasas</div>
+        </div>
+        <div class="macro-ring">
+          <svg width="38" height="38" viewBox="0 0 38 38">
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="#a8c060" stroke-width="5"
+              stroke-dasharray="94.2" stroke-dashoffset="94.2"
+              id="ringFibFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
+          </svg>
+          <div class="macro-ring-val" id="todayFib">0</div>
+          <div class="macro-ring-lbl">Fibra</div>
+        </div>
+        <div class="macro-ring">
+          <svg width="38" height="38" viewBox="0 0 38 38">
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="#e07840" stroke-width="5"
+              stroke-dasharray="94.2" stroke-dashoffset="94.2"
+              id="ringSugFill" transform="rotate(-90 19 19)" stroke-linecap="butt" opacity="0.6"/>
+          </svg>
+          <div class="macro-ring-val" id="todaySug">0</div>
+          <div class="macro-ring-lbl">Azúcar</div>
+        </div>
       </div>
-      <div class="summary-card">
-        <div class="summary-card-label">Grasas</div>
-        <div class="summary-card-value" id="todayFat">0</div>
-        <div class="summary-card-unit">gramos</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-card-label">Fibra</div>
-        <div class="summary-card-value" id="todayFib">0</div>
-        <div class="summary-card-unit">gramos</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-card-label">Azúcar</div>
-        <div class="summary-card-value" id="todaySug">0</div>
-        <div class="summary-card-unit">gramos</div>
+
+      <!-- Meta rows: burn, hydration, supps (rendered by JS) -->
+      <div id="homeDayMeta"></div>
+
+      <!-- Inline note -->
+      <div class="day-note-inline">
+        <span style="font-size:15px;flex-shrink:0">📝</span>
+        <input type="text" id="dayNoteInline" placeholder="Nota del día…"
+          onblur="saveDayNoteInline()" onkeydown="if(event.key==='Enter')this.blur()">
       </div>
     </div>
 
-    <!-- Daily notes card -->
-    <div style="margin-bottom:4px">
-      <button onclick="toggleDayNotes()" id="dayNotesToggle"
-        style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;cursor:pointer;font-family:var(--font-display);font-size:13px;color:var(--muted)">
-        <span>📝 <span id="dayNotesToggleLabel">Notas del día</span></span>
-        <span id="dayNotesChevron" style="transition:transform 0.2s;font-size:11px">▼</span>
-      </button>
-      <div id="dayNotesBody" style="display:none;padding:10px 2px 0">
-        <textarea id="dayNotesInput" rows="3" placeholder="Ej: día de viaje, entrené en ayunas, cené tarde…"
-          onblur="saveDayNote()"
-          style="width:100%;resize:none;font-family:var(--font-display);font-size:14px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;box-sizing:border-box;line-height:1.5"></textarea>
-        <div id="dayNoteStatus" style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px;min-height:16px"></div>
-      </div>
-    </div>
-
-    <!-- Calorías quemadas -->
-    <div style="margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
-        <span style="font-size:15px;flex-shrink:0">🔥</span>
-        <span style="font-family:var(--font-display);font-size:13px;color:var(--muted);flex:1">Calorías quemadas</span>
-        <input type="number" id="burnedCalInput" min="0" max="9999" placeholder="0"
-          onchange="saveBurnedCals()" oninput="updateBurnedPreview()"
-          style="width:70px;text-align:right;font-family:var(--font-display);font-size:15px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none;-moz-appearance:textfield">
-        <span style="font-size:11px;color:var(--muted)">kcal</span>
-      </div>
-    </div>
-
-    <!-- Metas -->
-    <div id="homeProgressSection" style="display:none">
-      <div class="section-header-row">
-        <span class="section-label" style="margin-bottom:0">Metas</span>
-        <button class="section-edit-btn" onclick="switchTab('profile')" title="Editar metas">✏️</button>
-      </div>
-      <div class="card" id="homeProgressBars" style="padding-bottom:2px"></div>
-    </div>
-
-    <!-- Suplementos -->
-    <div id="homeSuppSection" style="display:none">
-      <div class="section-header-row">
-        <span class="section-label" style="margin-bottom:0">Suplementos</span>
-        <button class="section-edit-btn" onclick="switchTab('profile')" title="Editar suplementos">✏️</button>
-      </div>
-      <div class="card" id="homeSuppChecklist"></div>
+    <!-- Hidden legacy inputs for compatibility -->
+    <div style="display:none">
+      <input id="burnedCalInput" type="number" onchange="saveBurnedCals()">
     </div>
 
     <!-- Entries grouped by meal type -->
@@ -3162,143 +3306,337 @@ async function renderCarouselDay() {
   const dateStr = carouselDays[carouselIndex];
   if (!dateStr) return;
 
-  // Update title
   document.getElementById('carouselTitle').textContent = getCarouselTitle(dateStr);
-
-  // Show duplicate button only on past days
   const dupBtn = document.getElementById('duplicateDayBtn');
   if (dupBtn) dupBtn.style.display = dateStr !== getTodayDate() ? 'inline-block' : 'none';
-
-  // Render day notes
-  renderDayNotes(dateStr);
   renderBurnedInput(dateStr);
-
-  // Arrow states
   document.getElementById('carouselPrev').disabled = carouselIndex === 0;
   document.getElementById('carouselNext').disabled = carouselIndex === carouselDays.length - 1;
 
-  // Filter entries for this date
   const dayEntries = entries.filter(e => e.log_date === dateStr);
   const dayHyd     = hydEntries.filter(e => e.date === dateStr);
 
-  // ── Summary cards ──
-  const totCal  = dayEntries.reduce((s,e) => s + (e.calories||0), 0);
-  const totProt = dayEntries.reduce((s,e) => s + (e.protein_g||0), 0);
-  const totCarb = dayEntries.reduce((s,e) => s + (e.carbs_g||0), 0);
-  const totFat  = dayEntries.reduce((s,e) => s + (e.fat_g||0), 0);
-  const totFib  = dayEntries.reduce((s,e) => s + (e.fiber_g||0), 0);
-  const totSug  = dayEntries.reduce((s,e) => s + (e.sugar_g||0), 0);
-  document.getElementById('todayCal').textContent   = Math.round(totCal);
-  document.getElementById('todayProt').textContent  = totProt.toFixed(1);
+  // ── Totals ──
+  const totCal  = dayEntries.reduce((s,e) => s+(e.calories||0), 0);
+  const totProt = dayEntries.reduce((s,e) => s+(e.protein_g||0), 0);
+  const totCarb = dayEntries.reduce((s,e) => s+(e.carbs_g||0), 0);
+  const totFat  = dayEntries.reduce((s,e) => s+(e.fat_g||0), 0);
+  const totFib  = dayEntries.reduce((s,e) => s+(e.fiber_g||0), 0);
+  const totSug  = dayEntries.reduce((s,e) => s+(e.sugar_g||0), 0);
+
+  // ── Hero calories ──
+  document.getElementById('todayCal').textContent  = Math.round(totCal);
+  document.getElementById('todayProt').textContent = totProt.toFixed(1);
   document.getElementById('todayCarbs').textContent = totCarb.toFixed(1);
-  document.getElementById('todayFat').textContent   = totFat.toFixed(1);
-  document.getElementById('todayFib').textContent   = totFib.toFixed(1);
-  document.getElementById('todaySug').textContent   = totSug.toFixed(1);
+  document.getElementById('todayFat').textContent  = totFat.toFixed(1);
+  document.getElementById('todayFib').textContent  = totFib.toFixed(1);
+  document.getElementById('todaySug').textContent  = totSug.toFixed(1);
 
-  // ── Metas progress bars ──
-  const progSection = document.getElementById('homeProgressSection');
-  const progBars    = document.getElementById('homeProgressBars');
-  const hydTotals   = {};
-  dayHyd.forEach(e => {
-    if (!hydTotals[e.drinkId]) hydTotals[e.drinkId] = { amount: 0 };
-    hydTotals[e.drinkId].amount += e.amount;
-  });
-  const waterAmt      = hydTotals['water']?.amount      || 0;
-  const hidratanteAmt = hydTotals['hidratante']?.amount || 0;
-  const hasNutrGoals  = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat;
-  const hasHydGoals   = settings.goalWater || settings.goalIsotonic;
+  const calGoal = settings.goalCal;
+  const calPct  = calGoal ? Math.round((totCal/calGoal)*100) : null;
+  const calColor = calGoal ? heatmapColorCal(calPct) : 'var(--accent)';
 
-  if (hasNutrGoals || hasHydGoals) {
-    progSection.style.display = 'block';
-    const allBars = [
-      { label: 'Calorías', val: totCal,       goal: settings.goalCal,     unit: 'kcal', color: 'var(--accent)'  },
-      { label: 'Proteína', val: totProt,       goal: settings.goalProtein, unit: 'g',    color: 'var(--accent2)' },
-      { label: 'Carbos',   val: totCarb,       goal: settings.goalCarbs,   unit: 'g',    color: '#5bc0de'        },
-      { label: 'Grasas',   val: totFat,        goal: settings.goalFat,     unit: 'g',    color: '#e07840'        },
-      { label: '💧 Agua',       val: waterAmt,      goal: settings.goalWater,    unit: 'ml', color: '#4a90d9' },
-      { label: '🏋️ Hidratante', val: hidratanteAmt, goal: settings.goalIsotonic, unit: 'ml', color: '#5bc0de' },
-    ].filter(b => b.goal);
-    progBars.innerHTML = allBars.map(b => {
-      const pct    = Math.round((b.val / b.goal) * 100);
-      const barPct = Math.min(pct, 100);
-      // Calories: respect goalType logic. Other macros: standard gradient.
-      let color;
-      if (b.label === 'Calorías') {
-        color = heatmapColorCal(pct);
-      } else {
-        color = pct > 100 ? '#378ADD' : pct >= 80 ? '#639922' : pct >= 50 ? '#EF9F27' : '#E24B4A';
-      }
-      const dv = b.unit === 'ml' ? (b.val >= 1000 ? `${(b.val/1000).toFixed(1)}L` : `${Math.round(b.val)}ml`) : Math.round(b.val);
-      const dg = b.unit === 'ml' ? (b.goal >= 1000 ? `${(b.goal/1000).toFixed(1)}L` : `${b.goal}ml`) : `${b.goal} ${b.unit}`;
-      return `<div style="margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div style="display:flex;align-items:baseline;gap:6px">
-            <span style="font-size:22px;font-weight:300;color:var(--text);line-height:1;font-family:var(--font-display)">${dv}</span>
-            <span style="font-size:11px;color:var(--muted)">/ ${dg}</span>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-            <span style="font-size:12px;color:var(--text2)">${b.label}</span>
-            <span style="font-size:13px;font-weight:600;color:${color};font-family:var(--font-display)">${pct}%</span>
-          </div>
-        </div>
-        <div style="height:4px;border-radius:2px;background:var(--border)">
-          <div style="width:${barPct}%;height:100%;border-radius:2px;background:${color};transition:width 0.4s"></div>
-        </div>
-      </div>`;
-    }).join('');
+  const calSub  = document.getElementById('todayCalSub');
+  const calBadge= document.getElementById('todayCalBadge');
+  const calBarW = document.getElementById('todayCalBarWrap');
+  const calBar  = document.getElementById('todayCalBar');
+  const calPctEl= document.getElementById('todayCalPct');
+
+  if (calGoal) {
+    calSub.textContent = `kcal de ${calGoal}`;
+    calBadge.style.display = 'block';
+    calPctEl.textContent = calPct + '%';
+    calPctEl.style.color = calColor;
+    calBarW.style.display = 'block';
+    calBar.style.width = Math.min(calPct, 100) + '%';
+    calBar.style.background = calColor;
   } else {
-    progSection.style.display = 'none';
+    calSub.textContent = 'kcal';
+    calBadge.style.display = 'none';
+    calBarW.style.display = 'none';
   }
 
-  // ── Suplementos ──
-  await loadSuppLogForDate(dateStr);
-  renderHomeSuppChecklist();
+  // ── Macro rings (SVG stroke-dashoffset animation) ──
+  const ringDefs = [
+    { id:'ringProtFill', val:totProt, goal:settings.goalProtein, color:'#4a90d9' },
+    { id:'ringCarbFill', val:totCarb, goal:settings.goalCarbs,   color:'#d4a840' },
+    { id:'ringFatFill',  val:totFat,  goal:settings.goalFat,     color:'#e07840' },
+    { id:'ringFibFill',  val:totFib,  goal:null,                 color:'#a8c060' },
+    { id:'ringSugFill',  val:totSug,  goal:null,                 color:'#e07840' },
+  ];
+  const circumference = 2 * Math.PI * 15; // r=15
+  ringDefs.forEach(r => {
+    const el = document.getElementById(r.id);
+    if (!el) return;
+    const pct = r.goal ? Math.min(r.val / r.goal, 1) : 0;
+    const offset = circumference * (1 - pct);
+    el.style.strokeDashoffset = offset;
+    el.style.stroke = r.goal
+      ? (r.id === 'ringProtFill' ? '#4a90d9' : r.color)
+      : r.color;
+    el.style.opacity = r.goal ? '1' : '0.35';
+  });
 
-  // ── Entries grouped by meal type ──
+  // ── Day meta row: burn, hydration, supps ──
+  const burned = burnedCals[dateStr] || 0;
+  const waterAmt = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
+  const hydAmt   = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
+  const disp = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
+
+  await loadSuppLogForDate(dateStr);
+  const takenSupps  = currentDaySuppLog?.filter(l => supplements.find(s=>s.id===l.supplement_id)) || [];
+  const totalSupps  = supplements.length;
+
+  let metaHTML = '';
+  if (burned) {
+    const balance = totCal - burned;
+    const balColor = balance <= 0 ? '#a8c060' : '#e07840';
+    const balLabel = balance <= 0 ? 'déficit' : 'superávit';
+    metaHTML += `<div class="day-meta-row">
+      <span>🔥 ${burned.toLocaleString()} kcal quemadas</span>
+      <span style="color:${balColor};font-weight:500">${balance>0?'+':''}${balance} ${balLabel}</span>
+    </div>`;
+  }
+  if (waterAmt || hydAmt || settings.goalWater || settings.goalIsotonic) {
+    const parts = [];
+    if (waterAmt || settings.goalWater) parts.push(`💧 ${disp(waterAmt)}${settings.goalWater?' / '+disp(settings.goalWater):''}`);
+    if (hydAmt || settings.goalIsotonic) parts.push(`🏋️ ${disp(hydAmt)}${settings.goalIsotonic?' / '+disp(settings.goalIsotonic):''}`);
+    if (parts.length) metaHTML += `<div class="day-meta-row"><span>${parts.join('  ·  ')}</span></div>`;
+  }
+  if (totalSupps) {
+    const allTaken = takenSupps.length >= totalSupps;
+    const suppColor = allTaken ? '#a8c060' : takenSupps.length > 0 ? '#EF9F27' : 'var(--muted)';
+    const suppLabel = allTaken ? '✓ todos tomados' : takenSupps.length > 0
+      ? `${takenSupps.length}/${totalSupps} tomados`
+      : 'ninguno registrado';
+    const names = supplements.map(s => s.name).join(' · ');
+    metaHTML += `<div class="day-meta-row">
+      <span style="color:var(--muted)">💊 ${names}</span>
+      <span style="color:${suppColor};font-weight:500">${suppLabel}</span>
+    </div>`;
+  }
+  // Burn input row (inline, always visible)
+  metaHTML += `<div class="day-meta-row" style="cursor:pointer" onclick="focusBurnInput()">
+    <span style="color:var(--muted)">🔥 Calorías quemadas</span>
+    <div style="display:flex;align-items:center;gap:4px">
+      <input type="number" id="burnedCalInputVisible" min="0" max="9999"
+        placeholder="—" value="${burned||''}"
+        onchange="saveBurnedCalsFromVisible(this.value)"
+        onclick="event.stopPropagation()"
+        style="width:60px;text-align:right;font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none;-moz-appearance:textfield">
+      <span style="font-size:11px;color:var(--muted)">kcal</span>
+    </div>
+  </div>`;
+  document.getElementById('homeDayMeta').innerHTML = metaHTML;
+
+  // ── Inline note ──
+  const noteInput = document.getElementById('dayNoteInline');
+  if (noteInput) noteInput.value = dayNotes[dateStr] || '';
+
+  // ── Meal groups with smart entries + quick actions ──
   const MEAL_ORDER = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
   const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰','Hidratación':'💧' };
 
-  // Merge food + hydration sorted by time
   const allEntries = [
-    ...dayEntries.map(e => ({ ...e, _type:'food', _time: e.logged_at })),
-    ...dayHyd.map(e => ({ ...e, _type:'hyd', _time: e.logged_at })),
-  ].sort((a,b) => new Date(a._time) - new Date(b._time));
+    ...dayEntries.map(e => ({...e, _type:'food', _time:e.logged_at})),
+    ...dayHyd.map(e => ({...e, _type:'hyd', _time:e.logged_at})),
+  ].sort((a,b) => new Date(a._time)-new Date(b._time));
 
-  // Group food by meal_type; hydration in its own group
   const groups = {};
   allEntries.forEach(e => {
-    const key = e._type === 'hyd' ? 'Hidratación' : e.meal_type;
+    const key = e._type==='hyd' ? 'Hidratación' : e.meal_type;
     if (!groups[key]) groups[key] = [];
     groups[key].push(e);
   });
 
-  // Sort groups: meal order first, then Hidratación
-  const orderedKeys = [...MEAL_ORDER.filter(k => groups[k]), ...(groups['Hidratación'] ? ['Hidratación'] : [])];
+  // Which meal is "current" for suggestions
+  const currentMeal = getCurrentMealType();
+  const orderedKeys = [...MEAL_ORDER.filter(k => groups[k] || k === currentMeal || dayEntries.length===0),
+    ...(groups['Hidratación']?['Hidratación']:[])];
+  // Deduplicate
+  const seenKeys = new Set();
+  const finalKeys = orderedKeys.filter(k => { if(seenKeys.has(k)) return false; seenKeys.add(k); return true; });
 
   const mealGroupsEl = document.getElementById('homeMealGroups');
-  if (!orderedKeys.length) {
-    mealGroupsEl.innerHTML = `<div class="empty"><div class="empty-icon">🥗</div><div class="empty-text">Sin entradas este día.</div></div>`;
-    return;
-  }
 
-  mealGroupsEl.innerHTML = orderedKeys.map(key => {
-    const icon = MEAL_ICONS[key] || '🍽️';
-    const foodItems = groups[key].filter(e => e._type === 'food');
-    const items = groups[key].map(e =>
-      e._type === 'food' ? makeEditableLogItem(e) : makeHydLogItem(e)
-    ).join('');
-    const isHydration = key === 'Hidratación';
-    const ctxBtn = !isHydration
+  mealGroupsEl.innerHTML = finalKeys.map(key => {
+    const icon     = MEAL_ICONS[key] || '🍽️';
+    const keyEntries = groups[key] || [];
+    const isHyd    = key === 'Hidratación';
+    const isCurrent = key === currentMeal;
+    const mealCal  = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.calories||0),0);
+    const ctxBtn   = !isHyd
       ? `<button class="ctx-btn" onclick="openMealGroupContextMenu(this,'${key}','${dateStr}')" title="Opciones">⋯</button>`
       : '';
-    return `<div class="meal-group">
-      <div class="meal-group-label" style="display:flex;align-items:center;justify-content:space-between">
-        <span>${icon} ${key}</span>
-        ${ctxBtn}
-      </div>
-      ${items}
+
+    // Header
+    const header = `<div class="meal-group-header">
+      <span class="meal-group-title">${icon} ${key}${mealCal?' · '+Math.round(mealCal)+' kcal':''}</span>
+      <div style="display:flex;align-items:center;gap:4px">${ctxBtn}</div>
     </div>`;
+
+    // Items — smart rendering
+    let items = '';
+    if (keyEntries.length === 0 && !isHyd) {
+      // Empty slot with quick actions
+      const relTemplates = templates.filter(t => t.meal_type === key).slice(0,2);
+      const tmplBtns = relTemplates.map(t =>
+        `<button class="meal-quick-btn" onclick="quickApplyTemplate(${t.id})">📋 ${t.name}</button>`
+      ).join('');
+      const dishBtn = dishes.length
+        ? `<button class="meal-quick-btn" onclick="openDishPickerForMeal('${key}')">🍽️ Platillo</button>` : '';
+      items = `<div class="meal-empty-slot">
+        <span style="font-size:11px;color:var(--muted)">Sin entradas</span>
+        <div class="meal-empty-actions">
+          <button class="meal-quick-btn" onclick="openFoodForMeal('${key}')">+ Alimento</button>
+          ${dishBtn}
+          ${tmplBtns}
+        </div>
+      </div>`;
+    } else {
+      items = keyEntries.map(e =>
+        e._type === 'food' ? makeSmartLogItem(e) : makeHydLogItem(e)
+      ).join('');
+
+      // Add-to-meal button at bottom (only for food groups)
+      if (!isHyd) {
+        items += `<button class="meal-add-btn" onclick="openFoodForMeal('${key}')">＋ Agregar a ${key}</button>`;
+      }
+    }
+
+    return `<div class="meal-group">${header}${items}</div>`;
   }).join('');
+
+  // Next meal suggestion banner (if today and next meal has templates)
+  if (dateStr === getTodayDate()) {
+    const nextMealIdx = MEAL_ORDER.indexOf(currentMeal) + 1;
+    if (nextMealIdx < MEAL_ORDER.length) {
+      const nextMeal = MEAL_ORDER[nextMealIdx];
+      const nextTemplates = templates.filter(t => t.meal_type === nextMeal);
+      if (nextTemplates.length && !groups[nextMeal]) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'margin-top:8px;background:rgba(108,144,60,0.07);border:1px solid rgba(108,144,60,0.2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between';
+        const tmpl = nextTemplates[0];
+        banner.innerHTML = `
+          <div>
+            <div style="font-size:12px;color:var(--text);font-family:var(--font-display)">
+              ${MEAL_ICONS[nextMeal]} Próximo: ${nextMeal}
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">📋 ${tmpl.name}</div>
+          </div>
+          <button onclick="quickApplyTemplate(${tmpl.id});this.closest('div[style]').remove()"
+            style="padding:6px 12px;border-radius:8px;background:var(--accent);color:#0e110a;border:none;font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;margin-left:10px">
+            Aplicar
+          </button>`;
+        mealGroupsEl.appendChild(banner);
+      }
+    }
+  }
+}
+
+// Inline note save
+async function saveDayNoteInline() {
+  const dateStr = carouselDays[carouselIndex];
+  if (!dateStr) return;
+  const note = document.getElementById('dayNoteInline')?.value.trim() || '';
+  dayNotes[dateStr] = note;
+  if (!note) {
+    await sb.from('daily_notes').delete().eq('user_id', currentUser.id).eq('note_date', dateStr);
+  } else {
+    await sb.from('daily_notes').upsert({
+      user_id: currentUser.id, note_date: dateStr, note,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,note_date' });
+  }
+}
+
+// Focus burn input
+function focusBurnInput() {
+  document.getElementById('burnedCalInputVisible')?.focus();
+}
+
+async function saveBurnedCalsFromVisible(val) {
+  const dateStr = carouselDays[carouselIndex];
+  if (!dateStr || !currentUser) return;
+  const v = parseInt(val) || 0;
+  burnedCals[dateStr] = v;
+  // Sync to hidden input for compatibility
+  const hidden = document.getElementById('burnedCalInput');
+  if (hidden) hidden.value = v || '';
+  if (v <= 0) {
+    await sb.from('daily_calories_burned').delete().eq('user_id', currentUser.id).eq('log_date', dateStr);
+  } else {
+    await sb.from('daily_calories_burned').upsert({
+      user_id: currentUser.id, log_date: dateStr,
+      calories_burned: v, updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,log_date' });
+  }
+  // Refresh meta row with new balance
+  renderCarouselDay();
+}
+
+// Open food sheet pre-selecting a meal type
+function openFoodForMeal(mealType) {
+  openBS('bsFood');
+  setTimeout(() => selectMealByName(mealType), 100);
+}
+
+// Open dish picker and pre-select meal
+function openDishPickerForMeal(mealType) {
+  _dishPickerTargetMeal = mealType;
+  openDishPicker();
+}
+let _dishPickerTargetMeal = null;
+
+// Override quickRegisterDish to use _dishPickerTargetMeal if set
+const _origQuickRegisterDish = quickRegisterDish;
+
+// Smart log item — differentiates dishes, templates, simple items
+function makeSmartLogItem(e) {
+  const time = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'}) : '';
+  const dishIngs = e._dishIngs?.length ? e._dishIngs : null;
+  const isTmplEntry = templates.some(t => t.items?.some(i => i.food_name === e.food_name));
+  const displayName = e.food_name.startsWith('🍽️') ? e.food_name : (dishIngs ? `🍽️ ${e.food_name}` : e.food_name);
+
+  const badge = isTmplEntry && !dishIngs
+    ? `<span class="tmpl-badge">plantilla</span>` : '';
+
+  if (dishIngs) {
+    // Dish: card with expandable ingredients
+    const entryId = `entry-${e.id}`;
+    return `<div class="log-item" style="margin-bottom:6px">
+      <div class="log-item-top">
+        <div class="log-item-name">${displayName}${badge}</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <div class="log-item-cal">${Math.round(e.calories||0)} kcal</div>
+          <span id="dish-chevron-${entryId}" onclick="toggleDishExpand('${entryId}')"
+            style="color:var(--muted);font-size:12px;cursor:pointer;transition:transform 0.2s;padding:2px 4px">▼</span>
+          <button onclick="openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
+        </div>
+      </div>
+      <div class="log-item-meta">${e.quantity?`${e.quantity} ${e.unit} · `:''}P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g${e.origin==='Fuera'?' · 🌍':''}</div>
+      <div id="dish-expand-${entryId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        ${dishIngs.map(ing=>`
+          <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px">
+            <span style="color:var(--text2)">${ing.food_name||ing.name}</span>
+            <span style="color:var(--muted)">${ing.quantity||''} ${ing.unit||''} · ${Math.round(ing.calories||0)} kcal</span>
+          </div>`).join('')}
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:2px">${time}</div>
+    </div>`;
+  }
+
+  // Simple item: compact row
+  return `<div class="log-item-compact">
+    <div style="min-width:0;flex:1">
+      <div style="font-size:14px;color:var(--text);font-family:var(--font-display)">${displayName}${badge}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:1px">${e.quantity?`${e.quantity} ${e.unit} · `:''}P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g${e.origin==='Fuera'?' · 🌍':''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px">
+      <div style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--accent)">${Math.round(e.calories||0)}</div>
+      <button onclick="openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
+    </div>
+  </div>`;
 }
 
 // Keep renderToday as alias that resets to today
