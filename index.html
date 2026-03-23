@@ -1233,6 +1233,34 @@ select { cursor: pointer; }
 
     <!-- ── Metas ── -->
     <div id="profSec-metas">
+      <div class="section-label" style="margin-top:4px">Objetivo calórico</div>
+      <div class="card">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Define la dirección de tu meta de calorías para que el heatmap de consistencia la interprete correctamente.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+          <button id="goalTypeDeficit"      onclick="selectGoalType('deficit')"
+            style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:12px;cursor:pointer;color:var(--text2);text-align:center">
+            📉<div style="margin-top:3px">Déficit</div>
+          </button>
+          <button id="goalTypeMaintenance"  onclick="selectGoalType('maintenance')"
+            style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:12px;cursor:pointer;color:var(--text2);text-align:center">
+            ⚖️<div style="margin-top:3px">Mantenimiento</div>
+          </button>
+          <button id="goalTypeSurplus"      onclick="selectGoalType('surplus')"
+            style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:12px;cursor:pointer;color:var(--text2);text-align:center">
+            📈<div style="margin-top:3px">Superávit</div>
+          </button>
+        </div>
+        <div id="goalTypeHint" style="font-size:11px;color:var(--muted);margin-bottom:10px;min-height:14px"></div>
+        <div class="settings-row">
+          <div><div class="settings-label">Tolerancia</div><div style="font-size:11px;color:var(--muted)">Margen aceptable arriba/abajo de la meta</div></div>
+          <select id="goalTolerance" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-family:var(--font-display);font-size:13px;color:var(--text)">
+            <option value="5">±5%</option>
+            <option value="10" selected>±10%</option>
+            <option value="15">±15%</option>
+          </select>
+        </div>
+      </div>
+
       <div class="section-label" style="margin-top:4px">Nutrición diaria</div>
       <div class="card">
         <div class="settings-row"><div><div class="settings-label">Calorías</div></div><input class="settings-input" type="number" id="goalCal" placeholder="2000" inputmode="numeric"></div>
@@ -3717,26 +3745,33 @@ async function loadSettings() {
       goalCal: data.goal_cal || 0, goalProtein: data.goal_protein || 0,
       goalCarbs: data.goal_carbs || 0, goalFat: data.goal_fat || 0,
       goalWater: data.goal_water || 0, goalIsotonic: data.goal_isotonic || 0,
+      goalType: data.goal_type || 'deficit',
+      goalTolerance: data.goal_tolerance || 10,
     };
   }
   ['Cal','Protein','Carbs','Fat','Water','Isotonic'].forEach(k => {
     const el = document.getElementById('goal' + k);
     if (el && settings['goal' + k]) el.value = settings['goal' + k];
   });
+  selectGoalType(settings.goalType, false);
+  const tolEl = document.getElementById('goalTolerance');
+  if (tolEl) tolEl.value = settings.goalTolerance;
 }
 
 async function saveSettings() {
-  settings.goalCal      = parseInt(document.getElementById('goalCal').value)      || 0;
-  settings.goalProtein  = parseInt(document.getElementById('goalProtein').value)  || 0;
-  settings.goalCarbs    = parseInt(document.getElementById('goalCarbs').value)    || 0;
-  settings.goalFat      = parseInt(document.getElementById('goalFat').value)      || 0;
-  settings.goalWater    = parseInt(document.getElementById('goalWater').value)    || 0;
-  settings.goalIsotonic = parseInt(document.getElementById('goalIsotonic').value) || 0;
+  settings.goalCal       = parseInt(document.getElementById('goalCal').value)       || 0;
+  settings.goalProtein   = parseInt(document.getElementById('goalProtein').value)   || 0;
+  settings.goalCarbs     = parseInt(document.getElementById('goalCarbs').value)     || 0;
+  settings.goalFat       = parseInt(document.getElementById('goalFat').value)       || 0;
+  settings.goalWater     = parseInt(document.getElementById('goalWater').value)     || 0;
+  settings.goalIsotonic  = parseInt(document.getElementById('goalIsotonic').value)  || 0;
+  settings.goalTolerance = parseInt(document.getElementById('goalTolerance').value) || 10;
   const { error } = await sb.from('profiles').upsert({
     id: currentUser.id,
     goal_cal: settings.goalCal, goal_protein: settings.goalProtein,
     goal_carbs: settings.goalCarbs, goal_fat: settings.goalFat,
     goal_water: settings.goalWater, goal_isotonic: settings.goalIsotonic,
+    goal_type: settings.goalType, goal_tolerance: settings.goalTolerance,
   });
   if (error) { showToast('Error al guardar', true); return; }
   showToast('Metas guardadas ✓');
@@ -5420,6 +5455,68 @@ function renderStatsSummary(food, hyd) {
 
 // ── ② Consistency ──
 // ── Color interpolation for heatmap ──
+function selectGoalType(type, save = true) {
+  settings.goalType = type;
+  const types = ['deficit', 'maintenance', 'surplus'];
+  const hints = {
+    deficit:     '📉 Verde = consumiste menos que la meta · Rojo = te pasaste',
+    maintenance: '⚖️ Verde = dentro del rango de la meta · Rojo = muy por encima o debajo',
+    surplus:     '📈 Verde = alcanzaste o superaste la meta · Rojo = consumiste menos',
+  };
+  types.forEach(t => {
+    const btn = document.getElementById('goalType' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (!btn) return;
+    const isActive = t === type;
+    btn.style.borderColor = isActive ? 'var(--accent)' : 'var(--border)';
+    btn.style.background  = isActive ? 'rgba(108,144,60,0.12)' : 'var(--surface2)';
+    btn.style.color       = isActive ? 'var(--accent)' : 'var(--text2)';
+  });
+  const hint = document.getElementById('goalTypeHint');
+  if (hint) hint.textContent = hints[type] || '';
+}
+
+// Calorie-aware heatmap color — gradient that respects goalType and tolerance
+function heatmapColorCal(pct) {
+  if (pct === null) return 'var(--border)';
+  const type = settings.goalType || 'deficit';
+  const tol  = settings.goalTolerance || 10;
+
+  if (type === 'deficit') {
+    // Target: consume ≤ goal. Green = at goal, red = 0% or way over goal.
+    // 0%   → red   (ate nothing — not following plan)
+    // 100% → green (hit goal exactly)
+    // 100%+tol → starts going orange→red again (exceeded)
+    const ceiling = 100 + tol;
+    if (pct <= 100) {
+      // 0% = red, 100% = green — standard gradient
+      return heatmapColor(pct);
+    } else {
+      // 100%+tol% = orange, 100%+tol*3 = red
+      const over = Math.min((pct - 100) / (tol * 3), 1);
+      return lerpRGB('#639922', over < 0.4 ? '#EF9F27' : '#E24B4A', over);
+    }
+  }
+
+  if (type === 'surplus') {
+    // Target: consume ≥ goal. Green = at goal, red = far below, blue = exceeding.
+    // 0%   → red   (far below goal)
+    // 100% → green (hit goal)
+    // >100% → blue (exceeding — great for surplus)
+    return heatmapColor(Math.min(pct, 130));
+  }
+
+  // Maintenance: symmetric around 100%. Green = within tolerance, red = far from it.
+  // Map deviation from 100% to a color:
+  // deviation 0   → green (100% of goal)
+  // deviation tol → yellow-green (edge of tolerance)
+  // deviation tol*2 → orange
+  // deviation tol*4 → red
+  const deviation = Math.abs(pct - 100);
+  const remapped  = Math.min((deviation / (tol * 4)) * 100, 100);
+  // Invert: 0 deviation = 100% on gradient (green), max deviation = 0% (red)
+  return heatmapColor(100 - remapped);
+}
+
 function heatmapColor(pct) {
   if (pct === null) return 'var(--border)';
   if (pct > 100) {
@@ -5441,7 +5538,7 @@ function lerpRGB(a, b, t) {
   return `rgb(${r},${g},${bl})`;
 }
 
-function buildHeatmapRow(label, days, pctFn, isBoolean) {
+function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
   const today = statsToDate ? new Date(statsToDate + 'T12:00:00') : new Date();
   const squares = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -5452,7 +5549,7 @@ function buildHeatmapRow(label, days, pctFn, isBoolean) {
     const val = pctFn(dateStr);
     const bg = isBoolean
       ? (val === null ? 'var(--border)' : val ? '#639922' : '#E24B4A')
-      : heatmapColor(val);
+      : (colorFn ? colorFn(val) : heatmapColor(val));
     const tip = isBoolean
       ? (val === null ? 'Sin datos' : val ? '✓ Completado' : '✗ No completado')
       : (val === null ? 'Sin datos' : val > 100 ? `${Math.round(val)}% (excede meta)` : `${Math.round(val)}%`);
@@ -5508,22 +5605,46 @@ async function renderStatsConsistency(food, hyd) {
 
   let html = '';
 
-  // Legend
-  html += `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
-    <span style="font-size:11px;color:var(--muted)">0%</span>
-    <div style="flex:1;height:8px;border-radius:4px;background:linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#378ADD);min-width:80px"></div>
-    <span style="font-size:11px;color:var(--muted)">100%+</span>
-    <div style="width:12px;height:12px;border-radius:3px;background:var(--border);flex-shrink:0"></div>
-    <span style="font-size:11px;color:var(--muted)">sin datos</span>
+  // Legend — dynamic based on goal type
+  const type = settings.goalType || 'deficit';
+  const tol  = settings.goalTolerance || 10;
+  const goalTypeLabel = { deficit:'déficit', maintenance:'mantenimiento', surplus:'superávit' };
+  const gradients = {
+    deficit:     'linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#EF9F27,#E24B4A)',
+    maintenance: 'linear-gradient(to right,#E24B4A,#EF9F27,#639922,#EF9F27,#E24B4A)',
+    surplus:     'linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#378ADD)',
+  };
+  const legendLabels = {
+    deficit:     ['Nada', 'Meta', 'Te pasaste'],
+    maintenance: ['Muy lejos', 'En la meta', 'Muy lejos'],
+    surplus:     ['Nada', 'Meta', 'Excede'],
+  };
+  const [lbl0, lbl50, lbl100] = legendLabels[type];
+  const calHint = settings.goalCal
+    ? `<span style="font-size:10px;color:var(--muted)">Calorías · <strong>${goalTypeLabel[type]}</strong> · ±${tol}%</span>`
+    : '';
+  html += `<div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
+      <div style="flex:1;height:8px;border-radius:4px;background:${gradients[type]};min-width:80px"></div>
+      <div style="width:12px;height:12px;border-radius:3px;background:var(--border);flex-shrink:0"></div>
+      <span style="font-size:11px;color:var(--muted)">sin datos</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <span style="font-size:10px;color:var(--muted)">${lbl0}</span>
+      <span style="font-size:10px;color:var(--muted)">${lbl50}</span>
+      <span style="font-size:10px;color:var(--muted)">${lbl100}</span>
+    </div>
+    ${calHint}
   </div>`;
 
-  // Macro rows
+  // Macro rows — calories uses goal-type-aware color
   metrics.forEach(m => {
+    const colorFn = m.key === 'cal' ? heatmapColorCal : null;
     html += buildHeatmapRow(m.label, effRange, dateStr => {
       const d = byDate[dateStr];
       if (!d) return null;
       return Math.round((d[m.key] / m.goal) * 100);
-    }, false);
+    }, false, colorFn);
   });
 
   // Hydration
