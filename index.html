@@ -3172,8 +3172,13 @@ async function renderCarouselDay() {
     progBars.innerHTML = allBars.map(b => {
       const pct    = Math.round((b.val / b.goal) * 100);
       const barPct = Math.min(pct, 100);
-      const over   = pct > 100;
-      const color  = over ? '#378ADD' : pct >= 80 ? '#639922' : pct >= 50 ? '#EF9F27' : '#E24B4A';
+      // Calories: respect goalType logic. Other macros: standard gradient.
+      let color;
+      if (b.label === 'Calorías') {
+        color = heatmapColorCal(pct);
+      } else {
+        color = pct > 100 ? '#378ADD' : pct >= 80 ? '#639922' : pct >= 50 ? '#EF9F27' : '#E24B4A';
+      }
       const dv = b.unit === 'ml' ? (b.val >= 1000 ? `${(b.val/1000).toFixed(1)}L` : `${Math.round(b.val)}ml`) : Math.round(b.val);
       const dg = b.unit === 'ml' ? (b.goal >= 1000 ? `${(b.goal/1000).toFixed(1)}L` : `${b.goal}ml`) : `${b.goal} ${b.unit}`;
       return `<div style="margin-bottom:14px">
