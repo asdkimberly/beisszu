@@ -3384,7 +3384,7 @@ async function renderCarouselDay() {
   const disp = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
 
   await loadSuppLogForDate(dateStr);
-  const takenSupps  = currentDaySuppLog?.filter(l => supplements.find(s=>s.id===l.supplement_id)) || [];
+  const takenSupps  = (suppLog[dateStr] || []).filter(l => supplements.find(s=>s.id===l.supplement_id));
   const totalSupps  = supplements.length;
 
   let metaHTML = '';
