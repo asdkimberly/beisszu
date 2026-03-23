@@ -1300,9 +1300,39 @@ select { cursor: pointer; }
     <!-- Header controls -->
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div class="sub-tabs" style="flex:1">
-        <button class="sub-tab active" id="statsRange7" onclick="setStatsRange(7)">7 días</button>
-        <button class="sub-tab" id="statsRange30" onclick="setStatsRange(30)">30 días</button>
+        <button class="sub-tab active" id="statsRange7"    onclick="setStatsRange(7)">7 días</button>
+        <button class="sub-tab"        id="statsRange30"   onclick="setStatsRange(30)">30 días</button>
+        <button class="sub-tab"        id="statsRangeCustom" onclick="setStatsRange('custom')">Rango</button>
       </div>
+    </div>
+
+    <!-- Custom date range picker -->
+    <div id="statsCustomRange" style="display:none;margin-top:8px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1">
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Desde</label>
+          <input type="date" id="statsCustomFrom" style="width:100%;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;color:var(--text)">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Hasta</label>
+          <input type="date" id="statsCustomTo" style="width:100%;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;color:var(--text)">
+        </div>
+        <div style="padding-top:16px">
+          <button onclick="applyCustomRange()" class="btn-primary" style="padding:8px 14px;font-size:13px">Ver</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Period navigation row (hidden for custom) -->
+    <div id="statsNavRow" style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <button id="statsNavPrev" onclick="navigateStatsRange(-1)"
+        style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
+      <div style="flex:1;text-align:center">
+        <div id="statsNavLabel" style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text)">—</div>
+        <div id="statsNavSub"   style="font-size:10px;color:var(--muted);margin-top:1px"></div>
+      </div>
+      <button id="statsNavNext" onclick="navigateStatsRange(1)"
+        style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
     </div>
 
     <!-- Loading skeleton — visible until renderStats() runs -->
@@ -2417,7 +2447,11 @@ function switchTab(name) {
   if (name === 'home')    { renderToday(); }
   if (name === 'foods')   { renderFoodsList(); renderDishesList(); switchFoodsTab('alimentos'); }
   if (name === 'profile') { loadSettings(); renderSuppList(); profileGoBack(); }
-  if (name === 'stats')   { renderStats(); }
+  if (name === 'stats')   { 
+    if (!statsToDate) { statsToDate = getTodayDate(); effRange = statsRange === 'custom' ? 7 : statsRange; }
+    updateStatsNavRow();
+    renderStats();
+  }
 }
 
 function toggleFoodExpand(el) {
@@ -4965,12 +4999,11 @@ async function loadSuppLogForDate(dateStr) {
 
 // ── Load supplement log for stats range ──
 async function loadSuppLogRange() {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - statsRange);
+  const { fromDate } = getStatsDates();
   const { data } = await sb.from('supplement_log')
     .select('*')
     .eq('user_id', currentUser.id)
-    .gte('log_date', cutoff.toISOString().split('T')[0])
+    .gte('log_date', fromDate)
     .order('log_date');
   return data || [];
 }
@@ -5103,8 +5136,14 @@ function renderHomeSuppChecklist() {
 // ══════════════════════════════════════════
 // ANALYTICS
 // ══════════════════════════════════════════
-let statsRange = 7;
-const showCharts = true; // always show charts
+let statsRange  = 7;
+let statsOffset = 0;
+let statsCustomFromDate = null;
+let statsCustomToDate   = null;
+let effRange    = 7;    // effective range in days — updated before each render
+let statsToDate = null; // 'YYYY-MM-DD' end of current window
+
+const showCharts = true;
 let chartTrendInstance    = null;
 let chartBurnInstance     = null;
 let chartBurnBalInstance  = null;
@@ -5116,21 +5155,120 @@ let chartMealInstance = null;
 let chartHydInstance = null;
 
 function setStatsRange(days) {
-  statsRange = days;
+  statsRange  = days;
+  statsOffset = 0;
   document.getElementById('statsRange7').classList.toggle('active', days === 7);
   document.getElementById('statsRange30').classList.toggle('active', days === 30);
+  document.getElementById('statsRangeCustom').classList.toggle('active', days === 'custom');
+  const customPicker = document.getElementById('statsCustomRange');
+  const navRow       = document.getElementById('statsNavRow');
+  if (days === 'custom') {
+    customPicker.style.display = 'block';
+    navRow.style.display = 'none';
+    // Prefill dates: last 7 days
+    const t = new Date(); const f = new Date(t);
+    f.setDate(f.getDate() - 6);
+    document.getElementById('statsCustomTo').value   = t.toISOString().split('T')[0];
+    document.getElementById('statsCustomFrom').value = f.toISOString().split('T')[0];
+  } else {
+    customPicker.style.display = 'none';
+    navRow.style.display = 'flex';
+    updateStatsNavRow();
+    renderStats();
+  }
+}
+
+function navigateStatsRange(dir) {
+  if (statsRange === 'custom') return;
+  const today = new Date();
+  // Can't go forward past current period
+  const { toDate } = getStatsDates();
+  if (dir > 0 && toDate >= today.toISOString().split('T')[0]) return;
+  statsOffset += dir;
+  updateStatsNavRow();
   renderStats();
+}
+
+function updateStatsNavRow() {
+  if (statsRange === 'custom') return;
+  const { fromDate, toDate } = getStatsDates();
+  const today = getTodayDate();
+
+  // Label
+  const from = new Date(fromDate + 'T12:00:00');
+  const to   = new Date(toDate   + 'T12:00:00');
+  const fmtShort = d => d.toLocaleDateString('es-CR', { day:'numeric', month:'short' });
+  const fmtFull  = d => d.toLocaleDateString('es-CR', { day:'numeric', month:'long', year:'numeric' });
+
+  let label, sub;
+  if (statsRange === 7) {
+    label = `${fmtShort(from)} — ${fmtShort(to)}`;
+    sub   = statsOffset === 0 ? 'Semana actual'
+          : statsOffset === -1 ? 'Semana anterior'
+          : `Semana ${statsOffset}`;
+  } else {
+    // 30 days
+    label = `${fmtShort(from)} — ${fmtShort(to)}`;
+    sub   = statsOffset === 0 ? 'Últimos 30 días'
+          : `Hace ${Math.abs(statsOffset)} período${Math.abs(statsOffset)>1?'s':''}`;
+  }
+
+  document.getElementById('statsNavLabel').textContent = label;
+  document.getElementById('statsNavSub').textContent   = sub;
+
+  // Disable forward arrow if at current period
+  const nextBtn = document.getElementById('statsNavNext');
+  const atPresent = toDate >= today;
+  nextBtn.style.opacity = atPresent ? '0.3' : '1';
+  nextBtn.style.pointerEvents = atPresent ? 'none' : 'auto';
+}
+
+function applyCustomRange() {
+  const from = document.getElementById('statsCustomFrom').value;
+  const to   = document.getElementById('statsCustomTo').value;
+  if (!from || !to) { showToast('Seleccioná ambas fechas', true); return; }
+  if (from > to)    { showToast('La fecha inicial debe ser anterior', true); return; }
+  statsCustomFromDate = from;
+  statsCustomToDate   = to;
+  // Compute effective range in days for charts
+  const diff = Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
+  statsRange  = 'custom';
+  statsOffset = 0;
+  document.getElementById('statsNavRow').style.display = 'none';
+  renderStats();
+}
+
+// ── Get date window ──
+function getStatsDates() {
+  if (statsRange === 'custom') {
+    return { fromDate: statsCustomFromDate, toDate: statsCustomToDate };
+  }
+  const to   = new Date();
+  to.setDate(to.getDate() + statsOffset * statsRange);
+  const from = new Date(to);
+  from.setDate(from.getDate() - statsRange + 1);
+  // Cap to at today
+  const todayDate = new Date(); todayDate.setHours(23,59,59,999);
+  const effectiveTo = to > todayDate ? todayDate : to;
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return { fromDate: fmt(from), toDate: fmt(effectiveTo) };
 }
 
 // ── Get date range entries ──
 function getStatsEntries() {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - statsRange);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const { fromDate, toDate } = getStatsDates();
   return {
-    food: entries.filter(e => e.log_date >= cutoffStr),
-    hyd:  hydEntries.filter(e => e.date >= cutoffStr),
+    food: entries.filter(e => e.log_date >= fromDate && e.log_date <= toDate),
+    hyd:  hydEntries.filter(e => e.date >= fromDate && e.date <= toDate),
   };
+}
+
+// ── Effective range length (days) for averaging / chart loops ──
+function getEffectiveRange() {
+  if (statsRange === 'custom') {
+    return Math.round((new Date(statsCustomToDate) - new Date(statsCustomFromDate)) / 86400000) + 1;
+  }
+  return statsRange;
 }
 
 // ── Main render ──
@@ -5155,7 +5293,20 @@ async function renderStats() {
   document.getElementById('statsSummaryGrid').innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:span 2">Cargando datos…</div>';
 
   try {
-    if (statsRange === 30) await refreshStatsData();
+    // Load data for the current window
+    if (statsRange !== 'custom') {
+      const { fromDate } = getStatsDates();
+      const today = getTodayDate();
+      // Only refresh from Supabase if window goes beyond in-memory data
+      const oldestLoaded = entries.length ? entries.reduce((m,e)=>e.log_date<m?e.log_date:m, entries[0].log_date) : today;
+      if (fromDate < oldestLoaded) await refreshStatsData();
+    } else {
+      await refreshStatsData();
+    }
+    updateStatsNavRow();
+    // Set globals used by all chart functions
+    effRange    = getEffectiveRange();
+    statsToDate = getStatsDates().toDate;
     const { food, hyd } = getStatsEntries();
     if (skeleton) skeleton.style.display = 'none'; // hide skeleton once data is ready
     renderStatsSummary(food, hyd);
@@ -5181,16 +5332,17 @@ async function renderStats() {
 
 // ── Refresh data for full 30d range ──
 async function refreshStatsData() {
-  const days = statsRange;
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const { fromDate } = getStatsDates();
   const [{ data: fData }, { data: hData }] = await Promise.all([
-    sb.from('food_log').select('*').eq('user_id', currentUser.id).gte('log_date', cutoffStr).order('logged_at'),
-    sb.from('hydration_log').select('*').eq('user_id', currentUser.id).gte('log_date', cutoffStr).order('logged_at'),
+    sb.from('food_log').select('*').eq('user_id', currentUser.id).gte('log_date', fromDate).order('logged_at'),
+    sb.from('hydration_log').select('*').eq('user_id', currentUser.id).gte('log_date', fromDate).order('logged_at'),
   ]);
-  if (fData) entries = fData;
-  if (hData) hydEntries = (hData).map(e => ({
+  if (fData) {
+    // Merge: keep entries newer than fromDate from Supabase, older from memory
+    const fresh = new Set(fData.map(e => e.id));
+    entries = [...fData, ...entries.filter(e => e.log_date < fromDate && !fresh.has(e.id))];
+  }
+  if (hData) hydEntries = hData.map(e => ({
     ...e, date: e.log_date, drinkId: e.drink_id,
     drinkLabel: e.drink_label, drinkIcon: e.drink_icon,
   }));
@@ -5367,7 +5519,7 @@ async function renderStatsConsistency(food, hyd) {
 
   // Macro rows
   metrics.forEach(m => {
-    html += buildHeatmapRow(m.label, statsRange, dateStr => {
+    html += buildHeatmapRow(m.label, effRange, dateStr => {
       const d = byDate[dateStr];
       if (!d) return null;
       return Math.round((d[m.key] / m.goal) * 100);
@@ -5377,7 +5529,7 @@ async function renderStatsConsistency(food, hyd) {
   // Hydration
   const goalHydTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
   if (goalHydTotal) {
-    html += buildHeatmapRow('💧 Hidratación', statsRange, dateStr => {
+    html += buildHeatmapRow('💧 Hidratación', effRange, dateStr => {
       const v = hydByDate[dateStr];
       if (v == null) return null;
       return Math.round((v / goalHydTotal) * 100);
@@ -5389,7 +5541,7 @@ async function renderStatsConsistency(food, hyd) {
     const suppLogs = await loadSuppLogRange();
     supplements.forEach(s => {
       const takenDates = new Set(suppLogs.filter(l => l.supplement_id === s.id).map(l => l.log_date));
-      html += buildHeatmapRow(`💊 ${s.name}`, statsRange, dateStr => {
+      html += buildHeatmapRow(`💊 ${s.name}`, effRange, dateStr => {
         const hasFood = byDate[dateStr] != null;
         if (!hasFood) return null;
         return takenDates.has(dateStr);
@@ -5407,11 +5559,11 @@ function renderChartTrend(food) {
   card.style.display = 'block';
 
   // Build daily cal array for last N days
-  const todayLocal = new Date();
+  const todayLocal = new Date(statsToDate + 'T12:00:00');
   const labels = [];
   const calData = [];
   const goalLine = [];
-  for (let i = statsRange-1; i >= 0; i--) {
+  for (let i = effRange-1; i >= 0; i--) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate()-i);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -5553,7 +5705,7 @@ function renderStatsHyd(hyd) {
   const combinedByDate = {};
   allDates.forEach(d => { combinedByDate[d] = (waterByDate[d]||0) + (hidByDate[d]||0); });
 
-  const avgWater  = Object.keys(waterByDate).length ? Math.round(Object.values(waterByDate).reduce((s,v)=>s+v,0)/statsRange) : 0;
+  const avgWater  = Object.keys(waterByDate).length ? Math.round(Object.values(waterByDate).reduce((s,v)=>s+v,0)/effRange) : 0;
   const avgHid    = Object.keys(hidByDate).length   ? Math.round(Object.values(hidByDate).reduce((s,v)=>s+v,0)/statsRange)   : 0;
   const avgTotal  = avgWater + avgHid;
 
@@ -5575,11 +5727,11 @@ function renderStatsHyd(hyd) {
 
   if (chartHydInstance) { chartHydInstance.destroy(); chartHydInstance = null; }
 
-  const todayLocal = new Date();
+  const todayLocal = new Date(statsToDate + 'T12:00:00');
   const labels = [];
   const waterData = [];
   const hidData = [];
-  for (let i = statsRange-1; i >= 0; i--) {
+  for (let i = effRange-1; i >= 0; i--) {
     const d = new Date(todayLocal); d.setDate(d.getDate()-i);
     const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
@@ -5647,13 +5799,11 @@ async function renderStatsBurn(food) {
   const card = document.getElementById('statsBurnCard');
 
   // Load burned data for range
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - statsRange);
-  const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth()+1).padStart(2,'0')}-${String(cutoffDate.getDate()).padStart(2,'0')}`;
+  const { fromDate: burnFrom } = getStatsDates();
   const { data: burnData } = await sb.from('daily_calories_burned')
     .select('log_date, calories_burned')
     .eq('user_id', currentUser.id)
-    .gte('log_date', cutoffStr);
+    .gte('log_date', burnFrom);
   const burnByDate = {};
   (burnData || []).forEach(r => { burnByDate[r.log_date] = r.calories_burned; });
 
@@ -5664,9 +5814,9 @@ async function renderStatsBurn(food) {
   const consumedByDate = {};
   food.forEach(e => { consumedByDate[e.log_date] = (consumedByDate[e.log_date]||0) + (e.calories||0); });
 
-  const today = new Date();
+  const today = new Date(statsToDate + 'T12:00:00');
   const labels = [], consumed = [], burned = [], balance = [];
-  for (let i = statsRange - 1; i >= 0; i--) {
+  for (let i = effRange - 1; i >= 0; i--) {
     const d = new Date(today); d.setDate(d.getDate() - i);
     const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     labels.push(d.toLocaleDateString('es-CR', { day:'numeric', month:'short' }));
@@ -5820,11 +5970,11 @@ function renderStatsMacroTrend(food) {
   if (!food.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const todayLocal = new Date();
+  const todayLocal = new Date(statsToDate + 'T12:00:00');
   const labels = [];
   const protData = [], carbData = [], fatData = [];
 
-  for (let i = statsRange - 1; i >= 0; i--) {
+  for (let i = effRange - 1; i >= 0; i--) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -5889,11 +6039,11 @@ function renderStatsSugarFiber(food) {
   if (!food.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const todayLocal = new Date();
+  const todayLocal = new Date(statsToDate + 'T12:00:00');
   const labels = [];
   const sugarData = [], fiberData = [];
 
-  for (let i = statsRange - 1; i >= 0; i--) {
+  for (let i = effRange - 1; i >= 0; i--) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -5953,13 +6103,13 @@ function renderStatsEatingOut(food) {
   if (!outsideEntries.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const todayLocal = new Date();
+  const todayLocal = new Date(statsToDate + 'T12:00:00');
   const datesOut   = new Set(outsideEntries.map(e => e.log_date));
   let totalDays    = 0;
 
   // Build pill grid
   const pills = [];
-  for (let i = statsRange - 1; i >= 0; i--) {
+  for (let i = effRange - 1; i >= 0; i--) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
     const dateStr  = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -5969,7 +6119,7 @@ function renderStatsEatingOut(food) {
     pills.push({ dateStr, dayLabel, isOut });
   }
 
-  const pct = Math.round(totalDays/statsRange*100);
+  const pct = Math.round(totalDays/effRange*100);
 
   // Replace canvas with pill grid
   const canvas = document.getElementById('chartEatingOut');
@@ -6077,7 +6227,7 @@ function renderStatsAlcohol(food) {
   let totalDays     = 0;
 
   const pills = [];
-  for (let i = statsRange - 1; i >= 0; i--) {
+  for (let i = effRange - 1; i >= 0; i--) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
     const dateStr  = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -6087,7 +6237,7 @@ function renderStatsAlcohol(food) {
     pills.push({ dateStr, dayLabel, hasAlc });
   }
 
-  const pct = Math.round(totalDays/statsRange*100);
+  const pct = Math.round(totalDays/effRange*100);
   const canvas = document.getElementById('chartAlcohol');
   canvas.style.display = 'none';
 
@@ -6417,8 +6567,8 @@ async function generatePDF() {
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
     doc.text(label,margin,y+sqH-1);
     let sx=margin+22;
-    const today2=new Date();
-    for(let i=statsRange-1;i>=0;i--){
+    const today2=new Date(statsToDate+'T12:00:00');
+    for(let i=effRange-1;i>=0;i--){
       const d=new Date(today2); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const active=activeDates.has(ds);
@@ -6454,8 +6604,8 @@ async function generatePDF() {
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
     doc.text(label,margin,y+sqH-1);
     let sx=margin+22;
-    const today2=new Date();
-    for(let i=statsRange-1;i>=0;i--){
+    const today2=new Date(statsToDate+'T12:00:00');
+    for(let i=effRange-1;i>=0;i--){
       const d=new Date(today2); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const [r,g,b]=pctRGB(pctFn(ds));
@@ -6507,8 +6657,8 @@ async function generatePDF() {
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
     doc.text(label, margin, y+sqH-1);
     let sx=margin+22;
-    const today2=new Date();
-    for(let i=statsRange-1;i>=0;i--){
+    const today2=new Date(statsToDate+'T12:00:00');
+    for(let i=effRange-1;i>=0;i--){
       const d=new Date(today2); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const hasFood=byDate[ds]!=null;
@@ -6832,7 +6982,7 @@ async function generatePDF() {
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
     doc.text('Con alcohol',margin,y+sqH-1);
     let sx=margin+22; const today3=new Date();
-    for(let i=statsRange-1;i>=0;i--){
+    for(let i=effRange-1;i>=0;i--){
       const d=new Date(today3); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       if(datesAlc.has(ds)) doc.setFillColor(224,120,64);
