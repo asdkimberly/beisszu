@@ -3398,10 +3398,42 @@ async function renderCarouselDay() {
     </div>`;
   }
   if (waterAmt || hydAmt || settings.goalWater || settings.goalIsotonic) {
-    const parts = [];
-    if (waterAmt || settings.goalWater) parts.push(`💧 ${disp(waterAmt)}${settings.goalWater?' / '+disp(settings.goalWater):''}`);
-    if (hydAmt || settings.goalIsotonic) parts.push(`🏋️ ${disp(hydAmt)}${settings.goalIsotonic?' / '+disp(settings.goalIsotonic):''}`);
-    if (parts.length) metaHTML += `<div class="day-meta-row"><span>${parts.join('  ·  ')}</span></div>`;
+    const chips = [];
+    if (waterAmt || settings.goalWater) {
+      const goal = settings.goalWater;
+      const pct  = goal ? Math.min(Math.round((waterAmt/goal)*100), 100) : null;
+      const color = pct === null ? '#4a90d9'
+        : pct >= 100 ? '#639922' : pct >= 60 ? '#4a90d9' : '#EF9F27';
+      chips.push(`
+        <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+            <span style="font-size:11px;color:var(--muted)">💧 Agua</span>
+            <span style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text)">${disp(waterAmt)}${goal?` <span style="font-size:10px;color:var(--muted)">/ ${disp(goal)}</span>`:''}</span>
+          </div>
+          ${goal ? `<div style="height:3px;border-radius:2px;background:var(--border)">
+            <div style="width:${pct}%;height:100%;border-radius:2px;background:${color};transition:width 0.4s"></div>
+          </div>` : ''}
+        </div>`);
+    }
+    if (hydAmt || settings.goalIsotonic) {
+      const goal = settings.goalIsotonic;
+      const pct  = goal ? Math.min(Math.round((hydAmt/goal)*100), 100) : null;
+      const color = pct === null ? '#5bc0de'
+        : pct >= 100 ? '#639922' : pct >= 60 ? '#5bc0de' : '#EF9F27';
+      chips.push(`
+        <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+            <span style="font-size:11px;color:var(--muted)">🏋️ Hidratante</span>
+            <span style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text)">${disp(hydAmt)}${goal?` <span style="font-size:10px;color:var(--muted)">/ ${disp(goal)}</span>`:''}</span>
+          </div>
+          ${goal ? `<div style="height:3px;border-radius:2px;background:var(--border)">
+            <div style="width:${pct}%;height:100%;border-radius:2px;background:${color};transition:width 0.4s"></div>
+          </div>` : ''}
+        </div>`);
+    }
+    metaHTML += `<div class="day-meta-row" style="border-bottom:none;padding-bottom:0">
+      <div style="display:flex;gap:8px;width:100%">${chips.join('')}</div>
+    </div>`;
   }
   if (totalSupps) {
     const allTaken = takenSupps.length >= totalSupps;
