@@ -1516,33 +1516,82 @@ select { cursor: pointer; }
     <div class="bottom-sheet" style="padding-bottom:env(safe-area-inset-bottom)">
       <div class="bs-handle"></div>
       <div class="bs-body" style="padding:16px 20px 24px">
-        <div style="font-family:var(--font-display);font-size:16px;color:var(--text);font-weight:500;margin-bottom:16px">¿Qué querés registrar?</div>
-        <div style="display:flex;flex-direction:column;gap:10px">
+
+        <!-- Contextual suggestion — filled by JS -->
+        <div id="regSuggestion" style="display:none;margin-bottom:14px"></div>
+
+        <!-- Alimentación options -->
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Alimentación</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
           <button onclick="closeBS('bsRegister');openBS('bsFood')"
-            style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
-            <div style="width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🥗</div>
-            <div>
-              <div style="font-family:var(--font-display);font-size:15px;color:var(--text);font-weight:500">Alimentación</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px">Comidas, snacks y bebidas calóricas</div>
-            </div>
+            style="padding:14px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
+            <span style="font-size:22px">🥗</span>
+            <span style="font-family:var(--font-display);font-size:12px;color:var(--text)">Alimento</span>
           </button>
+          <button id="regDishBtn" onclick="closeBS('bsRegister');openDishPicker()"
+            style="padding:14px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
+            <span style="font-size:22px">🍽️</span>
+            <span style="font-family:var(--font-display);font-size:12px;color:var(--text)">Platillo</span>
+          </button>
+          <button id="regTemplateBtn" onclick="closeBS('bsRegister');openTemplatePicker()"
+            style="padding:14px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
+            <span style="font-size:22px">📋</span>
+            <span style="font-family:var(--font-display);font-size:12px;color:var(--text)">Plantilla</span>
+          </button>
+        </div>
+
+        <!-- Other types -->
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Otros</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
           <button onclick="closeBS('bsRegister');openBS('bsHyd')"
-            style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
-            <div style="width:44px;height:44px;border-radius:50%;background:#4a90d9;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💧</div>
+            style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
+            <div style="width:40px;height:40px;border-radius:50%;background:#4a90d9;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💧</div>
             <div>
-              <div style="font-family:var(--font-display);font-size:15px;color:var(--text);font-weight:500">Hidratación</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px">Agua, hidratantes</div>
+              <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Hidratación</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Agua, hidratantes</div>
             </div>
           </button>
           <button onclick="closeBS('bsRegister');openBS('bsSupp')"
-            style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
-            <div style="width:44px;height:44px;border-radius:50%;background:#9b59b6;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💊</div>
+            style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
+            <div style="width:40px;height:40px;border-radius:50%;background:#9b59b6;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💊</div>
             <div>
-              <div style="font-family:var(--font-display);font-size:15px;color:var(--text);font-weight:500">Suplementos</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px">Marcá los suplementos del día</div>
+              <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Suplementos</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Marcá los suplementos del día</div>
             </div>
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dish picker sheet -->
+  <div class="bottom-sheet-overlay" id="bsDishPicker" onclick="closeBSIfOverlay(event,'bsDishPicker')">
+    <div class="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">🍽️ Elegí un platillo</div>
+        <button class="bs-close" onclick="closeBS('bsDishPicker')">✕</button>
+      </div>
+      <div class="bs-body">
+        <div id="dishPickerList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template picker sheet -->
+  <div class="bottom-sheet-overlay" id="bsTemplatePicker" onclick="closeBSIfOverlay(event,'bsTemplatePicker')">
+    <div class="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">📋 Aplicar plantilla</div>
+        <button class="bs-close" onclick="closeBS('bsTemplatePicker')">✕</button>
+      </div>
+      <div class="bs-body">
+        <div style="margin-bottom:12px">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Fecha</label>
+          <input type="date" id="templatePickerDate" style="width:100%;font-size:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;color:var(--text)">
+        </div>
+        <div id="templatePickerList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
   </div>
@@ -7287,7 +7336,220 @@ function renderHydDonuts() {
 
 // ══ FAB ══
 function openRegisterSheet() {
+  renderRegisterHub();
   openBS('bsRegister');
+}
+
+function getCurrentMealType() {
+  const h = new Date().getHours();
+  if (h < 10) return 'Desayuno';
+  if (h < 12) return 'Snack Mañana';
+  if (h < 15) return 'Almuerzo';
+  if (h < 18) return 'Snack Tarde';
+  if (h < 21) return 'Cena';
+  return 'Extra';
+}
+
+function renderRegisterHub() {
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+  const currentMeal = getCurrentMealType();
+  const suggEl = document.getElementById('regSuggestion');
+
+  // Hide/dim dish and template buttons if nothing configured
+  const dishBtn = document.getElementById('regDishBtn');
+  const tmplBtn = document.getElementById('regTemplateBtn');
+  if (dishBtn) dishBtn.style.opacity = dishes.length ? '1' : '0.4';
+  if (tmplBtn) tmplBtn.style.opacity = templates.length ? '1' : '0.4';
+
+  // Find relevant template for current meal time
+  const relevantTemplates = templates.filter(t => t.meal_type === currentMeal);
+  const relevantDishes    = dishes.slice(0, 3); // most recent dishes as quick picks
+
+  if (!suggEl) return;
+
+  if (relevantTemplates.length || relevantDishes.length) {
+    let html = `<div style="background:rgba(108,144,60,0.08);border:1px solid rgba(108,144,60,0.25);border-radius:12px;padding:12px 14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">${MEAL_ICONS[currentMeal]||''} Sugerencias para ${currentMeal}</div>`;
+
+    // Relevant templates first
+    relevantTemplates.forEach(t => {
+      const preview = t.items.slice(0,3).map(i=>i.food_name).join(' · ');
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(108,144,60,0.15)">
+        <div style="min-width:0">
+          <div style="font-family:var(--font-display);font-size:13px;color:var(--text);font-weight:500">📋 ${t.name}</div>
+          <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">${preview}</div>
+        </div>
+        <button onclick="closeBS('bsRegister');quickApplyTemplate(${t.id})"
+          style="flex-shrink:0;margin-left:10px;padding:6px 12px;border-radius:8px;background:var(--accent);color:#0e110a;border:none;font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer">Aplicar</button>
+      </div>`;
+    });
+
+    // Recent dishes as quick picks
+    if (relevantDishes.length && relevantTemplates.length < 2) {
+      relevantDishes.forEach(d => {
+        const ings  = d.dish_ingredients || [];
+        const cal   = Math.round(ings.reduce((s,i) => s+(i.calories||0), 0));
+        html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(108,144,60,0.15)">
+          <div style="min-width:0">
+            <div style="font-family:var(--font-display);font-size:13px;color:var(--text)">🍽️ ${d.name}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">${cal} kcal · ${ings.length} ingredientes</div>
+          </div>
+          <button onclick="closeBS('bsRegister');quickRegisterDish(${d.id})"
+            style="flex-shrink:0;margin-left:10px;padding:6px 12px;border-radius:8px;background:var(--surface2);color:var(--text);border:1px solid var(--border);font-family:var(--font-display);font-size:12px;cursor:pointer">Registrar</button>
+        </div>`;
+      });
+    }
+
+    html += '</div>';
+    suggEl.innerHTML = html;
+    suggEl.style.display = 'block';
+  } else {
+    suggEl.style.display = 'none';
+  }
+}
+
+// Quick apply template from hub (uses today, skips modal)
+async function quickApplyTemplate(templateId) {
+  const tmpl = templates.find(t => t.id === templateId);
+  if (!tmpl) return;
+  const targetDate = carouselDays[carouselIndex] || getTodayDate();
+  const newEntries = tmpl.items.map(item => ({
+    user_id: currentUser.id, log_date: targetDate,
+    meal_type: tmpl.meal_type, food_name: item.food_name,
+    quantity: item.quantity, unit: item.unit,
+    calories: item.calories, protein_g: item.protein_g,
+    carbs_g: item.carbs_g, fat_g: item.fat_g,
+    fiber_g: item.fiber_g, sugar_g: item.sugar_g,
+    origin: item.origin || 'Casa',
+  }));
+  const { data, error } = await sb.from('food_log').insert(newEntries).select();
+  if (error) { showToast('Error al aplicar plantilla', true); return; }
+  data.forEach(e => entries.push(e));
+  attachDishIngredients();
+  buildCarouselDays(true);
+  const idx = carouselDays.indexOf(targetDate);
+  if (idx !== -1) { carouselIndex = idx; localStorage.setItem('bz_carousel_date', targetDate); }
+  renderCarouselDay();
+  showToast(`✓ "${tmpl.name}" aplicada`);
+}
+
+// Quick register a dish from hub
+async function quickRegisterDish(dishId) {
+  const dish = dishes.find(d => d.id === dishId);
+  if (!dish) return;
+  const ings = dish.dish_ingredients || [];
+  const cal  = Math.round(ings.reduce((s,i)=>s+(i.calories||0),0));
+  const p    = Math.round(ings.reduce((s,i)=>s+(i.protein_g||0),0)*10)/10;
+  const c    = Math.round(ings.reduce((s,i)=>s+(i.carbs_g||0),0)*10)/10;
+  const f    = Math.round(ings.reduce((s,i)=>s+(i.fat_g||0),0)*10)/10;
+  const mealType = getCurrentMealType();
+  const targetDate = carouselDays[carouselIndex] || getTodayDate();
+  const entry = {
+    user_id: currentUser.id, log_date: targetDate,
+    meal_type: mealType, food_name: dish.name,
+    quantity: 1, unit: 'porción',
+    calories: cal, protein_g: p, carbs_g: c, fat_g: f,
+    fiber_g: 0, sugar_g: 0, origin: 'Casa',
+  };
+  const { data, error } = await queuedInsert('food_log', entry);
+  if (error) { showToast('Error al registrar platillo', true); return; }
+  const saved = data?.[0];
+  entries.push({ ...entry, id: saved?.id, logged_at: saved?.logged_at, _dishIngs: ings });
+  attachDishIngredients();
+  buildCarouselDays(true);
+  const idx = carouselDays.indexOf(targetDate);
+  if (idx !== -1) { carouselIndex = idx; localStorage.setItem('bz_carousel_date', targetDate); }
+  renderCarouselDay();
+  showToast(`✓ ${dish.name} registrado`);
+}
+
+// Dish picker sheet
+function openDishPicker() {
+  if (!dishes.length) {
+    showToast('No tenés platillos. Creá uno en Alimentos.', true);
+    return;
+  }
+  const list = document.getElementById('dishPickerList');
+  list.innerHTML = dishes.map(d => {
+    const ings = d.dish_ingredients || [];
+    const cal  = Math.round(ings.reduce((s,i)=>s+(i.calories||0),0));
+    const p    = Math.round(ings.reduce((s,i)=>s+(i.protein_g||0),0)*10)/10;
+    const c    = Math.round(ings.reduce((s,i)=>s+(i.carbs_g||0),0)*10)/10;
+    const f    = Math.round(ings.reduce((s,i)=>s+(i.fat_g||0),0)*10)/10;
+    return `<button onclick="closeBS('bsDishPicker');quickRegisterDish(${d.id})"
+      style="width:100%;text-align:left;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">🍽️ ${d.name}</span>
+        <span style="font-family:var(--font-display);font-size:14px;color:var(--accent)">${cal} kcal</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">P:${p}g · C:${c}g · G:${f}g · ${ings.length} ingrediente${ings.length!==1?'s':''}</div>
+    </button>`;
+  }).join('');
+  openBS('bsDishPicker');
+}
+
+// Template picker sheet
+function openTemplatePicker() {
+  if (!templates.length) {
+    showToast('No tenés plantillas. Creá una en Alimentos.', true);
+    return;
+  }
+  const dateEl = document.getElementById('templatePickerDate');
+  if (dateEl) dateEl.value = carouselDays[carouselIndex] || getTodayDate();
+
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+  const currentMeal = getCurrentMealType();
+
+  // Sort: relevant meal type first
+  const sorted = [...templates].sort((a,b) => {
+    if (a.meal_type === currentMeal && b.meal_type !== currentMeal) return -1;
+    if (b.meal_type === currentMeal && a.meal_type !== currentMeal) return 1;
+    return 0;
+  });
+
+  const list = document.getElementById('templatePickerList');
+  list.innerHTML = sorted.map(t => {
+    const icon    = MEAL_ICONS[t.meal_type] || '🍽️';
+    const preview = t.items.slice(0,4).map(i=>i.food_name).join(', ');
+    const totalCal = Math.round(t.items.reduce((s,i)=>s+(i.calories||0),0));
+    const isRelevant = t.meal_type === currentMeal;
+    return `<button onclick="closeBS('bsTemplatePicker');quickApplyTemplateFromPicker(${t.id})"
+      style="width:100%;text-align:left;padding:14px;border-radius:12px;border:${isRelevant?'1.5px solid var(--accent)':'1px solid var(--border)'};background:${isRelevant?'rgba(108,144,60,0.06)':'var(--surface2)'};cursor:pointer">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <span style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">${icon} ${t.name}</span>
+        <span style="font-size:11px;color:var(--muted)">${totalCal} kcal total</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.meal_type} · ${preview}</div>
+    </button>`;
+  }).join('');
+  openBS('bsTemplatePicker');
+}
+
+async function quickApplyTemplateFromPicker(templateId) {
+  const dateEl = document.getElementById('templatePickerDate');
+  const targetDate = dateEl?.value || getTodayDate();
+  const tmpl = templates.find(t => t.id === templateId);
+  if (!tmpl) return;
+  const newEntries = tmpl.items.map(item => ({
+    user_id: currentUser.id, log_date: targetDate,
+    meal_type: tmpl.meal_type, food_name: item.food_name,
+    quantity: item.quantity, unit: item.unit,
+    calories: item.calories, protein_g: item.protein_g,
+    carbs_g: item.carbs_g, fat_g: item.fat_g,
+    fiber_g: item.fiber_g, sugar_g: item.sugar_g,
+    origin: item.origin || 'Casa',
+  }));
+  const { data, error } = await sb.from('food_log').insert(newEntries).select();
+  if (error) { showToast('Error al aplicar plantilla', true); return; }
+  data.forEach(e => entries.push(e));
+  attachDishIngredients();
+  buildCarouselDays(true);
+  const idx = carouselDays.indexOf(targetDate);
+  if (idx !== -1) { carouselIndex = idx; localStorage.setItem('bz_carousel_date', targetDate); }
+  renderCarouselDay();
+  const dateLabel = targetDate === getTodayDate() ? 'hoy'
+    : new Date(targetDate+'T12:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'short'});
+  showToast(`✓ "${tmpl.name}" aplicada al ${dateLabel}`);
 }
 
 // Keep closeFAB as no-op for any legacy references
