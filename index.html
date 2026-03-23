@@ -1112,7 +1112,7 @@ select { cursor: pointer; }
       <div class="macro-rings" id="homeMacroRings">
         <div class="macro-ring">
           <svg width="38" height="38" viewBox="0 0 38 38" id="ringProt">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringProtTrack"/>
             <circle cx="19" cy="19" r="15" fill="none" stroke="#4a90d9" stroke-width="5"
               stroke-dasharray="94.2" stroke-dashoffset="94.2"
               id="ringProtFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
@@ -1122,7 +1122,7 @@ select { cursor: pointer; }
         </div>
         <div class="macro-ring">
           <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringCarbTrack"/>
             <circle cx="19" cy="19" r="15" fill="none" stroke="#d4a840" stroke-width="5"
               stroke-dasharray="94.2" stroke-dashoffset="94.2"
               id="ringCarbFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
@@ -1132,7 +1132,7 @@ select { cursor: pointer; }
         </div>
         <div class="macro-ring">
           <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringFatTrack"/>
             <circle cx="19" cy="19" r="15" fill="none" stroke="#e07840" stroke-width="5"
               stroke-dasharray="94.2" stroke-dashoffset="94.2"
               id="ringFatFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
@@ -1142,7 +1142,7 @@ select { cursor: pointer; }
         </div>
         <div class="macro-ring">
           <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringFibTrack"/>
             <circle cx="19" cy="19" r="15" fill="none" stroke="#a8c060" stroke-width="5"
               stroke-dasharray="94.2" stroke-dashoffset="94.2"
               id="ringFibFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
@@ -1152,7 +1152,7 @@ select { cursor: pointer; }
         </div>
         <div class="macro-ring">
           <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5"/>
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringSugTrack"/>
             <circle cx="19" cy="19" r="15" fill="none" stroke="#e07840" stroke-width="5"
               stroke-dasharray="94.2" stroke-dashoffset="94.2"
               id="ringSugFill" transform="rotate(-90 19 19)" stroke-linecap="butt" opacity="0.6"/>
@@ -3356,25 +3356,33 @@ async function renderCarouselDay() {
     calBarW.style.display = 'none';
   }
 
-  // ── Macro rings (SVG stroke-dashoffset animation) ──
+  // ── Macro rings ──
   const ringDefs = [
-    { id:'ringProtFill', val:totProt, goal:settings.goalProtein, color:'#4a90d9' },
-    { id:'ringCarbFill', val:totCarb, goal:settings.goalCarbs,   color:'#d4a840' },
-    { id:'ringFatFill',  val:totFat,  goal:settings.goalFat,     color:'#e07840' },
-    { id:'ringFibFill',  val:totFib,  goal:null,                 color:'#a8c060' },
-    { id:'ringSugFill',  val:totSug,  goal:null,                 color:'#e07840' },
+    { id:'ringProtFill', trackId:'ringProtTrack', val:totProt, goal:settings.goalProtein, color:'#4a90d9' },
+    { id:'ringCarbFill', trackId:'ringCarbTrack', val:totCarb, goal:settings.goalCarbs,   color:'#d4a840' },
+    { id:'ringFatFill',  trackId:'ringFatTrack',  val:totFat,  goal:settings.goalFat,     color:'#e07840' },
+    { id:'ringFibFill',  trackId:'ringFibTrack',  val:totFib,  goal:null,                 color:'#a8c060' },
+    { id:'ringSugFill',  trackId:'ringSugTrack',  val:totSug,  goal:null,                 color:'#e07840' },
   ];
-  const circumference = 2 * Math.PI * 15; // r=15
+  const circumference = 2 * Math.PI * 15;
   ringDefs.forEach(r => {
-    const el = document.getElementById(r.id);
-    if (!el) return;
-    const pct = r.goal ? Math.min(r.val / r.goal, 1) : 0;
-    const offset = circumference * (1 - pct);
-    el.style.strokeDashoffset = offset;
-    el.style.stroke = r.goal
-      ? (r.id === 'ringProtFill' ? '#4a90d9' : r.color)
-      : r.color;
-    el.style.opacity = r.goal ? '1' : '0.35';
+    const fill  = document.getElementById(r.id);
+    const track = document.getElementById(r.trackId);
+    if (!fill) return;
+    if (r.goal) {
+      // Has goal: show progress ring
+      const pct    = Math.min(r.val / r.goal, 1);
+      const offset = circumference * (1 - pct);
+      fill.style.strokeDashoffset = offset;
+      fill.style.stroke   = r.color;
+      fill.style.opacity  = '1';
+      fill.style.display  = '';
+      if (track) { track.style.display = ''; }
+    } else {
+      // No goal: hide ring entirely — just show value text
+      fill.style.display  = 'none';
+      if (track) { track.style.display = 'none'; }
+    }
   });
 
   // ── Day meta row: burn, hydration, supps ──
@@ -3389,7 +3397,7 @@ async function renderCarouselDay() {
 
   let metaHTML = '';
   if (burned) {
-    const balance = totCal - burned;
+    const balance = Math.round(totCal - burned);
     const balColor = balance <= 0 ? '#a8c060' : '#e07840';
     const balLabel = balance <= 0 ? 'déficit' : 'superávit';
     metaHTML += `<div class="day-meta-row">
@@ -3398,42 +3406,29 @@ async function renderCarouselDay() {
     </div>`;
   }
   if (waterAmt || hydAmt || settings.goalWater || settings.goalIsotonic) {
-    const chips = [];
-    if (waterAmt || settings.goalWater) {
-      const goal = settings.goalWater;
-      const pct  = goal ? Math.min(Math.round((waterAmt/goal)*100), 100) : null;
-      const color = pct === null ? '#4a90d9'
-        : pct >= 100 ? '#639922' : pct >= 60 ? '#4a90d9' : '#EF9F27';
-      chips.push(`
-        <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
-            <span style="font-size:11px;color:var(--muted)">💧 Agua</span>
-            <span style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text)">${disp(waterAmt)}${goal?` <span style="font-size:10px;color:var(--muted)">/ ${disp(goal)}</span>`:''}</span>
-          </div>
-          ${goal ? `<div style="height:3px;border-radius:2px;background:var(--border)">
-            <div style="width:${pct}%;height:100%;border-radius:2px;background:${color};transition:width 0.4s"></div>
-          </div>` : ''}
-        </div>`);
-    }
-    if (hydAmt || settings.goalIsotonic) {
-      const goal = settings.goalIsotonic;
-      const pct  = goal ? Math.min(Math.round((hydAmt/goal)*100), 100) : null;
-      const color = pct === null ? '#5bc0de'
-        : pct >= 100 ? '#639922' : pct >= 60 ? '#5bc0de' : '#EF9F27';
-      chips.push(`
-        <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
-            <span style="font-size:11px;color:var(--muted)">🏋️ Hidratante</span>
-            <span style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text)">${disp(hydAmt)}${goal?` <span style="font-size:10px;color:var(--muted)">/ ${disp(goal)}</span>`:''}</span>
-          </div>
-          ${goal ? `<div style="height:3px;border-radius:2px;background:var(--border)">
-            <div style="width:${pct}%;height:100%;border-radius:2px;background:${color};transition:width 0.4s"></div>
-          </div>` : ''}
-        </div>`);
-    }
-    metaHTML += `<div class="day-meta-row" style="border-bottom:none;padding-bottom:0">
-      <div style="display:flex;gap:8px;width:100%">${chips.join('')}</div>
-    </div>`;
+    const totalAmt  = waterAmt + hydAmt;
+    const totalGoal = (settings.goalWater || 0) + (settings.goalIsotonic || 0);
+    const pct       = totalGoal ? Math.min(Math.round((totalAmt / totalGoal) * 100), 100) : null;
+    const color     = !pct ? '#4a90d9' : pct >= 100 ? '#639922' : pct >= 60 ? '#4a90d9' : '#EF9F27';
+    const dispTotal = disp(totalAmt);
+    const detail    = [
+      waterAmt || settings.goalWater ? `💧 ${disp(waterAmt)}${settings.goalWater ? ' / ' + disp(settings.goalWater) : ''}` : '',
+      hydAmt || settings.goalIsotonic ? `🏋️ ${disp(hydAmt)}${settings.goalIsotonic ? ' / ' + disp(settings.goalIsotonic) : ''}` : '',
+    ].filter(Boolean).join('  ·  ');
+
+    metaHTML += `<div class="day-meta-row" style="flex-direction:column;align-items:stretch;gap:5px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;color:var(--muted)">💧 Hidratación total</span>
+        <span style="font-family:var(--font-display);font-size:14px;font-weight:500;color:var(--text)">${dispTotal}${totalGoal ? ` <span style="font-size:11px;color:var(--muted);font-weight:400">/ ${disp(totalGoal)}</span>` : ''}</span>
+      </div>
+      ${totalGoal ? `<div style="height:3px;border-radius:2px;background:var(--border)">
+        <div style="width:${pct}%;height:100%;border-radius:2px;background:${color};transition:width 0.4s"></div>
+      </div>` : ''}
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:10px;color:var(--muted)">${detail}</span>
+        ${pct !== null ? `<span style="font-size:10px;color:${color};font-weight:500">${pct}%</span>` : ''}
+      </div>
+    </div>`; 
   }
   if (totalSupps) {
     const allTaken = takenSupps.length >= totalSupps;
