@@ -1091,82 +1091,35 @@ select { cursor: pointer; }
       <button class="carousel-arrow" id="carouselNext" onclick="carouselNavigate(1)">›</button>
     </div>
 
-    <!-- Day summary card (replaces grid + progress + supp + notes + burn) -->
+    <!-- Day summary card — Option 2: cal hero + 2×2 grid -->
     <div class="day-card" id="homeDayCard">
+
       <!-- Hero calories -->
-      <div class="day-card-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:5px">
         <div>
-          <div class="day-hero-cal" id="todayCal">0</div>
-          <div class="day-hero-sub" id="todayCalSub">kcal</div>
+          <div style="font-family:var(--font-display);font-size:42px;font-weight:300;color:var(--text);line-height:1" id="todayCal">0</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px" id="todayCalSub">kcal</div>
         </div>
         <div id="todayCalBadge" style="display:none;text-align:right">
-          <div id="todayCalPct" style="font-family:var(--font-display);font-size:22px;font-weight:300"></div>
+          <div id="todayCalPct" style="font-family:var(--font-display);font-size:24px;font-weight:300"></div>
           <div style="font-size:10px;color:var(--muted)">de meta</div>
         </div>
       </div>
-      <div class="day-cal-bar" id="todayCalBarWrap" style="display:none">
-        <div class="day-cal-fill" id="todayCalBar"></div>
+      <div id="todayCalBarWrap" style="display:none;height:4px;border-radius:2px;background:var(--border);margin-bottom:12px">
+        <div id="todayCalBar" style="height:100%;border-radius:2px;transition:width .4s"></div>
       </div>
 
-      <!-- Macro rings -->
-      <div class="macro-rings" id="homeMacroRings">
-        <div class="macro-ring">
-          <svg width="38" height="38" viewBox="0 0 38 38" id="ringProt">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringProtTrack"/>
-            <circle cx="19" cy="19" r="15" fill="none" stroke="#4a90d9" stroke-width="5"
-              stroke-dasharray="94.2" stroke-dashoffset="94.2"
-              id="ringProtFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
-          </svg>
-          <div class="macro-ring-val" id="todayProt">0</div>
-          <div class="macro-ring-lbl">Prot</div>
-        </div>
-        <div class="macro-ring">
-          <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringCarbTrack"/>
-            <circle cx="19" cy="19" r="15" fill="none" stroke="#d4a840" stroke-width="5"
-              stroke-dasharray="94.2" stroke-dashoffset="94.2"
-              id="ringCarbFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
-          </svg>
-          <div class="macro-ring-val" id="todayCarbs">0</div>
-          <div class="macro-ring-lbl">Carbos</div>
-        </div>
-        <div class="macro-ring">
-          <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringFatTrack"/>
-            <circle cx="19" cy="19" r="15" fill="none" stroke="#e07840" stroke-width="5"
-              stroke-dasharray="94.2" stroke-dashoffset="94.2"
-              id="ringFatFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
-          </svg>
-          <div class="macro-ring-val" id="todayFat">0</div>
-          <div class="macro-ring-lbl">Grasas</div>
-        </div>
-        <div class="macro-ring">
-          <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringFibTrack"/>
-            <circle cx="19" cy="19" r="15" fill="none" stroke="#a8c060" stroke-width="5"
-              stroke-dasharray="94.2" stroke-dashoffset="94.2"
-              id="ringFibFill" transform="rotate(-90 19 19)" stroke-linecap="butt"/>
-          </svg>
-          <div class="macro-ring-val" id="todayFib">0</div>
-          <div class="macro-ring-lbl">Fibra</div>
-        </div>
-        <div class="macro-ring">
-          <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--border)" stroke-width="5" id="ringSugTrack"/>
-            <circle cx="19" cy="19" r="15" fill="none" stroke="#e07840" stroke-width="5"
-              stroke-dasharray="94.2" stroke-dashoffset="94.2"
-              id="ringSugFill" transform="rotate(-90 19 19)" stroke-linecap="butt" opacity="0.6"/>
-          </svg>
-          <div class="macro-ring-val" id="todaySug">0</div>
-          <div class="macro-ring-lbl">Azúcar</div>
-        </div>
-      </div>
+      <!-- 2×2 grid: macros with goal + hydration + burn -->
+      <div id="homeDayGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px"></div>
 
-      <!-- Meta rows: burn, hydration, supps (rendered by JS) -->
+      <!-- Chips row: macros without goal -->
+      <div id="homeMacroChips" style="display:flex;gap:6px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)"></div>
+
+      <!-- Supps + burn input + note (rendered by JS) -->
       <div id="homeDayMeta"></div>
 
       <!-- Inline note -->
-      <div class="day-note-inline">
+      <div class="day-note-inline" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
         <span style="font-size:15px;flex-shrink:0">📝</span>
         <input type="text" id="dayNoteInline" placeholder="Nota del día…"
           onblur="saveDayNoteInline()" onkeydown="if(event.key==='Enter')this.blur()">
@@ -1176,6 +1129,8 @@ select { cursor: pointer; }
     <!-- Hidden legacy inputs for compatibility -->
     <div style="display:none">
       <input id="burnedCalInput" type="number" onchange="saveBurnedCals()">
+      <div id="todayProt"></div><div id="todayCarbs"></div>
+      <div id="todayFat"></div><div id="todayFib"></div><div id="todaySug"></div>
     </div>
 
     <!-- Entries grouped by meal type -->
@@ -3325,22 +3280,16 @@ async function renderCarouselDay() {
   const totSug  = dayEntries.reduce((s,e) => s+(e.sugar_g||0), 0);
 
   // ── Hero calories ──
-  document.getElementById('todayCal').textContent  = Math.round(totCal);
-  document.getElementById('todayProt').textContent = totProt.toFixed(1);
-  document.getElementById('todayCarbs').textContent = totCarb.toFixed(1);
-  document.getElementById('todayFat').textContent  = totFat.toFixed(1);
-  document.getElementById('todayFib').textContent  = totFib.toFixed(1);
-  document.getElementById('todaySug').textContent  = totSug.toFixed(1);
+  document.getElementById('todayCal').textContent = Math.round(totCal);
 
-  const calGoal = settings.goalCal;
-  const calPct  = calGoal ? Math.round((totCal/calGoal)*100) : null;
+  const calGoal  = settings.goalCal;
+  const calPct   = calGoal ? Math.round((totCal / calGoal) * 100) : null;
   const calColor = calGoal ? heatmapColorCal(calPct) : 'var(--accent)';
-
-  const calSub  = document.getElementById('todayCalSub');
-  const calBadge= document.getElementById('todayCalBadge');
-  const calBarW = document.getElementById('todayCalBarWrap');
-  const calBar  = document.getElementById('todayCalBar');
-  const calPctEl= document.getElementById('todayCalPct');
+  const calSub   = document.getElementById('todayCalSub');
+  const calBadge = document.getElementById('todayCalBadge');
+  const calBarW  = document.getElementById('todayCalBarWrap');
+  const calBar   = document.getElementById('todayCalBar');
+  const calPctEl = document.getElementById('todayCalPct');
 
   if (calGoal) {
     calSub.textContent = `kcal de ${calGoal}`;
@@ -3356,93 +3305,129 @@ async function renderCarouselDay() {
     calBarW.style.display = 'none';
   }
 
-  // ── Macro rings ──
-  const ringDefs = [
-    { id:'ringProtFill', trackId:'ringProtTrack', val:totProt, goal:settings.goalProtein, color:'#4a90d9' },
-    { id:'ringCarbFill', trackId:'ringCarbTrack', val:totCarb, goal:settings.goalCarbs,   color:'#d4a840' },
-    { id:'ringFatFill',  trackId:'ringFatTrack',  val:totFat,  goal:settings.goalFat,     color:'#e07840' },
-    { id:'ringFibFill',  trackId:'ringFibTrack',  val:totFib,  goal:null,                 color:'#a8c060' },
-    { id:'ringSugFill',  trackId:'ringSugTrack',  val:totSug,  goal:null,                 color:'#e07840' },
-  ];
-  const circumference = 2 * Math.PI * 15;
-  ringDefs.forEach(r => {
-    const fill  = document.getElementById(r.id);
-    const track = document.getElementById(r.trackId);
-    if (!fill) return;
-    if (r.goal) {
-      // Has goal: show progress ring
-      const pct    = Math.min(r.val / r.goal, 1);
-      const offset = circumference * (1 - pct);
-      fill.style.strokeDashoffset = offset;
-      fill.style.stroke   = r.color;
-      fill.style.opacity  = '1';
-      fill.style.display  = '';
-      if (track) { track.style.display = ''; }
-    } else {
-      // No goal: hide ring entirely — just show value text
-      fill.style.display  = 'none';
-      if (track) { track.style.display = 'none'; }
-    }
-  });
-
-  // ── Day meta row: burn, hydration, supps ──
-  const burned = burnedCals[dateStr] || 0;
+  // ── Hydration totals ──
+  const burned   = burnedCals[dateStr] || 0;
   const waterAmt = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
   const hydAmt   = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
-  const disp = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
+  const disp     = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
 
-  await loadSuppLogForDate(dateStr);
-  const takenSupps  = (suppLog[dateStr] || []).filter(l => supplements.find(s=>s.id===l.supplement_id));
-  const totalSupps  = supplements.length;
+  // ── Grid blocks ──
+  // Macro blocks with goal + hydration + balance
+  const macroGoalDefs = [
+    { label:'Proteína', val:totProt, goal:settings.goalProtein, color:'#4a90d9', fmt: v=>v.toFixed(1)+'g' },
+    { label:'Carbos',   val:totCarb, goal:settings.goalCarbs,   color:'#d4a840', fmt: v=>v.toFixed(1)+'g' },
+    { label:'Grasas',   val:totFat,  goal:settings.goalFat,     color:'#e07840', fmt: v=>v.toFixed(1)+'g' },
+  ];
+  const macroNoGoalDefs = [
+    { label:'Fibra',   val:totFib,  color:'#a8c060' },
+    { label:'Azúcar',  val:totSug,  color:'#EF9F27' },
+  ];
 
-  let metaHTML = '';
+  const gridBlocks = [];
+
+  // Add macro blocks that have goals
+  macroGoalDefs.filter(m => m.goal).forEach(m => {
+    const pct = Math.min(Math.round((m.val / m.goal) * 100), 100);
+    gridBlocks.push(`
+      <div style="background:var(--surface2);border-radius:12px;padding:10px 12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${m.label}</div>
+        <div style="font-family:var(--font-display);font-size:17px;font-weight:500;color:${m.color};margin-bottom:5px">${m.fmt(m.val)}</div>
+        <div style="height:4px;border-radius:2px;background:var(--border)">
+          <div style="width:${pct}%;height:100%;border-radius:2px;background:${m.color};transition:width .4s"></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:right">${pct}% de ${m.goal}g</div>
+      </div>`);
+  });
+
+  // Hydration block (if any data or goal)
+  const totalHyd  = waterAmt + hydAmt;
+  const totalGoal = (settings.goalWater||0) + (settings.goalIsotonic||0);
+  if (totalHyd || totalGoal) {
+    const hydPct   = totalGoal ? Math.min(Math.round((totalHyd/totalGoal)*100), 100) : null;
+    const hydColor = !hydPct ? '#4a90d9' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
+    const hydDetail= [
+      (waterAmt||settings.goalWater) ? `💧${disp(waterAmt)}${settings.goalWater?'/'+disp(settings.goalWater):''}` : '',
+      (hydAmt||settings.goalIsotonic)? `🏋️${disp(hydAmt)}${settings.goalIsotonic?'/'+disp(settings.goalIsotonic):''}` : '',
+    ].filter(Boolean).join(' · ');
+    gridBlocks.push(`
+      <div style="background:var(--surface2);border-radius:12px;padding:10px 12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">💧 Hidratación</div>
+        <div style="font-family:var(--font-display);font-size:17px;font-weight:500;color:${hydColor};margin-bottom:5px">${disp(totalHyd)}</div>
+        ${totalGoal ? `<div style="height:4px;border-radius:2px;background:var(--border)">
+          <div style="width:${hydPct}%;height:100%;border-radius:2px;background:${hydColor};transition:width .4s"></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:right">${hydPct}% · ${hydDetail}</div>`
+        : `<div style="font-size:10px;color:var(--muted);margin-top:3px">${hydDetail}</div>`}
+      </div>`);
+  }
+
+  // Balance block (only if burned calories registered)
   if (burned) {
-    const balance = Math.round(totCal - burned);
+    const balance  = Math.round(totCal - burned);
     const balColor = balance <= 0 ? '#a8c060' : '#e07840';
     const balLabel = balance <= 0 ? 'déficit' : 'superávit';
-    metaHTML += `<div class="day-meta-row">
-      <span>🔥 ${burned.toLocaleString()} kcal quemadas</span>
-      <span style="color:${balColor};font-weight:500">${balance>0?'+':''}${balance} ${balLabel}</span>
-    </div>`;
+    gridBlocks.push(`
+      <div style="background:var(--surface2);border-radius:12px;padding:10px 12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">🔥 Balance</div>
+        <div style="font-family:var(--font-display);font-size:17px;font-weight:500;color:${balColor};margin-bottom:5px">${balance>0?'+':''}${balance}</div>
+        <div style="font-size:10px;color:var(--muted)">${burned.toLocaleString()} kcal quemadas</div>
+        <div style="font-size:10px;color:${balColor};font-weight:500;margin-top:1px">${balLabel}</div>
+      </div>`);
   }
-  if (waterAmt || hydAmt || settings.goalWater || settings.goalIsotonic) {
-    const totalAmt  = waterAmt + hydAmt;
-    const totalGoal = (settings.goalWater || 0) + (settings.goalIsotonic || 0);
-    const pct       = totalGoal ? Math.min(Math.round((totalAmt / totalGoal) * 100), 100) : null;
-    const color     = !pct ? '#4a90d9' : pct >= 100 ? '#639922' : pct >= 60 ? '#4a90d9' : '#EF9F27';
-    const dispTotal = disp(totalAmt);
-    const detail    = [
-      waterAmt || settings.goalWater ? `💧 ${disp(waterAmt)}${settings.goalWater ? ' / ' + disp(settings.goalWater) : ''}` : '',
-      hydAmt || settings.goalIsotonic ? `🏋️ ${disp(hydAmt)}${settings.goalIsotonic ? ' / ' + disp(settings.goalIsotonic) : ''}` : '',
-    ].filter(Boolean).join('  ·  ');
 
-    metaHTML += `<div class="day-meta-row" style="flex-direction:column;align-items:stretch;gap:5px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:12px;color:var(--muted)">💧 Hidratación total</span>
-        <span style="font-family:var(--font-display);font-size:14px;font-weight:500;color:var(--text)">${dispTotal}${totalGoal ? ` <span style="font-size:11px;color:var(--muted);font-weight:400">/ ${disp(totalGoal)}</span>` : ''}</span>
-      </div>
-      ${totalGoal ? `<div style="height:3px;border-radius:2px;background:var(--border)">
-        <div style="width:${pct}%;height:100%;border-radius:2px;background:${color};transition:width 0.4s"></div>
-      </div>` : ''}
-      <div style="display:flex;justify-content:space-between">
-        <span style="font-size:10px;color:var(--muted)">${detail}</span>
-        ${pct !== null ? `<span style="font-size:10px;color:${color};font-weight:500">${pct}%</span>` : ''}
-      </div>
-    </div>`; 
+  const gridEl = document.getElementById('homeDayGrid');
+  if (gridBlocks.length) {
+    // If odd number → last block spans 2 cols
+    const needsSpan = gridBlocks.length % 2 !== 0;
+    gridEl.style.display = 'grid';
+    let html = gridBlocks.slice(0, gridBlocks.length - (needsSpan?1:0)).join('');
+    if (needsSpan) {
+      html += `<div style="grid-column:span 2">${gridBlocks[gridBlocks.length-1].replace(
+        'border-radius:12px;padding:10px 12px',
+        'border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:12px;justify-content:space-between'
+      )}</div>`;
+    }
+    gridEl.innerHTML = html;
+  } else {
+    gridEl.style.display = 'none';
   }
+
+  // ── Chips: macros without goal ──
+  const noGoalMacros = [
+    ...macroGoalDefs.filter(m => !m.goal),
+    ...macroNoGoalDefs,
+  ];
+  const chipsEl = document.getElementById('homeMacroChips');
+  if (noGoalMacros.some(m => m.val > 0)) {
+    chipsEl.style.display = 'flex';
+    chipsEl.innerHTML = noGoalMacros.map(m => `
+      <div style="background:var(--surface2);border-radius:8px;padding:5px 10px;display:flex;align-items:baseline;gap:4px">
+        <span style="font-size:11px;color:var(--muted)">${m.label}</span>
+        <span style="font-family:var(--font-display);font-size:14px;color:var(--text)">${typeof m.fmt==='function'?m.fmt(m.val):m.val.toFixed(1)+'g'}</span>
+      </div>`).join('');
+  } else {
+    chipsEl.style.display = 'none';
+  }
+
+  // ── Meta: supls + burn input ──
+  await loadSuppLogForDate(dateStr);
+  const takenSupps = (suppLog[dateStr]||[]).filter(l=>supplements.find(s=>s.id===l.supplement_id));
+  const totalSupps = supplements.length;
+  let metaHTML = '';
+
   if (totalSupps) {
-    const allTaken = takenSupps.length >= totalSupps;
-    const suppColor = allTaken ? '#a8c060' : takenSupps.length > 0 ? '#EF9F27' : 'var(--muted)';
-    const suppLabel = allTaken ? '✓ todos tomados' : takenSupps.length > 0
-      ? `${takenSupps.length}/${totalSupps} tomados`
-      : 'ninguno registrado';
-    const names = supplements.map(s => s.name).join(' · ');
+    const allTaken  = takenSupps.length >= totalSupps;
+    const suppColor = allTaken ? '#a8c060' : takenSupps.length>0 ? '#EF9F27' : 'var(--muted)';
+    const suppLabel = allTaken ? '✓ todos' : takenSupps.length>0
+      ? `${takenSupps.length}/${totalSupps}` : 'ninguno';
+    const names = supplements.map(s=>s.name).join(' · ');
     metaHTML += `<div class="day-meta-row">
       <span style="color:var(--muted)">💊 ${names}</span>
       <span style="color:${suppColor};font-weight:500">${suppLabel}</span>
     </div>`;
   }
-  // Burn input row (inline, always visible)
+
+  // Burn input row
   metaHTML += `<div class="day-meta-row" style="cursor:pointer" onclick="focusBurnInput()">
     <span style="color:var(--muted)">🔥 Calorías quemadas</span>
     <div style="display:flex;align-items:center;gap:4px">
@@ -3454,6 +3439,7 @@ async function renderCarouselDay() {
       <span style="font-size:11px;color:var(--muted)">kcal</span>
     </div>
   </div>`;
+
   document.getElementById('homeDayMeta').innerHTML = metaHTML;
 
   // ── Inline note ──
