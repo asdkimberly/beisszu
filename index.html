@@ -2295,7 +2295,7 @@ async function fsSearch(query) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPA_KEY}` },
       body: JSON.stringify({
         method: 'foods.search',
-        params: { search_expression: query, max_results: 5, page_number: 0 },
+        params: { search_expression: query, max_results: 5, page_number: 0, language: 'es', region: 'CR' },
       }),
     });
     const data = await res.json();
@@ -2303,13 +2303,14 @@ async function fsSearch(query) {
     if (!foods) return [];
     const arr = Array.isArray(foods) ? foods : [foods];
     return arr.map(f => {
-      // Parse the serving description to extract macros
-      // FatSecret returns: "Per 100g - Calories: 130kcal | Fat: 0.30g | Carbs: 28.17g | Protein: 2.66g"
+      // FatSecret returns descriptions in English or Spanish depending on language param
+      // EN: "Per 100g - Calories: 130kcal | Fat: 0.30g | Carbs: 28.17g | Protein: 2.66g"
+      // ES: "Por 100g - Calorías: 130kcal | Grasas: 0.30g | Carbohidratos: 28.17g | Proteínas: 2.66g"
       const desc = f.food_description || '';
-      const cal  = parseFloat(desc.match(/Calories:\s*([\d.]+)/i)?.[1] || 0);
-      const fat  = parseFloat(desc.match(/Fat:\s*([\d.]+)/i)?.[1]      || 0);
-      const carb = parseFloat(desc.match(/Carbs:\s*([\d.]+)/i)?.[1]    || 0);
-      const prot = parseFloat(desc.match(/Protein:\s*([\d.]+)/i)?.[1]  || 0);
+      const cal  = parseFloat(desc.match(/Calor[ií]as?:\s*([\d.]+)/i)?.[1]          || desc.match(/Calories:\s*([\d.]+)/i)?.[1]  || 0);
+      const fat  = parseFloat(desc.match(/Grasas?:\s*([\d.]+)/i)?.[1]               || desc.match(/Fat:\s*([\d.]+)/i)?.[1]        || 0);
+      const carb = parseFloat(desc.match(/Carbohidratos?:\s*([\d.]+)/i)?.[1]        || desc.match(/Carbs:\s*([\d.]+)/i)?.[1]      || 0);
+      const prot = parseFloat(desc.match(/Prote[íi]nas?:\s*([\d.]+)/i)?.[1]         || desc.match(/Protein:\s*([\d.]+)/i)?.[1]    || 0);
       return {
         name: f.food_name,
         displayName: `🌐 ${f.food_name}`,
