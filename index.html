@@ -3642,23 +3642,23 @@ function makeSmartLogItem(e) {
     <div id="macro-pills-${eid}" style="display:none;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)">
       <div style="display:flex;width:100%">
         <div style="flex:1;text-align:center;padding:4px 0">
-          <div style="font-size:15px;color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(0)}g</div>
+          <div style="font-size:15px;color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(1)}g</div>
           <div style="font-size:10px;color:var(--muted);margin-top:3px">Prot</div>
         </div>
         <div style="flex:1;text-align:center;padding:4px 0">
-          <div style="font-size:15px;color:#d4a840">${parseFloat(e.carbs_g||0).toFixed(0)}g</div>
+          <div style="font-size:15px;color:#d4a840">${parseFloat(e.carbs_g||0).toFixed(1)}g</div>
           <div style="font-size:10px;color:var(--muted);margin-top:3px">Carbs</div>
         </div>
         <div style="flex:1;text-align:center;padding:4px 0">
-          <div style="font-size:15px;color:#e07840">${parseFloat(e.fat_g||0).toFixed(0)}g</div>
+          <div style="font-size:15px;color:#e07840">${parseFloat(e.fat_g||0).toFixed(1)}g</div>
           <div style="font-size:10px;color:var(--muted);margin-top:3px">Grasas</div>
         </div>
         <div style="flex:1;text-align:center;padding:4px 0">
-          <div style="font-size:15px;color:#a8c060">${parseFloat(e.fiber_g||0).toFixed(0)}g</div>
+          <div style="font-size:15px;color:#a8c060">${parseFloat(e.fiber_g||0).toFixed(1)}g</div>
           <div style="font-size:10px;color:var(--muted);margin-top:3px">Fibra</div>
         </div>
         <div style="flex:1;text-align:center;padding:4px 0">
-          <div style="font-size:15px;color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(0)}g</div>
+          <div style="font-size:15px;color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(1)}g</div>
           <div style="font-size:10px;color:var(--muted);margin-top:3px">Azúcar</div>
         </div>
       </div>
@@ -3706,16 +3706,16 @@ function makeSmartLogItem(e) {
     <div style="display:flex;align-items:flex-start;justify-content:space-between">
       <div style="min-width:0;flex:1">
         <div style="font-size:14px;color:var(--text);font-family:var(--font-display)">${displayName}${badge}</div>
-        ${ctxSub ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${ctxSub}</div>` : ''}
       </div>
-      <div style="display:flex;align-items:flex-start;gap:5px;flex-shrink:0;margin-left:10px" onclick="event.stopPropagation()">
-        <div style="text-align:right">
-          <div style="font-family:var(--font-display);font-size:13px;color:var(--accent)">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
-          ${time ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">${time}</div>` : ''}
-        </div>
-        <span id="macro-chv-${eid}" style="color:var(--muted);font-size:11px;transition:transform 0.2s;pointer-events:none;margin-top:2px">\u25bc</span>
-        <button onclick="event.stopPropagation();openEntryContextMenu(this,${e.id})" class="ctx-btn" style="margin-top:1px">\u22ef</button>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:10px" onclick="event.stopPropagation()">
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--accent)">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
+        <span id="macro-chv-${eid}" style="color:var(--muted);font-size:11px;transition:transform 0.2s;pointer-events:none">▼</span>
+        <button onclick="event.stopPropagation();openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
       </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+      <div style="font-size:11px;color:var(--muted)">${ctxSub || ''}</div>
+      ${time ? `<div style="font-size:10px;color:var(--muted)">${time}</div>` : ''}
     </div>
     ${makePills(eid)}
   </div>`;
