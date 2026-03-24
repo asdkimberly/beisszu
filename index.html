@@ -3322,10 +3322,10 @@ async function renderCarouselDay() {
     const pct = goal ? Math.min(Math.round((val / goal) * 100), 100) : 0;
     return `<div style="display:flex;align-items:center;gap:7px">
       <span style="font-size:11px;color:var(--muted);width:54px;flex-shrink:0">${label}</span>
-      <div style="flex:1;height:5px;border-radius:3px;background:var(--border)">
+      <div style="flex:1;height:4px;border-radius:3px;background:var(--border)">
         <div style="width:${pct}%;height:100%;border-radius:3px;background:${color};transition:width .4s"></div>
       </div>
-      <span style="font-size:12px;font-weight:600;color:${color};width:36px;text-align:right;flex-shrink:0">${fmt(val)}</span>
+      <span style="font-size:12px;color:${color};width:36px;text-align:right;flex-shrink:0">${fmt(val)}</span>
     </div>`;
   };
 
@@ -3450,7 +3450,7 @@ async function renderCarouselDay() {
       border:0.5px solid ${balance<=0?'rgba(168,192,96,0.25)':'rgba(224,120,64,0.25)'}">
       <span style="font-size:11px;color:var(--muted)">Balance del día</span>
       <span style="font-family:var(--font-display);font-size:16px;font-weight:500;color:${balColor}">${balance>0?'+':''}${balance} kcal</span>
-      <span style="font-size:10px;font-weight:500;color:${balColor}">${balLabel}</span>
+      <span style="font-size:10px;color:${balColor}">${balLabel}</span>
     </div>`;
   }
 
@@ -3622,50 +3622,71 @@ let _dishPickerTargetMeal = null;
 const _origQuickRegisterDish = quickRegisterDish;
 
 // Smart log item — differentiates dishes, templates, simple items
+function toggleEntryMacros(id) {
+  const el  = document.getElementById(`macro-pills-${id}`);
+  const chv = document.getElementById(`macro-chv-${id}`);
+  if (!el) return;
+  const open = el.style.display === 'none' || !el.style.display;
+  el.style.display  = open ? 'flex' : 'none';
+  if (chv) chv.style.transform = open ? 'rotate(180deg)' : '';
+}
+
 function makeSmartLogItem(e) {
-  const time = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'}) : '';
+  const time     = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'}) : '';
   const dishIngs = e._dishIngs?.length ? e._dishIngs : null;
   const isTmplEntry = templates.some(t => t.items?.some(i => i.food_name === e.food_name));
   const displayName = e.food_name.startsWith('🍽️') ? e.food_name : (dishIngs ? `🍽️ ${e.food_name}` : e.food_name);
+  const badge = isTmplEntry && !dishIngs ? `<span class="tmpl-badge">plantilla</span>` : '';
 
-  const badge = isTmplEntry && !dishIngs
-    ? `<span class="tmpl-badge">plantilla</span>` : '';
+  const makePills = (eid) => `
+    <div id="macro-pills-${eid}" style="display:none;flex-wrap:wrap;gap:5px;margin-top:7px;padding-top:7px;border-top:0.5px solid var(--border)">
+      ${e.protein_g ? `<div style="background:rgba(74,144,217,0.12);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">P <span style="color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(1)}g</span></div>` : ''}
+      ${e.carbs_g   ? `<div style="background:rgba(212,168,64,0.12);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">C <span style="color:#d4a840">${parseFloat(e.carbs_g||0).toFixed(1)}g</span></div>` : ''}
+      ${e.fat_g     ? `<div style="background:rgba(224,120,64,0.12);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">G <span style="color:#e07840">${parseFloat(e.fat_g||0).toFixed(1)}g</span></div>` : ''}
+      ${e.fiber_g   ? `<div style="background:rgba(168,192,96,0.12);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">Fib <span style="color:#a8c060">${parseFloat(e.fiber_g||0).toFixed(1)}g</span></div>` : ''}
+      ${e.sugar_g   ? `<div style="background:rgba(239,159,39,0.10);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">Az <span style="color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(1)}g</span></div>` : ''}
+      ${e.quantity  ? `<div style="background:var(--surface2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">${e.quantity} ${e.unit}</div>` : ''}
+      ${e.origin === 'Fuera' ? `<div style="background:var(--surface2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">🌍 Fuera</div>` : ''}
+      ${time ? `<div style="background:var(--surface2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">${time}</div>` : ''}
+    </div>`;
 
   if (dishIngs) {
-    // Dish: card with expandable ingredients
     const entryId = `entry-${e.id}`;
-    return `<div class="log-item" style="margin-bottom:6px">
+    return `<div class="log-item" style="margin-bottom:6px;cursor:pointer" onclick="toggleEntryMacros('${entryId}')">
       <div class="log-item-top">
         <div class="log-item-name">${displayName}${badge}</div>
-        <div style="display:flex;align-items:center;gap:4px">
+        <div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">
           <div class="log-item-cal">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
-          <span id="dish-chevron-${entryId}" onclick="toggleDishExpand('${entryId}')"
-            style="color:var(--muted);font-size:12px;cursor:pointer;transition:transform 0.2s;padding:2px 4px">▼</span>
-          <button onclick="openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
+          <span id="macro-chv-${entryId}" style="color:var(--muted);font-size:11px;transition:transform 0.2s;pointer-events:none">▼</span>
+          <span onclick="event.stopPropagation();toggleDishExpand('${entryId}')"
+            style="color:var(--muted);font-size:12px;cursor:pointer;padding:2px 4px" title="Ver ingredientes">🍽️</span>
+          <button onclick="event.stopPropagation();openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
         </div>
       </div>
-      <div class="log-item-meta">${e.quantity?`${e.quantity} ${e.unit} · `:''}P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g${e.origin==='Fuera'?' · 🌍':''}</div>
+      ${makePills(entryId)}
       <div id="dish-expand-${entryId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
         ${dishIngs.map(ing=>`
           <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px">
             <span style="color:var(--text2)">${ing.food_name||ing.name}</span>
-            <span style="color:var(--muted)">${ing.quantity||''} ${ing.unit||''} · ${Math.round(ing.calories||0)} kcal</span>
+            <span style="color:var(--muted)">${ing.quantity||''} ${ing.unit||''} · ${Math.round(ing.calories||0)} <span style="font-size:10px">kcal</span></span>
           </div>`).join('')}
       </div>
-      <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:2px">${time}</div>
     </div>`;
   }
 
-  // Simple item: compact row
-  return `<div class="log-item-compact">
-    <div style="min-width:0;flex:1">
-      <div style="font-size:14px;color:var(--text);font-family:var(--font-display)">${displayName}${badge}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:1px">${e.quantity?`${e.quantity} ${e.unit} · `:''}P:${e.protein_g||0}g C:${e.carbs_g||0}g G:${e.fat_g||0}g${e.origin==='Fuera'?' · 🌍':''}</div>
+  const eid = `entry-${e.id}`;
+  return `<div class="log-item-compact" onclick="toggleEntryMacros('${eid}')" style="cursor:pointer;flex-direction:column;align-items:stretch;padding:8px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:14px;color:var(--text);font-family:var(--font-display)">${displayName}${badge}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:8px" onclick="event.stopPropagation()">
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--accent)">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
+        <span id="macro-chv-${eid}" style="color:var(--muted);font-size:11px;transition:transform 0.2s;pointer-events:none">▼</span>
+        <button onclick="event.stopPropagation();openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px">
-      <div style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--accent)">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
-      <button onclick="openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
-    </div>
+    ${makePills(eid)}
   </div>`;
 }
 
@@ -4820,6 +4841,7 @@ async function pasteMealFromClipboard(targetMealType, targetDate) {
   buildCarouselDays(true);
   const idx = carouselDays.indexOf(targetDate);
   if (idx !== -1) { carouselIndex = idx; localStorage.setItem('bz_carousel_date', targetDate); }
+  _mealClipboard = null; // clear clipboard after paste
   renderCarouselDay();
   showToast(`✓ ${newEntries.length} entradas pegadas en ${targetMealType}`);
 }
@@ -6719,7 +6741,7 @@ function renderStatsEatingOut(food) {
       <span style="font-size:13px;color:var(--text2)">${totalDays} día${totalDays!==1?'s':''} comiendo fuera</span>
       <span style="font-family:var(--font-display);font-size:15px;color:#5bc0de;font-weight:500">${pct}%</span>
     </div>
-    <div style="height:5px;border-radius:3px;background:var(--border);margin-bottom:14px">
+    <div style="height:4px;border-radius:3px;background:var(--border);margin-bottom:14px">
       <div style="width:${pct}%;height:100%;border-radius:3px;background:#5bc0de;transition:width 0.4s"></div>
     </div>`;
 
@@ -6835,7 +6857,7 @@ function renderStatsAlcohol(food) {
       <span style="font-size:13px;color:var(--text2)">${totalDays} día${totalDays!==1?'s':''} con alcohol</span>
       <span style="font-family:var(--font-display);font-size:15px;color:#e07840;font-weight:500">${pct}%</span>
     </div>
-    <div style="height:5px;border-radius:3px;background:var(--border);margin-bottom:14px">
+    <div style="height:4px;border-radius:3px;background:var(--border);margin-bottom:14px">
       <div style="width:${pct}%;height:100%;border-radius:3px;background:#e07840;transition:width 0.4s"></div>
     </div>`;
 
