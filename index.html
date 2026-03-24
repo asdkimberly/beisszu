@@ -3638,17 +3638,9 @@ function makeSmartLogItem(e) {
   const displayName = e.food_name.startsWith('🍽️') ? e.food_name : (dishIngs ? `🍽️ ${e.food_name}` : e.food_name);
   const badge = isTmplEntry && !dishIngs ? `<span class="tmpl-badge">plantilla</span>` : '';
 
-  const makePills = (eid) => {
-    // Detail line: quantity, time, origin (only if Fuera)
-    const details = [
-      e.quantity ? `${e.quantity} ${e.unit}` : '',
-      time || '',
-      e.origin === 'Fuera' ? '🌍 Fuera' : '',
-    ].filter(Boolean).join(' · ');
-
-    return `
+  // Macro grid — only macros, 5 equal columns, full width
+  const makePills = (eid) => `
     <div id="macro-pills-${eid}" style="display:none;margin-top:7px;padding-top:7px;border-top:0.5px solid var(--border)">
-      ${details ? `<div style="font-size:10px;color:var(--muted);margin-bottom:6px">${details}</div>` : ''}
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center">
         <div style="background:rgba(74,144,217,0.10);border-radius:8px;padding:5px 2px">
           <div style="font-size:12px;color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(1)}g</div>
@@ -3668,23 +3660,34 @@ function makeSmartLogItem(e) {
         </div>
         <div style="background:rgba(239,159,39,0.08);border-radius:8px;padding:5px 2px">
           <div style="font-size:12px;color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(1)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Azúcar</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Az\u00facar</div>
         </div>
       </div>
     </div>`;
-  };
+
+  // Context always visible: quantity · origin (only if Fuera)
+  const ctxSub = [
+    e.quantity ? `${e.quantity} ${e.unit}` : '',
+    e.origin === 'Fuera' ? '\ud83c\udf0d Fuera' : '',
+  ].filter(Boolean).join(' \u00b7 ');
 
   if (dishIngs) {
     const entryId = `entry-${e.id}`;
     return `<div class="log-item" style="margin-bottom:6px;cursor:pointer" onclick="toggleEntryMacros('${entryId}')">
       <div class="log-item-top">
-        <div class="log-item-name">${displayName}${badge}</div>
-        <div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">
-          <div class="log-item-cal">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
-          <span id="macro-chv-${entryId}" style="color:var(--muted);font-size:11px;transition:transform 0.2s;pointer-events:none">▼</span>
+        <div style="flex:1;min-width:0">
+          <div class="log-item-name">${displayName}${badge}</div>
+          ${ctxSub ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${ctxSub}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:4px;flex-shrink:0;margin-left:8px" onclick="event.stopPropagation()">
+          <div style="text-align:right">
+            <div class="log-item-cal">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
+            ${time ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">${time}</div>` : ''}
+          </div>
+          <span id="macro-chv-${entryId}" style="color:var(--muted);font-size:11px;transition:transform 0.2s;pointer-events:none;margin-top:2px">\u25bc</span>
           <span onclick="event.stopPropagation();toggleDishExpand('${entryId}')"
-            style="color:var(--muted);font-size:12px;cursor:pointer;padding:2px 4px" title="Ver ingredientes">🍽️</span>
-          <button onclick="event.stopPropagation();openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
+            style="color:var(--muted);font-size:12px;cursor:pointer;padding:2px 4px;margin-top:1px" title="Ver ingredientes">\ud83c\udf7d\ufe0f</span>
+          <button onclick="event.stopPropagation();openEntryContextMenu(this,${e.id})" class="ctx-btn" style="margin-top:1px">\u22ef</button>
         </div>
       </div>
       ${makePills(entryId)}
@@ -3692,22 +3695,27 @@ function makeSmartLogItem(e) {
         ${dishIngs.map(ing=>`
           <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px">
             <span style="color:var(--text2)">${ing.food_name||ing.name}</span>
-            <span style="color:var(--muted)">${ing.quantity||''} ${ing.unit||''} · ${Math.round(ing.calories||0)} <span style="font-size:10px">kcal</span></span>
+            <span style="color:var(--muted)">${ing.quantity||''} ${ing.unit||''} \u00b7 ${Math.round(ing.calories||0)} <span style="font-size:10px">kcal</span></span>
           </div>`).join('')}
       </div>
     </div>`;
   }
 
+  // Simple compact item
   const eid = `entry-${e.id}`;
   return `<div class="log-item-compact" onclick="toggleEntryMacros('${eid}')" style="cursor:pointer;flex-direction:column;align-items:stretch;padding:8px 0">
-    <div style="display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between">
       <div style="min-width:0;flex:1">
         <div style="font-size:14px;color:var(--text);font-family:var(--font-display)">${displayName}${badge}</div>
+        ${ctxSub ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${ctxSub}</div>` : ''}
       </div>
-      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:8px" onclick="event.stopPropagation()">
-        <div style="font-family:var(--font-display);font-size:13px;color:var(--accent)">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
-        <span id="macro-chv-${eid}" style="color:var(--muted);font-size:11px;transition:transform 0.2s;pointer-events:none">▼</span>
-        <button onclick="event.stopPropagation();openEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
+      <div style="display:flex;align-items:flex-start;gap:5px;flex-shrink:0;margin-left:10px" onclick="event.stopPropagation()">
+        <div style="text-align:right">
+          <div style="font-family:var(--font-display);font-size:13px;color:var(--accent)">${Math.round(e.calories||0)} <span style="font-size:10px;font-weight:400">kcal</span></div>
+          ${time ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">${time}</div>` : ''}
+        </div>
+        <span id="macro-chv-${eid}" style="color:var(--muted);font-size:11px;transition:transform 0.2s;pointer-events:none;margin-top:2px">\u25bc</span>
+        <button onclick="event.stopPropagation();openEntryContextMenu(this,${e.id})" class="ctx-btn" style="margin-top:1px">\u22ef</button>
       </div>
     </div>
     ${makePills(eid)}
