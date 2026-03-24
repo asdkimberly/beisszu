@@ -3798,12 +3798,12 @@ function makeLogItem(e) {
 
 function makeHydLogItem(e) {
   const time = e.logged_at ? new Date(e.logged_at).toLocaleTimeString('es-CR', { hour:'2-digit', minute:'2-digit' }) : '';
-  return `<div class="log-item-compact">
-    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-      <span style="font-size:18px;flex-shrink:0">${e.drinkIcon||'💧'}</span>
+  return `<div class="log-item-compact" style="padding:10px 14px;align-items:center">
+    <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+      <span style="font-size:20px;flex-shrink:0">${e.drinkIcon||'💧'}</span>
       <div style="min-width:0">
-        <div style="font-size:13px;color:var(--text);font-family:var(--font-display)">${e.drinkLabel}</div>
-        <div style="font-size:11px;color:var(--muted)">${e.display}${time?' · '+time:''}</div>
+        <div style="font-size:14px;color:var(--text);font-family:var(--font-display)">${e.drinkLabel}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.display}${time?' · '+time:''}</div>
       </div>
     </div>
     <button onclick="openHydEntryContextMenu(this,${e.id})" class="ctx-btn">⋯</button>
