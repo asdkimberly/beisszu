@@ -3638,17 +3638,41 @@ function makeSmartLogItem(e) {
   const displayName = e.food_name.startsWith('🍽️') ? e.food_name : (dishIngs ? `🍽️ ${e.food_name}` : e.food_name);
   const badge = isTmplEntry && !dishIngs ? `<span class="tmpl-badge">plantilla</span>` : '';
 
-  const makePills = (eid) => `
-    <div id="macro-pills-${eid}" style="display:none;flex-wrap:wrap;gap:5px;margin-top:7px;padding-top:7px;border-top:0.5px solid var(--border)">
-      ${e.protein_g ? `<div style="background:rgba(74,144,217,0.12);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">P <span style="color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(1)}g</span></div>` : ''}
-      ${e.carbs_g   ? `<div style="background:rgba(212,168,64,0.12);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">C <span style="color:#d4a840">${parseFloat(e.carbs_g||0).toFixed(1)}g</span></div>` : ''}
-      ${e.fat_g     ? `<div style="background:rgba(224,120,64,0.12);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">G <span style="color:#e07840">${parseFloat(e.fat_g||0).toFixed(1)}g</span></div>` : ''}
-      ${e.fiber_g   ? `<div style="background:rgba(168,192,96,0.12);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">Fib <span style="color:#a8c060">${parseFloat(e.fiber_g||0).toFixed(1)}g</span></div>` : ''}
-      ${e.sugar_g   ? `<div style="background:rgba(239,159,39,0.10);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">Az <span style="color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(1)}g</span></div>` : ''}
-      ${e.quantity  ? `<div style="background:var(--surface2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">${e.quantity} ${e.unit}</div>` : ''}
-      ${e.origin === 'Fuera' ? `<div style="background:var(--surface2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">🌍 Fuera</div>` : ''}
-      ${time ? `<div style="background:var(--surface2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--muted)">${time}</div>` : ''}
+  const makePills = (eid) => {
+    // Detail line: quantity, time, origin (only if Fuera)
+    const details = [
+      e.quantity ? `${e.quantity} ${e.unit}` : '',
+      time || '',
+      e.origin === 'Fuera' ? '🌍 Fuera' : '',
+    ].filter(Boolean).join(' · ');
+
+    return `
+    <div id="macro-pills-${eid}" style="display:none;margin-top:7px;padding-top:7px;border-top:0.5px solid var(--border)">
+      ${details ? `<div style="font-size:10px;color:var(--muted);margin-bottom:6px">${details}</div>` : ''}
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center">
+        <div style="background:rgba(74,144,217,0.10);border-radius:8px;padding:5px 2px">
+          <div style="font-size:12px;color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Prot</div>
+        </div>
+        <div style="background:rgba(212,168,64,0.10);border-radius:8px;padding:5px 2px">
+          <div style="font-size:12px;color:#d4a840">${parseFloat(e.carbs_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Carbs</div>
+        </div>
+        <div style="background:rgba(224,120,64,0.10);border-radius:8px;padding:5px 2px">
+          <div style="font-size:12px;color:#e07840">${parseFloat(e.fat_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Grasas</div>
+        </div>
+        <div style="background:rgba(168,192,96,0.10);border-radius:8px;padding:5px 2px">
+          <div style="font-size:12px;color:#a8c060">${parseFloat(e.fiber_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Fibra</div>
+        </div>
+        <div style="background:rgba(239,159,39,0.08);border-radius:8px;padding:5px 2px">
+          <div style="font-size:12px;color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Azúcar</div>
+        </div>
+      </div>
     </div>`;
+  };
 
   if (dishIngs) {
     const entryId = `entry-${e.id}`;
