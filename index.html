@@ -1737,7 +1737,8 @@ select { cursor: pointer; }
               <select id="unit" onchange="onUnitChange()">
                 <option>gramos</option><option>ml</option><option>oz</option>
                 <option>tazas</option><option>cdas</option><option>cditas</option>
-                <option>unidades</option><option>rebanadas</option><option>piezas</option>
+                <option>porciones</option><option>unidades</option>
+                <option>rebanadas</option><option>piezas</option>
               </select>
             </div>
           </div>
@@ -2927,21 +2928,17 @@ function selectFood(food) {
 // ── Unit change → find grams_per_unit and recalc silently ──
 function onUnitChange() {
   if (!selectedFoodBase) return;
-  const unit = document.getElementById('unit').value;
+  const unit        = document.getElementById('unit').value;
   const isGramBased = ['gramos', 'ml', 'oz'].includes(unit);
-
-  // Hide serving row — conversion is invisible to user
   document.getElementById('servingRow').style.display = 'none';
 
-  // Only look up conversion if the selected unit differs from the food's base unit
   if (unit === selectedFoodBase.unit) {
-    // Same unit as base — no conversion needed, ever
     selectedFoodBase._servingGrams = null;
   } else if (isGramBased) {
-    // Switching back to a gram-based unit — no conversion needed
+    // gram-based target — _servingGrams not needed (handled in recalcByQty)
     selectedFoodBase._servingGrams = null;
   } else {
-    // Different non-gram unit — look up conversion table
+    // Non-gram unit — look up grams per unit in foodServings
     const servings = foodServings[selectedFoodBase.name] || [];
     const match = servings.find(s => s.serving_name === unit);
     selectedFoodBase._servingGrams = match ? match.grams : null;
@@ -2958,27 +2955,49 @@ function onServingSelect(gramsStr) {
   recalcByQty();
 }
 
-// ── Recalculate macros based on quantity ──
 function recalcByQty() {
   if (!selectedFoodBase) return;
   const newQty = parseFraction(document.getElementById('quantity').value);
   if (!newQty || newQty <= 0) return;
 
-  const unit = document.getElementById('unit').value;
+  const unit        = document.getElementById('unit').value;
   const isGramBased = ['gramos', 'ml', 'oz'].includes(unit);
+  const baseIsGram  = ['gramos', 'ml', 'oz'].includes(selectedFoodBase.unit);
+  const servings    = foodServings[selectedFoodBase.name] || [];
   let ratio;
 
-  if (isGramBased) {
-    // Direct gram ratio: qty gramos / base qty gramos
+  if (unit === selectedFoodBase.unit) {
+    // Same unit as base — simple ratio
+    ratio = newQty / selectedFoodBase.qty;
+  } else if (isGramBased && !baseIsGram) {
+    // Converting TO grams FROM a non-gram base (e.g. cdas → gramos)
+    // Need to know how many grams = 1 base unit
+    const baseServing = servings.find(s => s.serving_name === selectedFoodBase.unit);
+    const gramsPerBaseUnit = baseServing ? baseServing.grams : null;
+    if (gramsPerBaseUnit) {
+      // newQty grams / (qty base_units × grams_per_base_unit)
+      ratio = newQty / (selectedFoodBase.qty * gramsPerBaseUnit);
+    } else {
+      // No conversion available — treat as direct ratio
+      ratio = newQty / selectedFoodBase.qty;
+    }
+  } else if (isGramBased && baseIsGram) {
+    // Both gram-based — direct ratio
     ratio = newQty / selectedFoodBase.qty;
   } else if (selectedFoodBase._servingGrams) {
-    // Converted unit: qty × grams_per_unit / base_qty
-    // e.g. 0.33 tazas × 186g/taza / 100g base = 0.614
-    ratio = (newQty * selectedFoodBase._servingGrams) / selectedFoodBase.qty;
+    // Non-gram unit with a known grams-per-unit from foodServings
+    if (baseIsGram) {
+      // Base is grams: newQty units × grams/unit / base_qty_grams
+      ratio = (newQty * selectedFoodBase._servingGrams) / selectedFoodBase.qty;
+    } else {
+      // Base is also non-gram: convert both to grams
+      const baseServing = servings.find(s => s.serving_name === selectedFoodBase.unit);
+      const gramsPerBaseUnit = baseServing ? baseServing.grams : 1;
+      const baseQtyInGrams = selectedFoodBase.qty * gramsPerBaseUnit;
+      ratio = (newQty * selectedFoodBase._servingGrams) / baseQtyInGrams;
+    }
   } else {
-    // Unit has no conversion entry (e.g. unidades, rebanadas, piezas)
-    // but base unit matches — calculate directly
-    // e.g. 2 huevos / 1 huevo base = 2
+    // No conversion found — direct ratio
     ratio = newQty / selectedFoodBase.qty;
   }
 
