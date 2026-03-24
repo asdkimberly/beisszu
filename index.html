@@ -3640,27 +3640,27 @@ function makeSmartLogItem(e) {
 
   // Macro grid — only macros, 5 equal columns, full width
   const makePills = (eid) => `
-    <div id="macro-pills-${eid}" style="display:none;margin-top:7px;padding-top:7px;border-top:0.5px solid var(--border)">
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center">
-        <div style="background:rgba(74,144,217,0.10);border-radius:8px;padding:5px 2px">
-          <div style="font-size:12px;color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(1)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Prot</div>
+    <div id="macro-pills-${eid}" style="display:none;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)">
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);text-align:center">
+        <div style="padding:4px 0;border-right:0.5px solid var(--border)">
+          <div style="font-size:13px;color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Prot</div>
         </div>
-        <div style="background:rgba(212,168,64,0.10);border-radius:8px;padding:5px 2px">
-          <div style="font-size:12px;color:#d4a840">${parseFloat(e.carbs_g||0).toFixed(1)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Carbs</div>
+        <div style="padding:4px 0;border-right:0.5px solid var(--border)">
+          <div style="font-size:13px;color:#d4a840">${parseFloat(e.carbs_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Carbs</div>
         </div>
-        <div style="background:rgba(224,120,64,0.10);border-radius:8px;padding:5px 2px">
-          <div style="font-size:12px;color:#e07840">${parseFloat(e.fat_g||0).toFixed(1)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Grasas</div>
+        <div style="padding:4px 0;border-right:0.5px solid var(--border)">
+          <div style="font-size:13px;color:#e07840">${parseFloat(e.fat_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Grasas</div>
         </div>
-        <div style="background:rgba(168,192,96,0.10);border-radius:8px;padding:5px 2px">
-          <div style="font-size:12px;color:#a8c060">${parseFloat(e.fiber_g||0).toFixed(1)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Fibra</div>
+        <div style="padding:4px 0;border-right:0.5px solid var(--border)">
+          <div style="font-size:13px;color:#a8c060">${parseFloat(e.fiber_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Fibra</div>
         </div>
-        <div style="background:rgba(239,159,39,0.08);border-radius:8px;padding:5px 2px">
-          <div style="font-size:12px;color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(1)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.4px">Az\u00facar</div>
+        <div style="padding:4px 0">
+          <div style="font-size:13px;color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(1)}g</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Azúcar</div>
         </div>
       </div>
     </div>`;
