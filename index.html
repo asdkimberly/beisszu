@@ -1091,31 +1091,42 @@ select { cursor: pointer; }
       <button class="carousel-arrow" id="carouselNext" onclick="carouselNavigate(1)">›</button>
     </div>
 
-    <!-- Day summary card — Option 2: cal hero + 2×2 grid -->
+    <!-- Day summary card — Option D: grouped bars by category -->
     <div class="day-card" id="homeDayCard">
 
-      <!-- Hero calories -->
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:5px">
-        <div>
-          <div style="font-family:var(--font-display);font-size:42px;font-weight:300;color:var(--text);line-height:1" id="todayCal">0</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px" id="todayCalSub">kcal</div>
+      <!-- Section: NUTRICIÓN -->
+      <div id="homeNutrSection">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:8px">Nutrición</div>
+
+        <!-- Cal hero -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
+          <div>
+            <div style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--text);line-height:1" id="todayCal">0</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px" id="todayCalSub">kcal</div>
+          </div>
+          <div id="todayCalBadge" style="display:none;text-align:right">
+            <div id="todayCalPct" style="font-family:var(--font-display);font-size:20px;font-weight:300"></div>
+            <div style="font-size:10px;color:var(--muted)">de meta</div>
+          </div>
         </div>
-        <div id="todayCalBadge" style="display:none;text-align:right">
-          <div id="todayCalPct" style="font-family:var(--font-display);font-size:24px;font-weight:300"></div>
-          <div style="font-size:10px;color:var(--muted)">de meta</div>
+        <div id="todayCalBarWrap" style="display:none;height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
+          <div id="todayCalBar" style="height:100%;border-radius:2px;transition:width .4s"></div>
         </div>
+
+        <!-- Macros with goal: horizontal bars (rendered by JS) -->
+        <div id="homeMacroGoalRows" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
+
+        <!-- Macros without goal: 2×N grid (rendered by JS) -->
+        <div id="homeMacroNoGoalGrid" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:4px"></div>
       </div>
-      <div id="todayCalBarWrap" style="display:none;height:4px;border-radius:2px;background:var(--border);margin-bottom:12px">
-        <div id="todayCalBar" style="height:100%;border-radius:2px;transition:width .4s"></div>
-      </div>
 
-      <!-- 2×2 grid: macros with goal + hydration + burn -->
-      <div id="homeDayGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px"></div>
+      <!-- Section: HIDRATACIÓN (rendered by JS, hidden if no data) -->
+      <div id="homeHydSection" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"></div>
 
-      <!-- Chips row: macros without goal -->
-      <div id="homeMacroChips" style="display:flex;gap:6px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)"></div>
+      <!-- Separator -->
+      <div style="height:1px;background:var(--border);margin:10px 0"></div>
 
-      <!-- Supps + burn input + note (rendered by JS) -->
+      <!-- Supps + burn input + balance (rendered by JS) -->
       <div id="homeDayMeta"></div>
 
       <!-- Inline note -->
@@ -3292,7 +3303,7 @@ async function renderCarouselDay() {
   const calPctEl = document.getElementById('todayCalPct');
 
   if (calGoal) {
-    calSub.textContent = `kcal de ${calGoal}`;
+    calSub.textContent = `de ${calGoal} kcal`;
     calBadge.style.display = 'block';
     calPctEl.textContent = calPct + '%';
     calPctEl.style.color = calColor;
@@ -3305,122 +3316,109 @@ async function renderCarouselDay() {
     calBarW.style.display = 'none';
   }
 
-  // ── Hydration totals ──
-  const burned   = burnedCals[dateStr] || 0;
-  const waterAmt = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
-  const hydAmt   = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
-  const disp     = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${v}ml`;
+  // ── Helper: horizontal bar row ──
+  const barRow = (label, val, goal, color, fmt) => {
+    const pct = goal ? Math.min(Math.round((val / goal) * 100), 100) : 0;
+    return `<div style="display:flex;align-items:center;gap:7px">
+      <span style="font-size:11px;color:var(--muted);width:54px;flex-shrink:0">${label}</span>
+      <div style="flex:1;height:5px;border-radius:3px;background:var(--border)">
+        <div style="width:${pct}%;height:100%;border-radius:3px;background:${color};transition:width .4s"></div>
+      </div>
+      <span style="font-size:12px;font-weight:600;color:${color};width:36px;text-align:right;flex-shrink:0">${fmt(val)}</span>
+    </div>`;
+  };
 
-  // ── Grid blocks ──
-  // Macro blocks with goal + hydration + balance
+  // ── Macros with goal: horizontal rows ──
   const macroGoalDefs = [
-    { label:'Proteína', val:totProt, goal:settings.goalProtein, color:'#4a90d9', fmt: v=>v.toFixed(1)+'g' },
-    { label:'Carbos',   val:totCarb, goal:settings.goalCarbs,   color:'#d4a840', fmt: v=>v.toFixed(1)+'g' },
-    { label:'Grasas',   val:totFat,  goal:settings.goalFat,     color:'#e07840', fmt: v=>v.toFixed(1)+'g' },
+    { label:'Proteína', val:totProt, goal:settings.goalProtein, color:'#4a90d9', fmt:v=>`${v.toFixed(0)}g` },
+    { label:'Carbos',   val:totCarb, goal:settings.goalCarbs,   color:'#d4a840', fmt:v=>`${v.toFixed(0)}g` },
+    { label:'Grasas',   val:totFat,  goal:settings.goalFat,     color:'#e07840', fmt:v=>`${v.toFixed(0)}g` },
   ];
   const macroNoGoalDefs = [
-    { label:'Fibra',   val:totFib,  color:'#a8c060' },
-    { label:'Azúcar',  val:totSug,  color:'#EF9F27' },
+    { label:'Fibra',  val:totFib, goal:settings.goalProtein ? null : null, color:'#a8c060' },
+    { label:'Azúcar', val:totSug, color:'#EF9F27' },
   ];
 
-  const gridBlocks = [];
-
-  // Add macro blocks that have goals
-  macroGoalDefs.filter(m => m.goal).forEach(m => {
-    const pct = Math.min(Math.round((m.val / m.goal) * 100), 100);
-    gridBlocks.push(`
-      <div style="background:var(--surface2);border-radius:12px;padding:10px 12px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${m.label}</div>
-        <div style="font-family:var(--font-display);font-size:17px;font-weight:500;color:${m.color};margin-bottom:5px">${m.fmt(m.val)}</div>
-        <div style="height:4px;border-radius:2px;background:var(--border)">
-          <div style="width:${pct}%;height:100%;border-radius:2px;background:${m.color};transition:width .4s"></div>
-        </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:right">${pct}% de ${m.goal}g</div>
-      </div>`);
-  });
-
-  // Hydration block (if any data or goal)
-  const totalHyd  = waterAmt + hydAmt;
-  const totalGoal = (settings.goalWater||0) + (settings.goalIsotonic||0);
-  if (totalHyd || totalGoal) {
-    const hydPct   = totalGoal ? Math.min(Math.round((totalHyd/totalGoal)*100), 100) : null;
-    const hydColor = !hydPct ? '#4a90d9' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
-    const hydDetail= [
-      (waterAmt||settings.goalWater) ? `💧${disp(waterAmt)}${settings.goalWater?'/'+disp(settings.goalWater):''}` : '',
-      (hydAmt||settings.goalIsotonic)? `🏋️${disp(hydAmt)}${settings.goalIsotonic?'/'+disp(settings.goalIsotonic):''}` : '',
-    ].filter(Boolean).join(' · ');
-    gridBlocks.push(`
-      <div style="background:var(--surface2);border-radius:12px;padding:10px 12px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">💧 Hidratación</div>
-        <div style="font-family:var(--font-display);font-size:17px;font-weight:500;color:${hydColor};margin-bottom:5px">${disp(totalHyd)}</div>
-        ${totalGoal ? `<div style="height:4px;border-radius:2px;background:var(--border)">
-          <div style="width:${hydPct}%;height:100%;border-radius:2px;background:${hydColor};transition:width .4s"></div>
-        </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:right">${hydPct}% · ${hydDetail}</div>`
-        : `<div style="font-size:10px;color:var(--muted);margin-top:3px">${hydDetail}</div>`}
-      </div>`);
-  }
-
-  // Balance block (only if burned calories registered)
-  if (burned) {
-    const balance  = Math.round(totCal - burned);
-    const balColor = balance <= 0 ? '#a8c060' : '#e07840';
-    const balLabel = balance <= 0 ? 'déficit' : 'superávit';
-    gridBlocks.push(`
-      <div style="background:var(--surface2);border-radius:12px;padding:10px 12px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">🔥 Balance</div>
-        <div style="font-family:var(--font-display);font-size:17px;font-weight:500;color:${balColor};margin-bottom:5px">${balance>0?'+':''}${balance}</div>
-        <div style="font-size:10px;color:var(--muted)">${burned.toLocaleString()} kcal quemadas</div>
-        <div style="font-size:10px;color:${balColor};font-weight:500;margin-top:1px">${balLabel}</div>
-      </div>`);
-  }
-
-  const gridEl = document.getElementById('homeDayGrid');
-  if (gridBlocks.length) {
-    // If odd number → last block spans 2 cols
-    const needsSpan = gridBlocks.length % 2 !== 0;
-    gridEl.style.display = 'grid';
-    let html = gridBlocks.slice(0, gridBlocks.length - (needsSpan?1:0)).join('');
-    if (needsSpan) {
-      html += `<div style="grid-column:span 2">${gridBlocks[gridBlocks.length-1].replace(
-        'border-radius:12px;padding:10px 12px',
-        'border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:12px;justify-content:space-between'
-      )}</div>`;
-    }
-    gridEl.innerHTML = html;
-  } else {
-    gridEl.style.display = 'none';
-  }
-
-  // ── Chips: macros without goal ──
-  const noGoalMacros = [
+  const goalRows    = macroGoalDefs.filter(m => m.goal);
+  const noGoalMacs  = [
     ...macroGoalDefs.filter(m => !m.goal),
     ...macroNoGoalDefs,
   ];
-  const chipsEl = document.getElementById('homeMacroChips');
-  if (noGoalMacros.some(m => m.val > 0)) {
-    chipsEl.style.display = 'flex';
-    chipsEl.innerHTML = noGoalMacros.map(m => `
-      <div style="background:var(--surface2);border-radius:8px;padding:5px 10px;display:flex;align-items:baseline;gap:4px">
-        <span style="font-size:11px;color:var(--muted)">${m.label}</span>
-        <span style="font-family:var(--font-display);font-size:14px;color:var(--text)">${typeof m.fmt==='function'?m.fmt(m.val):m.val.toFixed(1)+'g'}</span>
-      </div>`).join('');
+
+  const macroGoalEl = document.getElementById('homeMacroGoalRows');
+  macroGoalEl.style.display = goalRows.length ? 'flex' : 'none';
+  macroGoalEl.innerHTML = goalRows.map(m => barRow(m.label, m.val, m.goal, m.color, m.fmt)).join('');
+
+  const macroNoGoalEl = document.getElementById('homeMacroNoGoalGrid');
+  const hasNoGoal = noGoalMacs.some(m => m.val > 0);
+  macroNoGoalEl.style.display = hasNoGoal ? 'grid' : 'none';
+  macroNoGoalEl.innerHTML = noGoalMacs.map(m => `
+    <div style="background:var(--surface2);border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-size:11px;color:var(--muted)">${m.label}</span>
+      <span style="font-family:var(--font-display);font-size:14px;color:var(--text)">${m.val.toFixed(1)}g</span>
+    </div>`).join('');
+
+  // ── Hydration section ──
+  const waterAmt  = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
+  const hydAmt    = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
+  const disp      = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${Math.round(v)}ml`;
+  const totalHyd  = waterAmt + hydAmt;
+  const totalGoal = (settings.goalWater||0) + (settings.goalIsotonic||0);
+  const hydSec    = document.getElementById('homeHydSection');
+
+  if (totalHyd > 0 || totalGoal > 0) {
+    hydSec.style.display = 'block';
+    const hydPct   = totalGoal ? Math.min(Math.round((totalHyd/totalGoal)*100), 100) : null;
+    const hydColor = !hydPct ? '#4a90d9' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
+
+    let hydHTML = `<div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:8px">Hidratación</div>`;
+
+    // Hydration hero
+    hydHTML += `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
+      <div>
+        <div style="font-family:var(--font-display);font-size:30px;font-weight:300;color:${hydColor};line-height:1">${disp(totalHyd)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${totalGoal ? `de ${disp(totalGoal)}` : 'registrado'}</div>
+      </div>
+      ${hydPct !== null ? `<div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:${hydColor}">${hydPct}%</div>` : ''}
+    </div>`;
+
+    if (totalGoal) {
+      hydHTML += `<div style="height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
+        <div style="width:${hydPct}%;height:100%;border-radius:2px;background:${hydColor};transition:width .4s"></div>
+      </div>`;
+    } else {
+      hydHTML += `<div style="margin-bottom:10px"></div>`;
+    }
+
+    // Individual bars
+    if (waterAmt > 0 || settings.goalWater) {
+      hydHTML += barRow('💧 Agua', waterAmt, settings.goalWater||0, '#4a90d9', disp);
+    }
+    if (hydAmt > 0 || settings.goalIsotonic) {
+      hydHTML += `<div style="margin-top:5px">` +
+        barRow('🏋️ Hid.', hydAmt, settings.goalIsotonic||0, '#5bc0de', disp) +
+        `</div>`;
+    }
+
+    hydSec.innerHTML = hydHTML;
   } else {
-    chipsEl.style.display = 'none';
+    hydSec.style.display = 'none';
   }
 
-  // ── Meta: supls + burn input ──
+  // ── Meta: supls + burn input + balance ──
+  const burned     = burnedCals[dateStr] || 0;
   await loadSuppLogForDate(dateStr);
   const takenSupps = (suppLog[dateStr]||[]).filter(l=>supplements.find(s=>s.id===l.supplement_id));
   const totalSupps = supplements.length;
+
   let metaHTML = '';
 
   if (totalSupps) {
     const allTaken  = takenSupps.length >= totalSupps;
-    const suppColor = allTaken ? '#a8c060' : takenSupps.length>0 ? '#EF9F27' : 'var(--muted)';
-    const suppLabel = allTaken ? '✓ todos' : takenSupps.length>0
+    const suppColor = allTaken ? '#a8c060' : takenSupps.length > 0 ? '#EF9F27' : 'var(--muted)';
+    const suppLabel = allTaken ? '✓ todos' : takenSupps.length > 0
       ? `${takenSupps.length}/${totalSupps}` : 'ninguno';
-    const names = supplements.map(s=>s.name).join(' · ');
+    const names = supplements.map(s => s.name).join(' · ');
     metaHTML += `<div class="day-meta-row">
       <span style="color:var(--muted)">💊 ${names}</span>
       <span style="color:${suppColor};font-weight:500">${suppLabel}</span>
@@ -3439,6 +3437,21 @@ async function renderCarouselDay() {
       <span style="font-size:11px;color:var(--muted)">kcal</span>
     </div>
   </div>`;
+
+  // Balance — below burn input
+  if (burned) {
+    const balance  = Math.round(totCal - burned);
+    const balColor = balance <= 0 ? '#a8c060' : '#e07840';
+    const balLabel = balance <= 0 ? 'déficit' : 'superávit';
+    metaHTML += `<div style="display:flex;align-items:center;justify-content:space-between;
+      padding:7px 10px;border-radius:10px;margin-top:6px;
+      background:${balance<=0?'rgba(168,192,96,0.08)':'rgba(224,120,64,0.08)'};
+      border:0.5px solid ${balance<=0?'rgba(168,192,96,0.25)':'rgba(224,120,64,0.25)'}">
+      <span style="font-size:11px;color:var(--muted)">Balance del día</span>
+      <span style="font-family:var(--font-display);font-size:16px;font-weight:500;color:${balColor}">${balance>0?'+':''}${balance} kcal</span>
+      <span style="font-size:10px;font-weight:500;color:${balColor}">${balLabel}</span>
+    </div>`;
+  }
 
   document.getElementById('homeDayMeta').innerHTML = metaHTML;
 
