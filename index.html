@@ -3639,27 +3639,27 @@ function makeSmartLogItem(e) {
 
   // Macro grid — only macros, 5 equal columns, full width
   const makePills = (eid) => `
-    <div id="macro-pills-${eid}" style="display:none;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px">
-      <div style="display:flex;justify-content:space-around;text-align:center">
-        <div>
+    <div id="macro-pills-${eid}" style="display:none;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)">
+      <div style="display:flex;width:100%">
+        <div style="flex:1;text-align:center;padding:4px 0">
           <div style="font-size:15px;color:#4a90d9">${parseFloat(e.protein_g||0).toFixed(0)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Prot</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Prot</div>
         </div>
-        <div>
+        <div style="flex:1;text-align:center;padding:4px 0">
           <div style="font-size:15px;color:#d4a840">${parseFloat(e.carbs_g||0).toFixed(0)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Carbs</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Carbs</div>
         </div>
-        <div>
+        <div style="flex:1;text-align:center;padding:4px 0">
           <div style="font-size:15px;color:#e07840">${parseFloat(e.fat_g||0).toFixed(0)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Grasas</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Grasas</div>
         </div>
-        <div>
+        <div style="flex:1;text-align:center;padding:4px 0">
           <div style="font-size:15px;color:#a8c060">${parseFloat(e.fiber_g||0).toFixed(0)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Fibra</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Fibra</div>
         </div>
-        <div>
+        <div style="flex:1;text-align:center;padding:4px 0">
           <div style="font-size:15px;color:#EF9F27">${parseFloat(e.sugar_g||0).toFixed(0)}g</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Azúcar</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Azúcar</div>
         </div>
       </div>
     </div>`;
