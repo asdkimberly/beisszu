@@ -5981,13 +5981,20 @@ function renderStatsSummary(food, hyd) {
   ];
 
   document.getElementById('statsSummaryGrid').innerHTML = cards.map(c => {
-    const pct = c.goal ? Math.min((c.rawVal / c.goal) * 100, 100) : null;
+    const pct      = c.goal ? Math.min(Math.round((c.rawVal / c.goal) * 100), 100) : null;
+    const pctColor = pct === null ? c.color
+      : pct >= 90 ? '#639922' : pct >= 60 ? '#EF9F27' : '#E24B4A';
     const goalLabel = c.goalDisplay ? c.goalDisplay : c.goal;
-    return `<div class="summary-card">
-      <div class="summary-card-label">${c.label}</div>
-      <div class="summary-card-value" style="color:${c.color};font-size:20px">${c.display}</div>
-      <div class="summary-card-unit">${c.unit}${c.goal ? ` · meta: ${goalLabel}` : ''}</div>
-      ${pct !== null ? `<div class="progress-bar" style="margin-top:6px"><div class="progress-fill" style="width:${pct}%;background:${c.color}"></div></div>` : ''}
+    return `<div style="background:var(--surface2);border-radius:12px;padding:10px 12px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${c.label}</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:${pct!==null?'5px':'0'}">
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:${c.color}">${c.display} <span style="font-size:10px;color:var(--muted);font-weight:400">${c.unit.split('·')[0].trim()}</span></div>
+        ${pct !== null ? `<div style="font-size:12px;font-weight:500;color:${pctColor}">${pct}%</div>` : ''}
+      </div>
+      ${pct !== null ? `<div style="height:3px;border-radius:2px;background:var(--border)">
+        <div style="width:${pct}%;height:100%;border-radius:2px;background:${pctColor};transition:width .4s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">meta: ${goalLabel}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -6080,6 +6087,7 @@ function lerpRGB(a, b, t) {
 function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
   const today = statsToDate ? new Date(statsToDate + 'T12:00:00') : new Date();
   const squares = [];
+  let metCount = 0, totalCount = 0;
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
@@ -6093,24 +6101,36 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
       ? (val === null ? 'Sin datos' : val ? '✓ Completado' : '✗ No completado')
       : (val === null ? 'Sin datos' : val > 100 ? `${Math.round(val)}% (excede meta)` : `${Math.round(val)}%`);
     squares.push({ bg, tip: `${dayLabel}: ${tip}` });
+    if (val !== null) {
+      totalCount++;
+      if (isBoolean ? val : val >= 80) metCount++;
+    }
   }
 
+  const pctMet = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : null;
+  const pctColor = pctMet === null ? 'var(--muted)' : pctMet >= 80 ? '#639922' : pctMet >= 50 ? '#EF9F27' : '#E24B4A';
+
+  const sqH = 18; // taller squares for legibility
+  const sqStyle = `flex:1;height:${sqH}px;border-radius:3px;background:`;
   let grid;
   if (days === 30) {
-    const row1 = squares.slice(0, 15).map(s =>
-      `<div title="${s.tip}" style="flex:1;height:10px;border-radius:3px;background:${s.bg};min-width:0;cursor:default"></div>`).join('');
-    const row2 = squares.slice(15).map(s =>
-      `<div title="${s.tip}" style="flex:1;height:10px;border-radius:3px;background:${s.bg};min-width:0;cursor:default"></div>`).join('');
+    const row1 = squares.slice(0,15).map(s=>
+      `<div title="${s.tip}" style="${sqStyle}${s.bg};min-width:0;cursor:default"></div>`).join('');
+    const row2 = squares.slice(15).map(s=>
+      `<div title="${s.tip}" style="${sqStyle}${s.bg};min-width:0;cursor:default"></div>`).join('');
     grid = `<div style="display:flex;gap:3px;margin-bottom:3px">${row1}</div>
             <div style="display:flex;gap:3px">${row2}</div>`;
   } else {
-    grid = `<div style="display:flex;gap:3px">${squares.map(s =>
-      `<div title="${s.tip}" style="flex:1;height:10px;border-radius:3px;background:${s.bg};min-width:0;cursor:default"></div>`).join('')}</div>`;
+    grid = `<div style="display:flex;gap:3px">${squares.map(s=>
+      `<div title="${s.tip}" style="${sqStyle}${s.bg};min-width:0;cursor:default"></div>`).join('')}</div>`;
   }
 
   return `
     <div style="margin-bottom:10px">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:5px;font-family:var(--font-display)">${label}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <div style="font-size:12px;color:var(--text2);font-family:var(--font-display)">${label}</div>
+        ${pctMet !== null ? `<div style="font-size:11px;font-weight:500;color:${pctColor}">${pctMet}%</div>` : ''}
+      </div>
       ${grid}
     </div>`;
 }
@@ -6314,39 +6334,24 @@ function renderStatsMeal(food) {
   // Font sizes scale down with rank
   const numSizes = [22, 19, 16, 14, 13, 12];
 
-  const rows = sorted.map(([meal, avg], i) => {
-    const share    = Math.round((avg / totalCal) * 100);
-    const barPct   = Math.round((avg / maxVal) * 100);
-    const color    = MEAL_COLORS[meal] || '#7a8460';
-    const icon     = MEAL_ICONS[meal]  || '🍽️';
-    const numSize  = numSizes[i] || 12;
-    const rank     = i + 1;
-    const opacity  = Math.max(0.35, 1 - i * 0.13);
+  const rows = sorted.map(([meal, avg]) => {
+    const barPct = Math.round((avg / maxVal) * 100);
+    const color  = MEAL_COLORS[meal] || '#7a8460';
+    const icon   = MEAL_ICONS[meal]  || '🍽️';
 
     return `
-    <div style="display:flex;align-items:center;gap:0;padding:7px 0;border-bottom:1px solid var(--border);opacity:${opacity}">
-      <div style="width:3px;height:36px;border-radius:2px;background:${color};flex-shrink:0;margin-right:10px"></div>
-      <span style="font-size:10px;color:var(--muted);width:14px;flex-shrink:0;text-align:right;margin-right:8px">${rank}</span>
-      <span style="font-size:14px;flex-shrink:0;width:20px">${icon}</span>
-      <div style="flex:1;min-width:0;margin-left:6px">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">${meal}</div>
-        <div style="height:3px;border-radius:2px;background:var(--border)">
-          <div style="width:${barPct}%;height:100%;border-radius:2px;background:${color}"></div>
-        </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border)">
+      <span style="font-size:14px;width:22px;flex-shrink:0;text-align:center">${icon}</span>
+      <span style="font-size:12px;color:var(--text2);width:96px;flex-shrink:0">${meal}</span>
+      <div style="flex:1;height:6px;border-radius:3px;background:var(--border)">
+        <div style="width:${barPct}%;height:100%;border-radius:3px;background:${color};transition:width .4s"></div>
       </div>
-      <div style="text-align:right;margin-left:10px;flex-shrink:0">
-        <span style="font-family:var(--font-display);font-size:${numSize}px;font-weight:500;color:var(--text);line-height:1">${avg}</span>
-        <div style="font-size:10px;color:var(--muted)">${share}%</div>
-      </div>
+      <span style="font-family:var(--font-display);font-size:13px;color:var(--text);width:32px;text-align:right;flex-shrink:0">${avg}</span>
+      <span style="font-size:10px;color:var(--muted);flex-shrink:0">kcal</span>
     </div>`;
   }).join('');
 
-  content.innerHTML = `
-    <div>${rows}</div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px">
-      <span style="font-size:11px;color:var(--muted)">Total promedio diario</span>
-      <span style="font-family:var(--font-display);font-size:15px;font-weight:500;color:var(--text)">${totalCal} kcal</span>
-    </div>`;
+  content.innerHTML = `<div>${rows}</div>`;
 }
 
 // ── ⑤ Hydration ──
