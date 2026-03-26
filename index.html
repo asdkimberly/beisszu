@@ -6653,11 +6653,7 @@ function renderStatsMacroTrend(food) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate() - i);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    // For 30 days show shorter labels
-    const label = statsRange === 30
-      ? d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short' })
-      : d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short' });
-    labels.push(label);
+    labels.push(d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short' }));
     const dayEntries = food.filter(e => e.log_date === dateStr);
     protData.push(Math.round(dayEntries.reduce((s, e) => s + (e.protein_g || 0), 0)));
     carbData.push(Math.round(dayEntries.reduce((s, e) => s + (e.carbs_g   || 0), 0)));
@@ -6666,45 +6662,74 @@ function renderStatsMacroTrend(food) {
 
   if (chartMacroTrendInstance) { chartMacroTrendInstance.destroy(); chartMacroTrendInstance = null; }
   const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
-  const gridColor = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const textColor = '#7a8460';
+  const gridColor  = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  const textColor  = '#7a8460';
+  const noPoints   = effRange >= 14;
 
-  const ctx = document.getElementById('chartMacroTrend').getContext('2d');
+  // Gradient fill helper
+  const mkGrad = (ctx, r, g, b) => {
+    const grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, `rgba(${r},${g},${b},0.18)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    return grad;
+  };
+
+  const canvasEl = document.getElementById('chartMacroTrend');
+  const ctx = canvasEl.getContext('2d');
+
+  const sharedDataset = {
+    borderWidth: 2, tension: 0.35,
+    pointRadius: noPoints ? 0 : 3,
+    pointHoverRadius: 4,
+    fill: true,
+  };
+
   chartMacroTrendInstance = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Proteína (g)', data: protData, borderColor: '#a8c060', backgroundColor: 'rgba(168,192,96,0.1)', borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
-        { label: 'Carbos (g)',   data: carbData, borderColor: '#5bc0de', backgroundColor: 'rgba(91,192,222,0.1)',  borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
-        { label: 'Grasas (g)',   data: fatData,  borderColor: '#e07840', backgroundColor: 'rgba(224,120,64,0.1)',  borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
+        { ...sharedDataset, label:'Proteína', data: protData, borderColor:'#4a90d9', backgroundColor: mkGrad(ctx, 74,144,217) },
+        { ...sharedDataset, label:'Carbos',   data: carbData, borderColor:'#d4a840', backgroundColor: mkGrad(ctx, 212,168,64) },
+        { ...sharedDataset, label:'Grasas',   data: fatData,  borderColor:'#e07840', backgroundColor: mkGrad(ctx, 224,120,64) },
       ],
     },
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'bottom', labels: { color: textColor, font: { size: 11 }, padding: 12, boxWidth: 12 } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}g` } },
+        legend: {
+          position: 'bottom',
+          labels: { color: textColor, font: { size: 11 }, padding: 14, boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'circle' },
+        },
+        tooltip: {
+          backgroundColor: isDarkMode ? 'rgba(20,26,14,0.95)' : 'rgba(255,255,255,0.95)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+          borderWidth: 1,
+          titleColor: textColor,
+          bodyColor: textColor,
+          padding: 8,
+          callbacks: { label: c => ` ${c.dataset.label}: ${c.raw}g` },
+        },
       },
       scales: {
         x: {
-          ticks: {
-            color: textColor,
-            font: { size: 10 },
-            maxRotation: 45,
-            minRotation: 45,
-            maxTicksLimit: statsRange === 30 ? 10 : 7,
-            autoSkip: true,
-          },
+          ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: effRange >= 30 ? 10 : 7 },
           grid: { color: gridColor },
+          border: { display: false },
         },
         y: {
           ticks: { color: textColor, font: { size: 10 }, callback: v => `${v}g` },
           grid: { color: gridColor },
+          border: { display: false },
         },
       },
+      onHover(e, elements, chart) {
+        chart._hoveredX = e.x || null;
+        chart.draw();
+      },
     },
+    plugins: [chartCrosshairPlugin],
   });
 }
 
@@ -6730,44 +6755,65 @@ function renderStatsSugarFiber(food) {
 
   if (chartSugarFiberInstance) { chartSugarFiberInstance.destroy(); chartSugarFiberInstance = null; }
   const isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
-  const gridColor = isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const textColor = '#7a8460';
+  const gridColor  = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  const textColor  = '#7a8460';
+  const noPoints   = effRange >= 14;
 
-  const ctx = document.getElementById('chartSugarFiber').getContext('2d');
+  const canvasEl = document.getElementById('chartSugarFiber');
+  const ctx = canvasEl.getContext('2d');
+
+  const mkGrad = (r, g, b) => {
+    const grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, `rgba(${r},${g},${b},0.18)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    return grad;
+  };
+
   chartSugarFiberInstance = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Azúcar (g)', data: sugarData, borderColor: '#d4789a', backgroundColor: 'rgba(212,120,154,0.1)', borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
-        { label: 'Fibra (g)',  data: fiberData, borderColor: '#a8c060', backgroundColor: 'rgba(168,192,96,0.1)',  borderWidth: 2, pointRadius: statsRange === 30 ? 0 : 3, tension: 0.3, fill: false },
+        { label:'Azúcar', data: sugarData, borderColor:'#d4789a', backgroundColor: mkGrad(212,120,154), borderWidth:2, tension:0.35, pointRadius: noPoints?0:3, pointHoverRadius:4, fill:true },
+        { label:'Fibra',  data: fiberData, borderColor:'#a8c060', backgroundColor: mkGrad(168,192,96),  borderWidth:2, tension:0.35, pointRadius: noPoints?0:3, pointHoverRadius:4, fill:true },
       ],
     },
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'bottom', labels: { color: textColor, font: { size: 11 }, padding: 12, boxWidth: 12 } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}g` } },
+        legend: {
+          position: 'bottom',
+          labels: { color: textColor, font: { size: 11 }, padding: 14, boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'circle' },
+        },
+        tooltip: {
+          backgroundColor: isDarkMode ? 'rgba(20,26,14,0.95)' : 'rgba(255,255,255,0.95)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+          borderWidth: 1,
+          titleColor: textColor,
+          bodyColor: textColor,
+          padding: 8,
+          callbacks: { label: c => ` ${c.dataset.label}: ${c.raw}g` },
+        },
       },
       scales: {
         x: {
-          ticks: {
-            color: textColor,
-            font: { size: 10 },
-            maxRotation: 45,
-            minRotation: 45,
-            maxTicksLimit: statsRange === 30 ? 10 : 7,
-            autoSkip: true,
-          },
+          ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: effRange >= 30 ? 10 : 7 },
           grid: { color: gridColor },
+          border: { display: false },
         },
         y: {
           ticks: { color: textColor, font: { size: 10 }, callback: v => `${v}g` },
           grid: { color: gridColor },
+          border: { display: false },
         },
       },
+      onHover(e, elements, chart) {
+        chart._hoveredX = e.x || null;
+        chart.draw();
+      },
     },
+    plugins: [chartCrosshairPlugin],
   });
 }
 
