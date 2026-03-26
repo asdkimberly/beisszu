@@ -5957,10 +5957,10 @@ function renderStatsSummary(food, hyd) {
     const pctColor = pct === null ? c.color
       : pct >= 90 ? '#639922' : pct >= 60 ? '#EF9F27' : '#E24B4A';
     const goalLabel = c.goalDisplay ? c.goalDisplay : c.goal;
-    return `<div style="background:var(--surface2);border-radius:12px;padding:10px 12px">
+    return `<div style="background:var(--surface2);border-radius:12px;padding:10px 12px;border-left:3px solid ${c.color}">
       <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${c.label}</div>
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:${pct!==null?'5px':'0'}">
-        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:${c.color}">${c.display} <span style="font-size:10px;color:var(--muted);font-weight:400">${c.unit.split('·')[0].trim()}</span></div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:300;color:var(--text)">${c.display} <span style="font-size:10px;color:var(--muted);font-weight:400">${c.unit.split('·')[0].trim()}</span></div>
         ${pct !== null ? `<div style="font-size:12px;font-weight:500;color:${pctColor}">${pct}%</div>` : ''}
       </div>
       ${pct !== null ? `<div style="height:3px;border-radius:2px;background:var(--border)">
