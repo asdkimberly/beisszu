@@ -5700,6 +5700,43 @@ let chartEatingOutInstance = null;
 let chartMealInstance = null;
 let chartHydInstance = null;
 
+// ── Shared chart plugins ──
+const chartMetaLabelPlugin = {
+  id: 'metaLabel',
+  afterDraw(chart) {
+    const goalVal = chart._goalVal;
+    if (!goalVal) return;
+    const { ctx, scales: { x, y } } = chart;
+    if (!y || !x) return;
+    const yPos = y.getPixelForValue(goalVal);
+    ctx.save();
+    ctx.font = '10px system-ui';
+    ctx.fillStyle = 'rgba(224,120,64,0.9)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Meta', x.right + 5, yPos);
+    ctx.restore();
+  }
+};
+
+const chartCrosshairPlugin = {
+  id: 'crosshair',
+  afterDraw(chart) {
+    if (!chart._hoveredX) return;
+    const { ctx, chartArea: { top, bottom } } = chart;
+    ctx.save();
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(chart._hoveredX, top);
+    ctx.lineTo(chart._hoveredX, bottom);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
 function setStatsRange(days) {
   statsRange  = days;
   statsOffset = 0;
@@ -6210,21 +6247,43 @@ function renderChartTrend(food) {
           type: 'line',
           borderColor: 'rgba(224,120,64,0.8)',
           borderDash: [5,4],
-          borderWidth: 2,
+          borderWidth: 1.5,
           pointRadius: 0,
           fill: false,
         }] : []),
       ],
     },
     options: {
+      layout: { padding: { right: settings.goalCal ? 38 : 4 } },
       responsive: true,
-      plugins: { legend: { display: false } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDarkMode ? 'rgba(20,26,14,0.95)' : 'rgba(255,255,255,0.95)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+          borderWidth: 1,
+          titleColor: textColor,
+          bodyColor: textColor,
+          padding: 8,
+          callbacks: {
+            label: c => c.dataset.label === 'Meta' ? null : ` ${c.raw} kcal`,
+          },
+          filter: item => item.dataset.label !== 'Meta',
+        },
+      },
       scales: {
-        x: { ticks: { color: textColor, font:{size:10}, maxRotation:45, minRotation:45, autoSkip:true, maxTicksLimit: statsRange === 30 ? 10 : 7 }, grid: { color: gridColor } },
+        x: { ticks: { color: textColor, font:{size:10}, maxRotation:45, minRotation:45, autoSkip:true, maxTicksLimit: effRange === 30 ? 10 : 7 }, grid: { color: gridColor } },
         y: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor } },
       },
+      onHover(e, elements, chart) {
+        chart._hoveredX = e.x || null;
+        chart.draw();
+      },
     },
+    plugins: [chartMetaLabelPlugin, chartCrosshairPlugin],
   });
+  if (settings.goalCal) chartTrendInstance._goalVal = settings.goalCal;
 }
 
 // ── ④ Meal distribution ──
@@ -6350,26 +6409,46 @@ function renderStatsHyd(hyd) {
         ...(goalTotal ? [{
           label:'Meta', data: Array(labels.length).fill(goalTotal),
           type:'line', borderColor:'rgba(224,120,64,0.8)', borderDash:[5,4],
-          borderWidth:2, pointRadius:0, fill:false, stack: undefined,
+          borderWidth:1.5, pointRadius:0, fill:false, stack: undefined,
         }] : []),
       ],
     },
     options: {
+      layout: { padding: { right: goalTotal ? 38 : 4 } },
       responsive: true,
+      interaction: { mode:'index', intersect:false },
       plugins: {
-        legend: { position:'bottom', labels:{ color: textColor, font:{size:11}, padding:10 } },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${disp(ctx.raw)}`,
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: textColor, font:{size:11}, padding:10,
+            filter: item => item.text !== 'Meta',
           },
+        },
+        tooltip: {
+          backgroundColor: isDark ? 'rgba(20,26,14,0.95)' : 'rgba(255,255,255,0.95)',
+          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+          borderWidth: 1,
+          titleColor: textColor,
+          bodyColor: textColor,
+          padding: 8,
+          callbacks: { label: ctx => ctx.dataset.label === 'Meta' ? null : `${ctx.dataset.label}: ${disp(ctx.raw)}` },
+          filter: item => item.dataset.label !== 'Meta',
         },
       },
       scales: {
         x: { stacked:true, ticks:{ color:textColor, font:{size:10} }, grid:{ color:gridColor } },
         y: { stacked:true, ticks:{ color:textColor, font:{size:10}, callback: v => disp(v) }, grid:{ color:gridColor } },
       },
+      onHover(e, elements, chart) {
+        chart._hoveredX = e.x || null;
+        chart.draw();
+      },
     },
+    plugins: [chartMetaLabelPlugin, chartCrosshairPlugin],
   });
+  if (goalTotal) chartHydInstance._goalVal = goalTotal;
 }
 
 // ── ⑥ Top foods ──
