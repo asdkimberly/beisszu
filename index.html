@@ -1342,34 +1342,6 @@ select { cursor: pointer; }
 
     <!-- ── Metas ── -->
     <div id="profSec-metas">
-      <div class="section-label" style="margin-top:4px">Objetivo calórico</div>
-      <div class="card">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Define la dirección de tu meta de calorías para que el heatmap de consistencia la interprete correctamente.</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
-          <button id="goalTypeDeficit"      onclick="selectGoalType('deficit')"
-            style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:12px;cursor:pointer;color:var(--text2);text-align:center">
-            📉<div style="margin-top:3px">Déficit</div>
-          </button>
-          <button id="goalTypeMaintenance"  onclick="selectGoalType('maintenance')"
-            style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:12px;cursor:pointer;color:var(--text2);text-align:center">
-            ⚖️<div style="margin-top:3px">Mantenimiento</div>
-          </button>
-          <button id="goalTypeSurplus"      onclick="selectGoalType('surplus')"
-            style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:12px;cursor:pointer;color:var(--text2);text-align:center">
-            📈<div style="margin-top:3px">Superávit</div>
-          </button>
-        </div>
-        <div id="goalTypeHint" style="font-size:11px;color:var(--muted);margin-bottom:10px;min-height:14px"></div>
-        <div class="settings-row">
-          <div><div class="settings-label">Tolerancia</div><div style="font-size:11px;color:var(--muted)">Margen aceptable arriba/abajo de la meta</div></div>
-          <select id="goalTolerance" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-family:var(--font-display);font-size:13px;color:var(--text)">
-            <option value="5">±5%</option>
-            <option value="10" selected>±10%</option>
-            <option value="15">±15%</option>
-          </select>
-        </div>
-      </div>
-
       <div class="section-label" style="margin-top:4px">Nutrición diaria</div>
       <div class="card">
         <div class="settings-row"><div><div class="settings-label">Calorías</div></div><input class="settings-input" type="number" id="goalCal" placeholder="2000" inputmode="numeric"></div>
@@ -6022,58 +5994,20 @@ function selectGoalType(type, save = true) {
 }
 
 // Calorie-aware heatmap color — gradient that respects goalType and tolerance
-function heatmapColorCal(pct) {
+// ── Unified consistency color — 5 discrete states ──
+function consistencyColor(pct, isBoolean = false) {
   if (pct === null) return 'var(--border)';
-  const type = settings.goalType || 'deficit';
-  const tol  = settings.goalTolerance || 10;
-
-  if (type === 'deficit') {
-    // Target: consume ≤ goal. Green = at goal, red = 0% or way over goal.
-    // 0%   → red   (ate nothing — not following plan)
-    // 100% → green (hit goal exactly)
-    // 100%+tol → starts going orange→red again (exceeded)
-    const ceiling = 100 + tol;
-    if (pct <= 100) {
-      // 0% = red, 100% = green — standard gradient
-      return heatmapColor(pct);
-    } else {
-      // 100%+tol% = orange, 100%+tol*3 = red
-      const over = Math.min((pct - 100) / (tol * 3), 1);
-      return lerpRGB('#639922', over < 0.4 ? '#EF9F27' : '#E24B4A', over);
-    }
-  }
-
-  if (type === 'surplus') {
-    // Target: consume ≥ goal. Green = at goal, red = far below, blue = exceeding.
-    // 0%   → red   (far below goal)
-    // 100% → green (hit goal)
-    // >100% → blue (exceeding — great for surplus)
-    return heatmapColor(Math.min(pct, 130));
-  }
-
-  // Maintenance: symmetric around 100%. Green = within tolerance, red = far from it.
-  // Map deviation from 100% to a color:
-  // deviation 0   → green (100% of goal)
-  // deviation tol → yellow-green (edge of tolerance)
-  // deviation tol*2 → orange
-  // deviation tol*4 → red
-  const deviation = Math.abs(pct - 100);
-  const remapped  = Math.min((deviation / (tol * 4)) * 100, 100);
-  // Invert: 0 deviation = 100% on gradient (green), max deviation = 0% (red)
-  return heatmapColor(100 - remapped);
+  if (isBoolean) return pct ? '#639922' : '#E24B4A';
+  if (pct > 110)  return '#378ADD'; // excede
+  if (pct >= 80)  return '#639922'; // cumplido
+  if (pct >= 50)  return '#EF9F27'; // parcial
+  if (pct > 0)    return '#E24B4A'; // no cumplido
+  return 'var(--border)';           // sin datos
 }
 
-function heatmapColor(pct) {
-  if (pct === null) return 'var(--border)';
-  if (pct > 100) {
-    const t = Math.min((pct - 100) / 30, 1);
-    return lerpRGB('#639922', '#378ADD', t);
-  }
-  const stops = ['#E24B4A','#EF9F27','#97C459','#639922'];
-  const t = Math.max(0, Math.min(pct, 100)) / 100;
-  if (t <= 0.33)      return lerpRGB(stops[0], stops[1], t / 0.33);
-  else if (t <= 0.66) return lerpRGB(stops[1], stops[2], (t - 0.33) / 0.33);
-  else                return lerpRGB(stops[2], stops[3], (t - 0.66) / 0.34);
+// Keep alias for Inicio progress bar
+function heatmapColorCal(pct) {
+  return consistencyColor(pct);
 }
 
 function lerpRGB(a, b, t) {
@@ -6088,18 +6022,17 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
   const today = statsToDate ? new Date(statsToDate + 'T12:00:00') : new Date();
   const squares = [];
   let metCount = 0, totalCount = 0;
+
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const dayLabel = d.toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
     const val = pctFn(dateStr);
-    const bg = isBoolean
-      ? (val === null ? 'var(--border)' : val ? '#639922' : '#E24B4A')
-      : (colorFn ? colorFn(val) : heatmapColor(val));
+    const bg = colorFn ? colorFn(val) : consistencyColor(val, isBoolean);
     const tip = isBoolean
       ? (val === null ? 'Sin datos' : val ? '✓ Completado' : '✗ No completado')
-      : (val === null ? 'Sin datos' : val > 100 ? `${Math.round(val)}% (excede meta)` : `${Math.round(val)}%`);
+      : (val === null ? 'Sin datos' : `${Math.round(val)}%`);
     squares.push({ bg, tip: `${dayLabel}: ${tip}` });
     if (val !== null) {
       totalCount++;
@@ -6107,22 +6040,31 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
     }
   }
 
-  const pctMet = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : null;
+  const pctMet   = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : null;
   const pctColor = pctMet === null ? 'var(--muted)' : pctMet >= 80 ? '#639922' : pctMet >= 50 ? '#EF9F27' : '#E24B4A';
+  const sq = (s) => `<div title="${s.tip}" style="flex:1;height:18px;border-radius:3px;background:${s.bg};min-width:0;cursor:default"></div>`;
 
-  const sqH = 18; // taller squares for legibility
-  const sqStyle = `flex:1;height:${sqH}px;border-radius:3px;background:`;
   let grid;
-  if (days === 30) {
-    const row1 = squares.slice(0,15).map(s=>
-      `<div title="${s.tip}" style="${sqStyle}${s.bg};min-width:0;cursor:default"></div>`).join('');
-    const row2 = squares.slice(15).map(s=>
-      `<div title="${s.tip}" style="${sqStyle}${s.bg};min-width:0;cursor:default"></div>`).join('');
-    grid = `<div style="display:flex;gap:3px;margin-bottom:3px">${row1}</div>
-            <div style="display:flex;gap:3px">${row2}</div>`;
+  if (days <= 7) {
+    // Single row of 7
+    grid = `<div style="display:flex;gap:3px">${squares.map(sq).join('')}</div>`;
+  } else if (days <= 30) {
+    // Two rows of up to 15
+    const mid  = Math.ceil(days / 2);
+    const row1 = squares.slice(0, mid);
+    const row2 = squares.slice(mid);
+    grid = `<div style="display:flex;gap:3px;margin-bottom:3px">${row1.map(sq).join('')}</div>
+            <div style="display:flex;gap:3px">${row2.map(sq).join('')}</div>`;
   } else {
-    grid = `<div style="display:flex;gap:3px">${squares.map(s=>
-      `<div title="${s.tip}" style="${sqStyle}${s.bg};min-width:0;cursor:default"></div>`).join('')}</div>`;
+    // Custom range > 30: chunk into rows of ~15
+    const chunkSize = 15;
+    const rows = [];
+    for (let i = 0; i < squares.length; i += chunkSize) {
+      rows.push(squares.slice(i, i + chunkSize));
+    }
+    grid = rows.map((row, i) =>
+      `<div style="display:flex;gap:3px${i < rows.length-1?';margin-bottom:3px':''}">${row.map(sq).join('')}</div>`
+    ).join('');
   }
 
   return `
@@ -6164,15 +6106,13 @@ async function renderStatsConsistency(food, hyd) {
 
   let html = '';
 
-  // ── Macro rows — build first ──
-  // Calories uses goal-type-aware color
+  // Macro rows
   metrics.forEach(m => {
-    const colorFn = m.key === 'cal' ? heatmapColorCal : null;
     html += buildHeatmapRow(m.label, effRange, dateStr => {
       const d = byDate[dateStr];
       if (!d) return null;
       return Math.round((d[m.key] / m.goal) * 100);
-    }, false, colorFn);
+    }, false);
   });
 
   // Hydration
@@ -6201,61 +6141,24 @@ async function renderStatsConsistency(food, hyd) {
   }
 
   // ── Legends at the bottom ──
-  const type = settings.goalType || 'deficit';
-  const tol  = settings.goalTolerance || 10;
-  const goalTypeLabel = { deficit:'déficit', maintenance:'mantenimiento', surplus:'superávit' };
-
-  // Numeric legend — gradient from 0% to 200% showing full scale
-  const gradients = {
-    deficit:     'linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#EF9F27,#E24B4A)',
-    maintenance: 'linear-gradient(to right,#E24B4A,#EF9F27,#639922,#EF9F27,#E24B4A)',
-    surplus:     'linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#378ADD)',
-  };
-  const scaleLabels = {
-    deficit:     ['0%', '100% meta', '200%+'],
-    maintenance: ['0%', '100% meta', '200%+'],
-    surplus:     ['0%', '100% meta', '200%+'],
-  };
-  const [lbl0, lbl100, lbl200] = scaleLabels[type];
-  const calHint = settings.goalCal
-    ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">🔥 Calorías · <strong>${goalTypeLabel[type]}</strong> · ±${tol}%</div>`
-    : '';
-
   const hasNumeric = metrics.length > 0 || goalHydTotal > 0;
   let legendHTML = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">`;
 
   if (hasNumeric) {
-    legendHTML += `<div style="margin-bottom:${hasBooleanRows?'8px':'0'}">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-        <div style="flex:1;height:7px;border-radius:3px;background:${gradients[type]}"></div>
-        <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
-          <div style="width:10px;height:10px;border-radius:2px;background:var(--border)"></div>
-          <span style="font-size:10px;color:var(--muted)">sin datos</span>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between">
-        <span style="font-size:10px;color:var(--muted)">${lbl0}</span>
-        <span style="font-size:10px;color:var(--muted)">${lbl100}</span>
-        <span style="font-size:10px;color:var(--muted)">${lbl200}</span>
-      </div>
-      ${calHint}
+    legendHTML += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${hasBooleanRows?'8px':'0'}">
+      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#378ADD"></div>Excede (+110%)</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#639922"></div>Cumplido (80–110%)</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#EF9F27"></div>Parcial (50–80%)</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#E24B4A"></div>No cumplido (&lt;50%)</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:var(--border)"></div>Sin datos</div>
     </div>`;
   }
 
   if (hasBooleanRows) {
-    legendHTML += `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:${hasNumeric?'6px':'0'}">
-      <div style="display:flex;align-items:center;gap:4px">
-        <div style="width:10px;height:10px;border-radius:2px;background:#639922"></div>
-        <span style="font-size:10px;color:var(--muted)">tomado</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <div style="width:10px;height:10px;border-radius:2px;background:#E24B4A"></div>
-        <span style="font-size:10px;color:var(--muted)">no tomado</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <div style="width:10px;height:10px;border-radius:2px;background:var(--border)"></div>
-        <span style="font-size:10px;color:var(--muted)">sin datos</span>
-      </div>
+    legendHTML += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:${hasNumeric?'6px':'0'}">
+      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#639922"></div>Tomado</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#E24B4A"></div>No tomado</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:var(--border)"></div>Sin datos</div>
     </div>`;
   }
 
