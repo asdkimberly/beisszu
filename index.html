@@ -6140,29 +6140,24 @@ async function renderStatsConsistency(food, hyd) {
     });
   }
 
-  // ── Legends at the bottom ──
+  // ── Legend at the bottom ──
   const hasNumeric = metrics.length > 0 || goalHydTotal > 0;
-  let legendHTML = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">`;
+  let legendHTML = `<div style="margin-top:10px">`;
 
   if (hasNumeric) {
-    legendHTML += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${hasBooleanRows?'8px':'0'}">
-      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#378ADD"></div>Excede (+110%)</div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#639922"></div>Cumplido (80–110%)</div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#EF9F27"></div>Parcial (50–80%)</div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#E24B4A"></div>No cumplido (&lt;50%)</div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:var(--border)"></div>Sin datos</div>
-    </div>`;
+    legendHTML += `
+      <div style="height:7px;border-radius:3px;background:linear-gradient(to right,#E24B4A,#EF9F27,#639922,#378ADD);margin-bottom:4px"></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:9px;color:var(--muted)">No cumplido</span>
+        <span style="font-size:9px;color:var(--muted)">Parcial</span>
+        <span style="font-size:9px;color:var(--muted)">Cumplido</span>
+        <span style="font-size:9px;color:var(--muted)">Excede</span>
+      </div>`;
   }
 
-  if (hasBooleanRows) {
-    legendHTML += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:${hasNumeric?'6px':'0'}">
-      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#639922"></div>Tomado</div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:#E24B4A"></div>No tomado</div>
-      <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:2px;background:var(--border)"></div>Sin datos</div>
-    </div>`;
-  }
-
-  legendHTML += `</div>`;
+  legendHTML += `<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)">
+    <div style="width:10px;height:10px;border-radius:2px;background:var(--border)"></div>Sin datos
+  </div></div>`;
   html += legendHTML;
 
   document.getElementById('statsConsistencyContent').innerHTML = html;
