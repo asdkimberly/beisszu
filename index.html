@@ -6164,39 +6164,8 @@ async function renderStatsConsistency(food, hyd) {
 
   let html = '';
 
-  // Legend — dynamic based on goal type
-  const type = settings.goalType || 'deficit';
-  const tol  = settings.goalTolerance || 10;
-  const goalTypeLabel = { deficit:'déficit', maintenance:'mantenimiento', surplus:'superávit' };
-  const gradients = {
-    deficit:     'linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#EF9F27,#E24B4A)',
-    maintenance: 'linear-gradient(to right,#E24B4A,#EF9F27,#639922,#EF9F27,#E24B4A)',
-    surplus:     'linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#378ADD)',
-  };
-  const legendLabels = {
-    deficit:     ['Nada', 'Meta', 'Te pasaste'],
-    maintenance: ['Muy lejos', 'En la meta', 'Muy lejos'],
-    surplus:     ['Nada', 'Meta', 'Excede'],
-  };
-  const [lbl0, lbl50, lbl100] = legendLabels[type];
-  const calHint = settings.goalCal
-    ? `<span style="font-size:10px;color:var(--muted)">Calorías · <strong>${goalTypeLabel[type]}</strong> · ±${tol}%</span>`
-    : '';
-  html += `<div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
-      <div style="flex:1;height:8px;border-radius:4px;background:${gradients[type]};min-width:80px"></div>
-      <div style="width:12px;height:12px;border-radius:3px;background:var(--border);flex-shrink:0"></div>
-      <span style="font-size:11px;color:var(--muted)">sin datos</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-      <span style="font-size:10px;color:var(--muted)">${lbl0}</span>
-      <span style="font-size:10px;color:var(--muted)">${lbl50}</span>
-      <span style="font-size:10px;color:var(--muted)">${lbl100}</span>
-    </div>
-    ${calHint}
-  </div>`;
-
-  // Macro rows — calories uses goal-type-aware color
+  // ── Macro rows — build first ──
+  // Calories uses goal-type-aware color
   metrics.forEach(m => {
     const colorFn = m.key === 'cal' ? heatmapColorCal : null;
     html += buildHeatmapRow(m.label, effRange, dateStr => {
@@ -6217,6 +6186,7 @@ async function renderStatsConsistency(food, hyd) {
   }
 
   // Supplements (boolean)
+  let hasBooleanRows = false;
   if (supplements.length) {
     const suppLogs = await loadSuppLogRange();
     supplements.forEach(s => {
@@ -6226,8 +6196,71 @@ async function renderStatsConsistency(food, hyd) {
         if (!hasFood) return null;
         return takenDates.has(dateStr);
       }, true);
+      hasBooleanRows = true;
     });
   }
+
+  // ── Legends at the bottom ──
+  const type = settings.goalType || 'deficit';
+  const tol  = settings.goalTolerance || 10;
+  const goalTypeLabel = { deficit:'déficit', maintenance:'mantenimiento', surplus:'superávit' };
+
+  // Numeric legend — gradient from 0% to 200% showing full scale
+  const gradients = {
+    deficit:     'linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#EF9F27,#E24B4A)',
+    maintenance: 'linear-gradient(to right,#E24B4A,#EF9F27,#639922,#EF9F27,#E24B4A)',
+    surplus:     'linear-gradient(to right,#E24B4A,#EF9F27,#97C459,#639922,#378ADD)',
+  };
+  const scaleLabels = {
+    deficit:     ['0%', '100% meta', '200%+'],
+    maintenance: ['0%', '100% meta', '200%+'],
+    surplus:     ['0%', '100% meta', '200%+'],
+  };
+  const [lbl0, lbl100, lbl200] = scaleLabels[type];
+  const calHint = settings.goalCal
+    ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">🔥 Calorías · <strong>${goalTypeLabel[type]}</strong> · ±${tol}%</div>`
+    : '';
+
+  const hasNumeric = metrics.length > 0 || goalHydTotal > 0;
+  let legendHTML = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">`;
+
+  if (hasNumeric) {
+    legendHTML += `<div style="margin-bottom:${hasBooleanRows?'8px':'0'}">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+        <div style="flex:1;height:7px;border-radius:3px;background:${gradients[type]}"></div>
+        <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+          <div style="width:10px;height:10px;border-radius:2px;background:var(--border)"></div>
+          <span style="font-size:10px;color:var(--muted)">sin datos</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:10px;color:var(--muted)">${lbl0}</span>
+        <span style="font-size:10px;color:var(--muted)">${lbl100}</span>
+        <span style="font-size:10px;color:var(--muted)">${lbl200}</span>
+      </div>
+      ${calHint}
+    </div>`;
+  }
+
+  if (hasBooleanRows) {
+    legendHTML += `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:${hasNumeric?'6px':'0'}">
+      <div style="display:flex;align-items:center;gap:4px">
+        <div style="width:10px;height:10px;border-radius:2px;background:#639922"></div>
+        <span style="font-size:10px;color:var(--muted)">tomado</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <div style="width:10px;height:10px;border-radius:2px;background:#E24B4A"></div>
+        <span style="font-size:10px;color:var(--muted)">no tomado</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <div style="width:10px;height:10px;border-radius:2px;background:var(--border)"></div>
+        <span style="font-size:10px;color:var(--muted)">sin datos</span>
+      </div>
+    </div>`;
+  }
+
+  legendHTML += `</div>`;
+  html += legendHTML;
 
   document.getElementById('statsConsistencyContent').innerHTML = html;
 }
