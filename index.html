@@ -6532,12 +6532,18 @@ async function renderStatsBurn(food) {
     </div>`;
 
   const isDark    = document.documentElement.getAttribute('data-theme') !== 'light';
-  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
   const textColor = '#7a8460';
+  const noPoints  = effRange >= 14;
   const tickOpts  = { color: textColor, font:{ size:10 }, maxRotation:45, minRotation:45,
-                      maxTicksLimit: statsRange === 30 ? 10 : 7 };
+                      maxTicksLimit: effRange >= 30 ? 10 : 7, autoSkip: true };
+  const tooltipBase = {
+    backgroundColor: isDark ? 'rgba(20,26,14,0.95)' : 'rgba(255,255,255,0.95)',
+    borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    borderWidth: 1, titleColor: textColor, bodyColor: textColor, padding: 8,
+  };
 
-  // ── Chart 1: Stacked area — burned (background) + consumed (foreground) ──
+  // ── Chart 1: area — burned + consumed ──
   if (chartBurnInstance) { chartBurnInstance.destroy(); chartBurnInstance = null; }
   chartBurnInstance = new Chart(document.getElementById('chartBurn').getContext('2d'), {
     type: 'line',
@@ -6548,11 +6554,12 @@ async function renderStatsBurn(food) {
           label: 'Quemadas',
           data: burned,
           fill: true,
-          backgroundColor: isDark ? 'rgba(224,120,64,0.12)' : 'rgba(224,120,64,0.10)',
+          backgroundColor: isDark ? 'rgba(224,120,64,0.10)' : 'rgba(224,120,64,0.08)',
           borderColor: '#e07840',
           borderWidth: 1.5,
           borderDash: [5, 3],
-          pointRadius: 3,
+          pointRadius: noPoints ? 0 : 3,
+          pointHoverRadius: 4,
           pointBackgroundColor: '#e07840',
           tension: 0.35,
           spanGaps: false,
@@ -6562,10 +6569,11 @@ async function renderStatsBurn(food) {
           label: 'Consumidas',
           data: consumed,
           fill: true,
-          backgroundColor: isDark ? 'rgba(74,144,217,0.25)' : 'rgba(74,144,217,0.18)',
+          backgroundColor: isDark ? 'rgba(74,144,217,0.20)' : 'rgba(74,144,217,0.12)',
           borderColor: '#4a90d9',
           borderWidth: 2,
-          pointRadius: 3,
+          pointRadius: noPoints ? 0 : 3,
+          pointHoverRadius: 4,
           pointBackgroundColor: '#4a90d9',
           tension: 0.35,
           order: 1,
@@ -6577,21 +6585,27 @@ async function renderStatsBurn(food) {
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: {
+        tooltip: { ...tooltipBase, callbacks: {
           label: c => ` ${c.dataset.label}: ${c.raw ?? '—'} kcal`,
         }},
       },
       scales: {
-        x: { ticks: tickOpts, grid: { color: gridColor } },
+        x: { ticks: tickOpts, grid: { color: gridColor }, border: { display: false } },
         y: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor },
+             border: { display: false },
              title: { display: true, text: 'kcal', color: textColor, font:{size:10} } },
       },
+      onHover(e, elements, chart) {
+        chart._hoveredX = e.x || null;
+        chart.draw();
+      },
     },
+    plugins: [chartCrosshairPlugin],
   });
 
-  // Legend
+  // Legend — inline, no Chart.js legend
   document.getElementById('statsBurnLegend').innerHTML = `
-    <div style="display:flex;gap:14px;flex-wrap:wrap">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">
       <div style="display:flex;align-items:center;gap:5px">
         <div style="width:16px;height:2px;background:#4a90d9"></div>
         <span style="font-size:11px;color:var(--muted)">Consumidas</span>
@@ -6600,13 +6614,9 @@ async function renderStatsBurn(food) {
         <div style="width:16px;height:0;border-top:2px dashed #e07840"></div>
         <span style="font-size:11px;color:var(--muted)">Quemadas</span>
       </div>
-      <div style="display:flex;align-items:center;gap:5px">
-        <div style="width:12px;height:10px;border-radius:2px;background:#a8c060;opacity:0.5"></div>
-        <span style="font-size:11px;color:var(--muted)">Zona déficit</span>
-      </div>
     </div>`;
 
-  // ── Chart 2: Net balance bars (green=deficit, orange=surplus) ──
+  // ── Chart 2: Net balance bars ──
   if (chartBurnBalInstance) { chartBurnBalInstance.destroy(); chartBurnBalInstance = null; }
   chartBurnBalInstance = new Chart(document.getElementById('chartBurnBalance').getContext('2d'), {
     type: 'bar',
@@ -6623,19 +6633,26 @@ async function renderStatsBurn(food) {
     },
     options: {
       responsive: true,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: {
+        tooltip: { ...tooltipBase, callbacks: {
           label: c => c.raw === null ? ' Sin datos' :
             ` ${c.raw <= 0 ? 'Déficit' : 'Superávit'}: ${Math.abs(c.raw)} kcal`,
         }},
       },
       scales: {
-        x: { ticks: tickOpts, grid: { color: gridColor } },
+        x: { ticks: tickOpts, grid: { color: gridColor }, border: { display: false } },
         y: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor },
+             border: { display: false },
              title: { display: true, text: 'Balance (kcal)', color: textColor, font:{size:10} } },
       },
+      onHover(e, elements, chart) {
+        chart._hoveredX = e.x || null;
+        chart.draw();
+      },
     },
+    plugins: [chartCrosshairPlugin],
   });
 }
 
