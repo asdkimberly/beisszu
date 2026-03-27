@@ -1576,6 +1576,12 @@ select { cursor: pointer; }
       <div id="statsAlcoholList" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"></div>
     </div>
 
+    <!-- Analítica de uso -->
+    <div class="card" id="statsUsageCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Uso de la app</div>
+      <div id="statsUsageContent"></div>
+    </div>
+
     <!-- Generar informe -->
     <div id="statsReportSection" style="display:none;padding-bottom:8px">
       <div class="field" style="margin-bottom:10px">
@@ -2357,7 +2363,84 @@ async function fsSearch(query) {
 }
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-// ══ State ══
+// ══ i18n — Arquitectura lista para múltiples idiomas ══
+// Para agregar inglés: añadir 'en: { ... }' con los mismos keys
+// y cambiar _lang a 'en'
+let _lang = 'es';
+const I18N = {
+  es: {
+    // ── Navegación ──
+    nav_home:        'Inicio',
+    nav_foods:       'Alimentos',
+    nav_analytics:   'Análisis',
+    nav_profile:     'Perfil',
+    // ── Tiempos de comida ──
+    meal_breakfast:  'Desayuno',
+    meal_snack_am:   'Snack Mañana',
+    meal_lunch:      'Almuerzo',
+    meal_snack_pm:   'Snack Tarde',
+    meal_dinner:     'Cena',
+    meal_extra:      'Extra',
+    // ── Registro ──
+    reg_food:        'Alimento',
+    reg_dish:        'Platillo',
+    reg_template:    'Plantilla',
+    reg_hydration:   'Hidratación',
+    reg_supplement:  'Suplemento',
+    // ── Acciones ──
+    action_save:     'Guardar',
+    action_cancel:   'Cancelar',
+    action_delete:   'Eliminar',
+    action_edit:     'Editar',
+    action_apply:    'Aplicar',
+    action_add:      'Agregar',
+    // ── Macros ──
+    macro_cal:       'Calorías',
+    macro_protein:   'Proteína',
+    macro_carbs:     'Carbohidratos',
+    macro_fat:       'Grasas',
+    macro_fiber:     'Fibra',
+    macro_sugar:     'Azúcar',
+    // ── Unidades ──
+    unit_grams:      'gramos',
+    unit_ml:         'ml',
+    unit_oz:         'oz',
+    unit_cups:       'tazas',
+    unit_tbsp:       'cdas',
+    unit_tsp:        'cditas',
+    unit_portions:   'porciones',
+    unit_units:      'unidades',
+    unit_slices:     'rebanadas',
+    unit_pieces:     'piezas',
+    // ── Mensajes ──
+    msg_saved:       '✓ Guardado',
+    msg_deleted:     '✓ Eliminado',
+    msg_error:       'Ocurrió un error',
+    msg_no_data:     'Sin datos',
+    msg_loading:     'Cargando…',
+    // ── Días de semana ──
+    dow_sun:         'Domingo',
+    dow_mon:         'Lunes',
+    dow_tue:         'Martes',
+    dow_wed:         'Miércoles',
+    dow_thu:         'Jueves',
+    dow_fri:         'Viernes',
+    dow_sat:         'Sábado',
+    // ── Análisis ──
+    stats_period:    'Resumen del período',
+    stats_consist:   'Consistencia de metas',
+    stats_trend:     'Tendencia de calorías',
+    stats_meal_time: 'Promedio por tiempo de comida',
+    stats_hydration: 'Hidratación promedio',
+    // ── Origen ──
+    origin_home:     'Casa',
+    origin_out:      'Fuera',
+  },
+};
+// t(key) — retorna el string del idioma activo, o el key si no existe
+function t(key) {
+  return (I18N[_lang] && I18N[_lang][key]) || (I18N['es'] && I18N['es'][key]) || key;
+}
 let currentUser = null;
 let selectedMeal = null;
 let selectedOrigin = 'Casa';
@@ -2657,6 +2740,7 @@ async function initApp(user) {
 // ══ Navigation ══
 function switchTab(name) {
   currentTab = name;
+  logEvent('tab_switched', { tab: name });
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const page = document.getElementById('page-' + name);
@@ -3187,6 +3271,11 @@ async function confirmAndSaveEntry() {
       return;
     }
   }
+  logEvent('entry_created', {
+    meal_type:  document.getElementById('mealType')?.value,
+    food_name:  document.getElementById('foodName')?.value,
+    source:     selectedFoodBase?._fromFatSecret ? 'fatsecret' : 'manual',
+  });
   showToast('✓ Entrada registrada');
 }
 
@@ -3239,8 +3328,11 @@ async function deleteEntry(id) {
     body: `¿Eliminás "${entry?.food_name || 'esta entrada'}"?`,
     label: 'Eliminar',
     onConfirm: async () => {
+      const snapshot = entry ? { ...entry } : null;
       const { error } = await sb.from('food_log').delete().eq('id', id).eq('user_id', currentUser.id);
       if (error) { showToast('Error al eliminar', true); return; }
+      logAudit('delete', id, snapshot);
+      logEvent('entry_deleted', { food_name: entry?.food_name });
       entries = entries.filter(e => e.id !== id);
       buildCarouselDays(true);
       renderCarouselDay();
@@ -3964,6 +4056,50 @@ function closeEditModal() {
   editingEntryId = null;
 }
 
+// ══ Auditoría ══
+async function logAudit(action, entryId, oldData, newData = null) {
+  if (!currentUser) return;
+  try {
+    await sb.from('food_log_audit').insert({
+      user_id:   currentUser.id,
+      entry_id:  entryId,
+      action,
+      old_data:  oldData,
+      new_data:  newData,
+    });
+  } catch(e) { console.warn('audit log failed:', e); }
+}
+
+// ══ Analítica de uso ══
+// Cola para batching — escribe cada 10 eventos o 30s
+let _eventQueue = [];
+let _eventFlushTimer = null;
+
+function logEvent(event, metadata = {}) {
+  if (!currentUser) return;
+  _eventQueue.push({ user_id: currentUser.id, event, metadata });
+  clearTimeout(_eventFlushTimer);
+  if (_eventQueue.length >= 10) {
+    flushEvents();
+  } else {
+    _eventFlushTimer = setTimeout(flushEvents, 30000);
+  }
+}
+
+async function flushEvents() {
+  if (!_eventQueue.length || !currentUser) return;
+  const batch = [..._eventQueue];
+  _eventQueue = [];
+  try {
+    await sb.from('usage_events').insert(batch);
+  } catch(e) { console.warn('analytics flush failed:', e); }
+}
+
+// Flush on page hide
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushEvents();
+});
+
 async function saveEditEntry() {
   if (!editingEntryId) return;
   const updated = {
@@ -4006,7 +4142,11 @@ async function saveEditEntry() {
   }
 
   const idx = entries.findIndex(e => e.id === editingEntryId);
+  const oldSnapshot = idx !== -1 ? { ...entries[idx] } : null;
   if (idx !== -1) entries[idx] = { ...entries[idx], ...data[0] };
+  // Audit log — fire and forget
+  logAudit('edit', editingEntryId, oldSnapshot, data[0]);
+  logEvent('entry_edited', { food_name: updated.food_name });
   closeEditModal();
   renderCarouselDay();
   showToast('✓ Entrada actualizada');
@@ -6229,6 +6369,7 @@ async function renderStats() {
     renderStatsSugarFiber(food);
     renderStatsAlcohol(food);
     renderStatsEatingOut(food);
+    await renderStatsUsage();
     document.getElementById('statsReportSection').style.display = 'block';
   } catch(err) {
     console.error('renderStats error:', err);
@@ -7384,6 +7525,74 @@ function renderStatsAlcohol(food) {
   </div>`;
 }
 
+async function renderStatsUsage() {
+  const card    = document.getElementById('statsUsageCard');
+  const content = document.getElementById('statsUsageContent');
+  if (!card || !currentUser) return;
+
+  // Fetch last 30 days of events
+  const since = new Date(); since.setDate(since.getDate() - 30);
+  const sinceStr = since.toISOString();
+  const { data: events } = await sb.from('usage_events')
+    .select('event, metadata, occurred_at')
+    .eq('user_id', currentUser.id)
+    .gte('occurred_at', sinceStr)
+    .order('occurred_at', { ascending: false });
+
+  if (!events || !events.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  // Count by event type
+  const counts = {};
+  events.forEach(e => { counts[e.event] = (counts[e.event] || 0) + 1; });
+
+  // Active days (unique dates)
+  const activeDays = new Set(events.map(e => e.occurred_at.slice(0,10))).size;
+
+  // Most used feature
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+
+  const EVENT_LABELS = {
+    entry_created:    '🥗 Entradas registradas',
+    entry_edited:     '✏️ Entradas editadas',
+    entry_deleted:    '🗑 Entradas eliminadas',
+    template_applied: '📋 Plantillas aplicadas',
+    dish_registered:  '🍽️ Platillos registrados',
+    hyd_logged:       '💧 Registros hidratación',
+    tab_switched:     '📱 Cambios de tab',
+    food_searched:    '🔍 Búsquedas realizadas',
+    csv_exported:     '📊 Exportaciones CSV',
+    pdf_generated:    '📄 PDFs generados',
+  };
+
+  // Active days streak chip
+  const streakColor = activeDays >= 20 ? '#639922' : activeDays >= 10 ? '#EF9F27' : '#E24B4A';
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--muted)">Últimos 30 días</div>
+      <div style="font-size:12px;font-weight:500;color:${streakColor}">${activeDays} días activos</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">`;
+
+  sorted.filter(([k]) => k !== 'tab_switched').slice(0, 8).forEach(([event, count]) => {
+    const label = EVENT_LABELS[event] || event;
+    const maxCount = sorted.filter(([k]) => k !== 'tab_switched')[0]?.[1] || 1;
+    const pct = Math.round((count / maxCount) * 100);
+    html += `
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text2);width:170px;flex-shrink:0">${label}</span>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--border)">
+          <div style="width:${pct}%;height:100%;border-radius:2px;background:var(--accent)"></div>
+        </div>
+        <span style="font-size:12px;font-weight:500;color:var(--text);width:24px;text-align:right;flex-shrink:0">${count}</span>
+      </div>`;
+  });
+
+  html += `</div>`;
+  content.innerHTML = html;
+}
+
 function renderStatsTopFoods(food) {
   const card = document.getElementById('statsTopFoodsCard');
   const solidFood = food.filter(e => !isBeverage(e));
@@ -7482,6 +7691,7 @@ function toCSV(rows, columns) {
 }
 
 async function exportCSV() {
+  logEvent('csv_exported');
   const from = document.getElementById('exportDateFrom').value;
   const to   = document.getElementById('exportDateTo').value;
   if (!from || !to) { showToast('Seleccioná un rango de fechas', true); return; }
@@ -7544,6 +7754,7 @@ async function exportCSV() {
 }
 
 async function generatePDF() {
+  logEvent('pdf_generated');
   const btn = document.getElementById('btnGeneratePDF');
   btn.textContent = '⏳ Generando…';
   btn.disabled = true;
@@ -8333,6 +8544,7 @@ async function quickApplyTemplate(templateId) {
   const idx = carouselDays.indexOf(targetDate);
   if (idx !== -1) { carouselIndex = idx; localStorage.setItem('bz_carousel_date', targetDate); }
   renderCarouselDay();
+  logEvent('template_applied', { template_name: tmpl.name, meal_type: tmpl.meal_type });
   showToast(`✓ "${tmpl.name}" aplicada`);
 }
 
@@ -8363,6 +8575,7 @@ async function quickRegisterDish(dishId) {
   const idx = carouselDays.indexOf(targetDate);
   if (idx !== -1) { carouselIndex = idx; localStorage.setItem('bz_carousel_date', targetDate); }
   renderCarouselDay();
+  logEvent('dish_registered', { dish_name: dish.name });
   showToast(`✓ ${dish.name} registrado`);
 }
 
