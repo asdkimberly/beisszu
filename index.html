@@ -7524,21 +7524,64 @@ async function generatePDF() {
     if(pct>0)      return [226,75,74];     // red   — no cumplido <50%
     return [210,212,205];                  // gray  — sin datos (0)
   }
-  function heatmapRowGrad(label,pctFn){
-    const sqW=statsRange===7?8:4.5; const sqH=3; const sqGap=1;
-    checkSpace(sqH+8);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-    doc.text(label,margin,y+sqH-1);
-    let sx=margin+22;
+  function heatmapRowGrad(label, pctFn){
+    const sqH=4; const sqGap=1;
     const today2=new Date(statsToDate+'T12:00:00');
+    const squares=[];
+    let metCount=0, totalCount=0;
     for(let i=effRange-1;i>=0;i--){
       const d=new Date(today2); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      const [r,g,b]=pctRGB(pctFn(ds));
-      doc.setFillColor(r,g,b); doc.roundedRect(sx,y,sqW,sqH,0.8,0.8,'F');
-      sx+=sqW+sqGap;
+      const pct=pctFn(ds);
+      squares.push({ds, pct});
+      if(pct!==null){ totalCount++; if(pct>=80) metCount++; }
     }
-    y+=sqH+3;
+    const pctMet=totalCount>0?Math.round((metCount/totalCount)*100):null;
+
+    // Adaptive layout: 7=one row, ≤30=two rows of 15, >30=rows of 15
+    const labelW=22;
+    const availW=CW-labelW-18; // leave space for % badge right
+    let rows;
+    if(effRange<=7){
+      rows=[squares];
+    } else if(effRange<=30){
+      const mid=Math.ceil(squares.length/2);
+      rows=[squares.slice(0,mid), squares.slice(mid)];
+    } else {
+      rows=[];
+      for(let i=0;i<squares.length;i+=15) rows.push(squares.slice(i,i+15));
+    }
+
+    const rowCount=rows.length;
+    const totalH=rowCount*(sqH+2)+4;
+    checkSpace(totalH+6);
+
+    // Label
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.dark);
+    doc.text(label, margin, y+sqH-0.5);
+
+    // Draw rows of squares
+    let ry=y;
+    rows.forEach((rowSqs, ri)=>{
+      const sqW=availW/rowSqs.length - sqGap;
+      let sx=margin+labelW;
+      rowSqs.forEach(({pct})=>{
+        const [r,g,b]=pctRGB(pct);
+        doc.setFillColor(r,g,b);
+        doc.roundedRect(sx,ry,sqW,sqH,0.6,0.6,'F');
+        sx+=sqW+sqGap;
+      });
+      ry+=sqH+2;
+    });
+
+    // % badge
+    if(pctMet!==null){
+      const badgeColor=pctMet>=80?[99,153,34]:pctMet>=50?[239,159,39]:[226,75,74];
+      doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...badgeColor);
+      doc.text(`${pctMet}%`, W-margin-2, y+sqH-0.5, {align:'right'});
+    }
+
+    y=ry+2;
   }
 
   function heatmapLegendGrad(){
@@ -7563,25 +7606,43 @@ async function generatePDF() {
     y+=sqH+6;
   }
 
-  // Supplement boolean heatmap: green=tomado, red=no tomado (si hay datos), gray=sin datos
+  // Supplement boolean heatmap — adaptive layout matching app
   function heatmapRowSupp(label, takenDates){
-    const sqW=statsRange===7?8:4.5; const sqH=3; const sqGap=1;
-    checkSpace(sqH+8);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-    doc.text(label, margin, y+sqH-1);
-    let sx=margin+22;
+    const sqH=4; const sqGap=1;
+    const labelW=22;
+    const availW=CW-labelW-18;
     const today2=new Date(statsToDate+'T12:00:00');
+    const squares=[];
     for(let i=effRange-1;i>=0;i--){
       const d=new Date(today2); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const hasFood=byDate[ds]!=null;
-      if(!hasFood)               doc.setFillColor(210,212,205); // gray: sin datos
-      else if(takenDates.has(ds)) doc.setFillColor(99,153,34);  // green: tomado
-      else                        doc.setFillColor(226,75,74);  // red: no tomado
-      doc.roundedRect(sx,y,sqW,sqH,0.8,0.8,'F');
-      sx+=sqW+sqGap;
+      squares.push({ds, hasFood, taken:takenDates.has(ds)});
     }
-    y+=sqH+3;
+    let rows;
+    if(effRange<=7)       rows=[squares];
+    else if(effRange<=30){ const mid=Math.ceil(squares.length/2); rows=[squares.slice(0,mid),squares.slice(mid)]; }
+    else { rows=[]; for(let i=0;i<squares.length;i+=15) rows.push(squares.slice(i,i+15)); }
+
+    const totalH=rows.length*(sqH+2)+4;
+    checkSpace(totalH+6);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.dark);
+    doc.text(label, margin, y+sqH-0.5);
+
+    let ry=y;
+    rows.forEach(rowSqs=>{
+      const sqW=availW/rowSqs.length - sqGap;
+      let sx=margin+labelW;
+      rowSqs.forEach(({hasFood,taken})=>{
+        if(!hasFood)   doc.setFillColor(210,212,205);
+        else if(taken) doc.setFillColor(99,153,34);
+        else           doc.setFillColor(226,75,74);
+        doc.roundedRect(sx,ry,sqW,sqH,0.6,0.6,'F');
+        sx+=sqW+sqGap;
+      });
+      ry+=sqH+2;
+    });
+    y=ry+2;
   }
 
   // Detail list (date header + entries + total row)
@@ -7759,56 +7820,32 @@ async function generatePDF() {
   sectionSpace(Math.max(mealSectionH, 50)); sectionTitle('4. Promedio de calorias por tiempo de comida');
 
   const maxMealVal = sortedMeals[0]?.[1] || 1;
-  const pdfNumSizes = [11, 10, 9, 8.5, 8, 7.5];
 
-  sortedMeals.forEach(([meal, val], i) => {
-    const share   = Math.round((val/totalMealCal2)*100);
+  sortedMeals.forEach(([meal, val]) => {
     const barPct  = Math.round((val/maxMealVal)*100);
     const [r,g,b] = hexRGB(mealColorOf(meal));
-    const rowH    = 10;
-    checkSpace(rowH+1);
-
-    // Color accent bar left
-    doc.setFillColor(r,g,b);
-    doc.roundedRect(margin, y, 2, rowH, 0.5, 0.5, 'F');
-
-    // Row background
-    doc.setFillColor(i%2===0?243:250, i%2===0?246:251, i%2===0?232:245);
-    doc.roundedRect(margin+3, y, CW-3, rowH, 1, 1, 'F');
-
-    // Rank
-    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
-    doc.text(String(i+1), margin+6, y+6.5);
+    const rowH    = 9;
+    checkSpace(rowH+2);
 
     // Name
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-    const nm = meal.length>16 ? meal.slice(0,15)+'…' : meal;
-    doc.text(nm, margin+13, y+6.5);
+    const nm = meal.length>18 ? meal.slice(0,17)+'…' : meal;
+    doc.text(nm, margin, y+6);
 
     // Mini bar
-    const bx=margin+70; const bw=CW-70-28; const by=y+rowH/2-1;
-    doc.setFillColor(210,215,200); doc.roundedRect(bx,by,bw,2,0.5,0.5,'F');
-    doc.setFillColor(r,g,b); doc.roundedRect(bx,by,bw*barPct/100,2,0.5,0.5,'F');
+    const bx=margin+55; const bw=CW-55-28; const by=y+rowH/2-1;
+    doc.setFillColor(220,224,210); doc.roundedRect(bx,by,bw,3,0.5,0.5,'F');
+    doc.setFillColor(r,g,b); doc.roundedRect(bx,by,Math.max(bw*barPct/100,1),3,0.5,0.5,'F');
 
-    // Calories — size scales with rank
-    const fontSize = pdfNumSizes[i] || 7.5;
-    doc.setFont('helvetica','bold'); doc.setFontSize(fontSize); doc.setTextColor(...C.dark);
-    doc.text(`${val}`, W-margin-18, y+6.5, {align:'right'});
-
-    // Share pct
+    // Calories right
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...C.dark);
+    doc.text(`${val}`, W-margin-8, y+6, {align:'right'});
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
-    doc.text(`${share}%`, W-margin-3, y+6.5, {align:'right'});
+    doc.text('kcal', W-margin-2, y+6, {align:'right'});
 
-    y += rowH+1;
+    y += rowH+2;
   });
-
-  // Total
-  checkSpace(9);
-  doc.setFillColor(...C.accent); doc.roundedRect(margin, y, CW, 8, 1, 1, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...C.white);
-  doc.text('Total promedio diario', margin+3, y+5.5);
-  doc.text(`${totalMealCal2} kcal`, W-margin-3, y+5.5, {align:'right'});
-  y += 12;
+  y += 4;
 
   // ── ⑤ Origen ──
   // Count by unique date|meal_type combinations (occasions), matching renderStatsOrigin
@@ -8387,8 +8424,8 @@ function closeBSIfOverlay(event, id) {
 function openSearch() {
   const overlay = document.getElementById('searchOverlay');
   overlay.style.display = 'flex';
-  document.getElementById('searchResults').innerHTML = '';
   document.getElementById('searchInput').value = '';
+  showSearchHome();
   setTimeout(() => document.getElementById('searchInput').focus(), 50);
 }
 
@@ -8396,10 +8433,62 @@ function closeSearch() {
   document.getElementById('searchOverlay').style.display = 'none';
 }
 
+function showSearchHome() {
+  const results = document.getElementById('searchResults');
+  let html = '';
+
+  // Recent entries (last 8 unique food names)
+  const seen = new Set();
+  const recent = [...entries].reverse().filter(e => {
+    if (seen.has(e.food_name)) return false;
+    seen.add(e.food_name); return true;
+  }).slice(0, 8);
+
+  if (recent.length) {
+    html += `<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Recientes</div>`;
+    html += recent.map(e => `
+      <div onclick="closeSearch();openBS('bsFood');setTimeout(()=>{ const f=[...customFoods,...foodsDb].find(f=>f.name===${JSON.stringify(e.food_name)}); if(f){document.getElementById('foodName').value=f.name;selectFood(f);} },300)"
+        style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface2);border-radius:10px;margin-bottom:5px;cursor:pointer">
+        <span style="font-size:16px;flex-shrink:0">🕐</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;color:var(--text);font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.food_name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px">${e.quantity} ${e.unit} · ${Math.round(e.calories||0)} kcal</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // Quick access
+  html += `<div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:${recent.length?'14px':'0'}">Accesos directos</div>`;
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+    <div onclick="closeSearch();openBS('bsFood')"
+      style="padding:12px;background:var(--surface2);border-radius:10px;cursor:pointer;text-align:center">
+      <div style="font-size:20px;margin-bottom:4px">🥗</div>
+      <div style="font-size:12px;color:var(--text);font-family:var(--font-display)">Nuevo alimento</div>
+    </div>
+    <div onclick="closeSearch();openDishPicker()"
+      style="padding:12px;background:var(--surface2);border-radius:10px;cursor:pointer;text-align:center">
+      <div style="font-size:20px;margin-bottom:4px">🍽️</div>
+      <div style="font-size:12px;color:var(--text);font-family:var(--font-display)">Platillos</div>
+    </div>
+    <div onclick="closeSearch();openTemplatePicker()"
+      style="padding:12px;background:var(--surface2);border-radius:10px;cursor:pointer;text-align:center">
+      <div style="font-size:20px;margin-bottom:4px">📋</div>
+      <div style="font-size:12px;color:var(--text);font-family:var(--font-display)">Plantillas</div>
+    </div>
+    <div onclick="closeSearch();switchTab('foods')"
+      style="padding:12px;background:var(--surface2);border-radius:10px;cursor:pointer;text-align:center">
+      <div style="font-size:20px;margin-bottom:4px">🥦</div>
+      <div style="font-size:12px;color:var(--text);font-family:var(--font-display)">Mis alimentos</div>
+    </div>
+  </div>`;
+
+  results.innerHTML = html;
+}
+
 let _searchTimeout = null;
 function onSearchInput(val) {
   clearTimeout(_searchTimeout);
-  if (!val.trim()) { document.getElementById('searchResults').innerHTML = ''; return; }
+  if (!val.trim()) { showSearchHome(); return; }
   _searchTimeout = setTimeout(() => runSearch(val.trim()), 200);
 }
 
