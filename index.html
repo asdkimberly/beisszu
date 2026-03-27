@@ -772,6 +772,10 @@ select { cursor: pointer; }
 .empty-text { font-size: 14px; color: var(--muted); line-height: 1.6; }
 
 /* ══ ANIMATIONS ══ */
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.5; transform:scale(1.3); }
+}
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -1356,6 +1360,24 @@ select { cursor: pointer; }
         <div class="settings-row"><div><div class="settings-label">Hidratante (ml)</div></div><input class="settings-input" type="number" id="goalIsotonic" placeholder="500" inputmode="numeric"></div>
       </div>
 
+      <!-- Metas por día de la semana -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:4px">
+        <div class="section-label" style="margin-top:0">Metas por día de la semana</div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <div id="adaptiveToggle" onclick="toggleAdaptiveGoals()"
+            style="width:38px;height:22px;border-radius:11px;background:var(--border);position:relative;cursor:pointer;transition:background .2s">
+            <div id="adaptiveThumb" style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s"></div>
+          </div>
+          <span style="font-size:12px;color:var(--muted)">Activar overrides</span>
+        </label>
+      </div>
+      <div id="adaptiveGoalsSection" style="display:none">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Dejá en blanco los días que usen las metas base de arriba.</div>
+        <div class="card" style="padding:10px 12px">
+          <div id="weeklyGoalsGrid"></div>
+        </div>
+      </div>
+
       <button class="save-settings-btn" onclick="saveSettings()">✓ Guardar metas</button>
     </div>
 
@@ -1683,7 +1705,17 @@ select { cursor: pointer; }
       <div class="bs-handle"></div>
       <div class="bs-header">
         <div class="bs-title">🥗 Alimentación</div>
-        <button class="bs-close" onclick="closeBS('bsFood')">✕</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="voiceBtn" onclick="startVoiceEntry()" title="Registrar por voz"
+            style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;color:var(--muted);line-height:1">🎙️</button>
+          <button class="bs-close" onclick="closeBS('bsFood')">✕</button>
+        </div>
+      </div>
+      <!-- Voice status bar -->
+      <div id="voiceStatusBar" style="display:none;background:rgba(74,144,217,0.1);border-bottom:1px solid var(--border);padding:8px 16px;font-size:12px;color:#4a90d9;display:none;align-items:center;gap:8px">
+        <span id="voiceStatusDot" style="width:8px;height:8px;border-radius:50%;background:#4a90d9;flex-shrink:0;animation:pulse 1s infinite"></span>
+        <span id="voiceStatusText">Escuchando…</span>
+        <button onclick="stopVoice()" style="margin-left:auto;background:none;border:none;color:#4a90d9;font-size:11px;cursor:pointer;padding:0">Cancelar</button>
       </div>
       <div class="bs-body">
         <!-- Search first -->
@@ -3312,7 +3344,9 @@ async function renderCarouselDay() {
   // ── Hero calories ──
   document.getElementById('todayCal').textContent = Math.round(totCal);
 
-  const calGoal  = settings.goalCal;
+  // Use adaptive goals for this specific date
+  const todayGoals = getGoalsForDate(dateStr);
+  const calGoal  = todayGoals.cal;
   const calPct   = calGoal ? Math.round((totCal / calGoal) * 100) : null;
   const calColor = calGoal ? heatmapColorCal(calPct) : 'var(--accent)';
   const calSub   = document.getElementById('todayCalSub');
@@ -3349,9 +3383,9 @@ async function renderCarouselDay() {
 
   // ── Macros with goal: horizontal rows ──
   const macroGoalDefs = [
-    { label:'Proteína', val:totProt, goal:settings.goalProtein, color:'#4a90d9', fmt:v=>`${v.toFixed(0)}g` },
-    { label:'Carbos',   val:totCarb, goal:settings.goalCarbs,   color:'#d4a840', fmt:v=>`${v.toFixed(0)}g` },
-    { label:'Grasas',   val:totFat,  goal:settings.goalFat,     color:'#e07840', fmt:v=>`${v.toFixed(0)}g` },
+    { label:'Proteína', val:totProt, goal:todayGoals.protein, color:'#4a90d9', fmt:v=>`${v.toFixed(0)}g` },
+    { label:'Carbos',   val:totCarb, goal:todayGoals.carbs,   color:'#d4a840', fmt:v=>`${v.toFixed(0)}g` },
+    { label:'Grasas',   val:totFat,  goal:todayGoals.fat,     color:'#e07840', fmt:v=>`${v.toFixed(0)}g` },
   ];
   const macroNoGoalDefs = [
     { label:'Fibra',  val:totFib, goal:settings.goalProtein ? null : null, color:'#a8c060' },
@@ -3382,7 +3416,7 @@ async function renderCarouselDay() {
   const hydAmt    = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
   const disp      = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${Math.round(v)}ml`;
   const totalHyd  = waterAmt + hydAmt;
-  const totalGoal = (settings.goalWater||0) + (settings.goalIsotonic||0);
+  const totalGoal = (todayGoals.water||0) + (todayGoals.isotonic||0);
   const hydSec    = document.getElementById('homeHydSection');
 
   if (totalHyd > 0 || totalGoal > 0) {
@@ -3410,12 +3444,12 @@ async function renderCarouselDay() {
     }
 
     // Individual bars
-    if (waterAmt > 0 || settings.goalWater) {
-      hydHTML += barRow('💧 Agua', waterAmt, settings.goalWater||0, '#4a90d9', disp);
+    if (waterAmt > 0 || todayGoals.water) {
+      hydHTML += barRow('💧 Agua', waterAmt, todayGoals.water||0, '#4a90d9', disp);
     }
-    if (hydAmt > 0 || settings.goalIsotonic) {
+    if (hydAmt > 0 || todayGoals.isotonic) {
       hydHTML += `<div style="margin-top:5px">` +
-        barRow('🏋️ Hid.', hydAmt, settings.goalIsotonic||0, '#5bc0de', disp) +
+        barRow('🏋️ Hid.', hydAmt, todayGoals.isotonic||0, '#5bc0de', disp) +
         `</div>`;
     }
 
@@ -4240,6 +4274,8 @@ async function loadSettings() {
       goalWater: data.goal_water || 0, goalIsotonic: data.goal_isotonic || 0,
       goalType: data.goal_type || 'deficit',
       goalTolerance: data.goal_tolerance || 10,
+      weeklyGoals: data.weekly_goals || {},
+      adaptiveGoalsEnabled: !!(data.weekly_goals && Object.keys(data.weekly_goals).length),
     };
   }
   ['Cal','Protein','Carbs','Fat','Water','Isotonic'].forEach(k => {
@@ -4249,6 +4285,8 @@ async function loadSettings() {
   selectGoalType(settings.goalType, false);
   const tolEl = document.getElementById('goalTolerance');
   if (tolEl) tolEl.value = settings.goalTolerance;
+  renderWeeklyGoalsGrid();
+  updateAdaptiveToggleUI();
 }
 
 async function saveSettings() {
@@ -4258,17 +4296,107 @@ async function saveSettings() {
   settings.goalFat       = parseInt(document.getElementById('goalFat').value)       || 0;
   settings.goalWater     = parseInt(document.getElementById('goalWater').value)     || 0;
   settings.goalIsotonic  = parseInt(document.getElementById('goalIsotonic').value)  || 0;
-  settings.goalTolerance = parseInt(document.getElementById('goalTolerance').value) || 10;
+  settings.goalTolerance = parseInt(document.getElementById('goalTolerance') ? document.getElementById('goalTolerance').value : 10) || 10;
+
+  // Collect weekly goal overrides
+  const weeklyGoals = {};
+  if (settings.adaptiveGoalsEnabled) {
+    [0,1,2,3,4,5,6].forEach(dow => {
+      const g = {};
+      ['cal','protein','carbs','fat','water','isotonic'].forEach(k => {
+        const el = document.getElementById(`wg_${dow}_${k}`);
+        if (el && el.value) g[k] = parseInt(el.value) || 0;
+      });
+      if (Object.keys(g).length) weeklyGoals[String(dow)] = g;
+    });
+  }
+  settings.weeklyGoals = weeklyGoals;
+
   const { error } = await sb.from('profiles').upsert({
     id: currentUser.id,
     goal_cal: settings.goalCal, goal_protein: settings.goalProtein,
     goal_carbs: settings.goalCarbs, goal_fat: settings.goalFat,
     goal_water: settings.goalWater, goal_isotonic: settings.goalIsotonic,
     goal_type: settings.goalType, goal_tolerance: settings.goalTolerance,
+    weekly_goals: weeklyGoals,
   });
   if (error) { showToast('Error al guardar', true); return; }
   showToast('Metas guardadas ✓');
   renderCarouselDay();
+}
+
+// ── Adaptive goals ──
+const DOW_LABELS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const DOW_FULL   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+function getGoalsForDate(dateStr) {
+  // Returns effective goals for a given date, respecting weekly overrides
+  const base = {
+    cal: settings.goalCal, protein: settings.goalProtein,
+    carbs: settings.goalCarbs, fat: settings.goalFat,
+    water: settings.goalWater, isotonic: settings.goalIsotonic,
+  };
+  if (!settings.adaptiveGoalsEnabled || !settings.weeklyGoals) return base;
+  const dow = new Date(dateStr + 'T12:00:00').getDay(); // 0=Sun
+  const override = settings.weeklyGoals[String(dow)];
+  if (!override) return base;
+  return {
+    cal:      override.cal      || base.cal,
+    protein:  override.protein  || base.protein,
+    carbs:    override.carbs    || base.carbs,
+    fat:      override.fat      || base.fat,
+    water:    override.water    || base.water,
+    isotonic: override.isotonic || base.isotonic,
+  };
+}
+
+function toggleAdaptiveGoals() {
+  settings.adaptiveGoalsEnabled = !settings.adaptiveGoalsEnabled;
+  updateAdaptiveToggleUI();
+}
+
+function updateAdaptiveToggleUI() {
+  const tog  = document.getElementById('adaptiveToggle');
+  const thm  = document.getElementById('adaptiveThumb');
+  const sec  = document.getElementById('adaptiveGoalsSection');
+  if (!tog) return;
+  const on = settings.adaptiveGoalsEnabled;
+  tog.style.background  = on ? 'var(--accent)' : 'var(--border)';
+  thm.style.left        = on ? '18px' : '2px';
+  if (sec) sec.style.display = on ? 'block' : 'none';
+}
+
+function renderWeeklyGoalsGrid() {
+  const grid = document.getElementById('weeklyGoalsGrid');
+  if (!grid) return;
+  const wg = settings.weeklyGoals || {};
+  const fields = [
+    { key:'cal',      label:'Cal',   placeholder: settings.goalCal      || '—' },
+    { key:'protein',  label:'Prot',  placeholder: settings.goalProtein  || '—' },
+    { key:'carbs',    label:'Carbs', placeholder: settings.goalCarbs    || '—' },
+    { key:'fat',      label:'Gras',  placeholder: settings.goalFat      || '—' },
+  ];
+
+  grid.innerHTML = [0,1,2,3,4,5,6].map(dow => {
+    const override = wg[String(dow)] || {};
+    const isToday = new Date().getDay() === dow;
+    return `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--border)">
+      <div style="font-size:11px;font-weight:500;color:${isToday?'var(--accent)':'var(--text2)'};margin-bottom:6px">
+        ${DOW_FULL[dow]}${isToday?' · hoy':''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+        ${fields.map(f => `
+          <div>
+            <div style="font-size:9px;color:var(--muted);margin-bottom:2px">${f.label}</div>
+            <input type="number" id="wg_${dow}_${f.key}"
+              value="${override[f.key] || ''}"
+              placeholder="${f.placeholder}"
+              inputmode="numeric"
+              style="width:100%;padding:5px 6px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:var(--font-display)">
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function duplicateDay() {
@@ -8418,6 +8546,157 @@ function closeBS(id) {
 
 function closeBSIfOverlay(event, id) {
   if (event.target === document.getElementById(id)) closeBS(id);
+}
+
+// ══ VOICE REGISTRATION ══
+let _voiceRecognition = null;
+
+function startVoiceEntry() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showToast('Tu navegador no soporta reconocimiento de voz', true);
+    return;
+  }
+
+  if (_voiceRecognition) { stopVoice(); return; }
+
+  _voiceRecognition = new SpeechRecognition();
+  _voiceRecognition.lang = 'es-CR';
+  _voiceRecognition.continuous = false;
+  _voiceRecognition.interimResults = true;
+  _voiceRecognition.maxAlternatives = 3;
+
+  const statusBar = document.getElementById('voiceStatusBar');
+  const statusTxt = document.getElementById('voiceStatusText');
+  const voiceBtn  = document.getElementById('voiceBtn');
+  statusBar.style.display = 'flex';
+  voiceBtn.style.color = '#4a90d9';
+
+  _voiceRecognition.onresult = (event) => {
+    const transcript = Array.from(event.results)
+      .map(r => r[0].transcript).join(' ').trim();
+    statusTxt.textContent = `"${transcript}"`;
+    if (event.results[0].isFinal) {
+      processVoiceEntry(transcript);
+    }
+  };
+
+  _voiceRecognition.onerror = (event) => {
+    stopVoice();
+    const msgs = {
+      'no-speech':       'No se detectó voz — intentá de nuevo',
+      'not-allowed':     'Permiso de micrófono denegado',
+      'audio-capture':   'No se encontró micrófono',
+      'network':         'Error de red',
+    };
+    showToast(msgs[event.error] || 'Error de voz: ' + event.error, true);
+  };
+
+  _voiceRecognition.onend = () => { stopVoice(); };
+  _voiceRecognition.start();
+}
+
+function stopVoice() {
+  if (_voiceRecognition) {
+    try { _voiceRecognition.stop(); } catch(e) {}
+    _voiceRecognition = null;
+  }
+  const statusBar = document.getElementById('voiceStatusBar');
+  const voiceBtn  = document.getElementById('voiceBtn');
+  if (statusBar) statusBar.style.display = 'none';
+  if (voiceBtn)  voiceBtn.style.color = 'var(--muted)';
+}
+
+function processVoiceEntry(transcript) {
+  // Parse: "[cantidad] [unidad] de [alimento] [en/para] [tiempo de comida]"
+  // Ej: "150 gramos de pechuga de pollo al almuerzo"
+  //     "2 huevos al desayuno"
+  //     "una taza de avena para el desayuno"
+  const t = transcript.toLowerCase()
+    .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u')
+    .replace(/\bun\b/g,'1').replace(/\buna\b/g,'1').replace(/\bdos\b/g,'2')
+    .replace(/\btres\b/g,'3').replace(/\bcuatro\b/g,'4').replace(/\bcinco\b/g,'5');
+
+  // Extract meal type
+  const MEAL_MAP = {
+    'desayuno':'Desayuno', 'snack manana':'Snack Mañana', 'snack de manana':'Snack Mañana',
+    'almuerzo':'Almuerzo', 'snack tarde':'Snack Tarde', 'snack de tarde':'Snack Tarde',
+    'cena':'Cena', 'extra':'Extra',
+  };
+  let detectedMeal = null;
+  for (const [key, val] of Object.entries(MEAL_MAP)) {
+    if (t.includes(key)) { detectedMeal = val; break; }
+  }
+
+  // Extract quantity + unit
+  const UNITS = ['gramos','mililitros','ml','tazas','taza','cucharadas','cucharada','cdas','cda',
+                 'cucharaditas','cucharadita','cditas','cdita','unidades','unidad',
+                 'rebanadas','rebanada','piezas','pieza','porciones','porcion','oz'];
+  let qty = null, unit = null;
+  const numMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(gramo|mililitro|ml|taza|cucharada|cdas?|cdita|cucharadita|unidad|rebanada|pieza|porcion|oz)?s?\b/);
+  if (numMatch) {
+    qty = parseFloat(numMatch[1].replace(',','.'));
+    const rawUnit = numMatch[2] || '';
+    const UNIT_NORM = {
+      'gramo':'gramos','mililitro':'ml','taza':'tazas','cucharada':'cdas','cda':'cdas',
+      'cdas':'cdas','cdita':'cditas','cucharadita':'cditas','unidad':'unidades',
+      'rebanada':'rebanadas','pieza':'piezas','porcion':'porciones',
+    };
+    unit = UNIT_NORM[rawUnit] || (rawUnit ? rawUnit + 's' : null);
+  }
+
+  // Extract food name — remove qty, unit, meal, connectors
+  let foodRaw = t
+    .replace(/(\d+(?:[.,]\d+)?)\s*(gramos?|mililitros?|ml|tazas?|cucharadas?|cdas?|cucharaditas?|cditas?|unidades?|rebanadas?|piezas?|porciones?|oz)?\s*/g, '')
+    .replace(/\b(al|a la|para el|para la|en el|en la|al tiempo de|desayuno|almuerzo|cena|snack manana|snack tarde|extra)\b/g, '')
+    .replace(/\bde\b/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+
+  // Find best matching food
+  const allFoods = [...(foodsDb||[]), ...(customFoods||[])];
+  const norm2 = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+  const nq = norm2(foodRaw);
+  let best = null, bestScore = 0;
+  allFoods.forEach(f => {
+    const nf = norm2(f.name);
+    if (nf === nq) { best = f; bestScore = 100; return; }
+    if (nf.includes(nq) || nq.includes(nf)) {
+      const score = Math.min(nq.length, nf.length) / Math.max(nq.length, nf.length) * 90;
+      if (score > bestScore) { best = f; bestScore = score; }
+    }
+    // Word overlap
+    const qWords = nq.split(' '), fWords = nf.split(' ');
+    const common = qWords.filter(w => w.length > 2 && fWords.some(fw => fw.includes(w))).length;
+    const score2 = (common / Math.max(qWords.length, fWords.length)) * 70;
+    if (score2 > bestScore) { best = f; bestScore = score2; }
+  });
+
+  if (!best || bestScore < 20) {
+    showToast(`No encontré "${foodRaw}" — revisá el nombre`, true);
+    if (foodRaw) document.getElementById('foodName').value = foodRaw;
+    return;
+  }
+
+  // Fill the form
+  openBS('bsFood');
+  setTimeout(() => {
+    document.getElementById('foodName').value = best.name;
+    selectFood(best);
+    if (qty) {
+      document.getElementById('quantity').value = qty;
+      if (unit) {
+        const unitEl = document.getElementById('unit');
+        if ([...unitEl.options].some(o => o.value === unit)) unitEl.value = unit;
+        onUnitChange();
+      }
+      recalcByQty();
+    }
+    if (detectedMeal) {
+      const mealEl = document.getElementById('mealType');
+      if (mealEl) mealEl.value = detectedMeal;
+    }
+    showToast(`🎙️ ${best.name}${qty ? ' · ' + qty + ' ' + (unit||best.unit) : ''}${detectedMeal ? ' · ' + detectedMeal : ''}`);
+  }, 300);
 }
 
 // ══ GLOBAL SEARCH ══
