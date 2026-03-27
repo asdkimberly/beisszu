@@ -2187,6 +2187,24 @@ select { cursor: pointer; }
 </div>
 
 <!-- ══ SAVE TEMPLATE MODAL ══ -->
+
+<!-- Edit Template Modal -->
+<div class="modal-overlay" id="editTemplateModal">
+  <div class="modal-box">
+    <div class="modal-title">✏️ Editar plantilla</div>
+    <input type="text" id="editTemplateName" placeholder="Nombre de la plantilla…" style="width:100%;margin-bottom:10px">
+    <div id="editTemplateItems" style="display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto"></div>
+    <button onclick="addItemToEditTemplate()"
+      style="width:100%;margin-top:10px;padding:10px;border-radius:var(--r);border:1px dashed var(--border);background:transparent;color:var(--muted);font-size:13px;cursor:pointer">
+      + Agregar alimento
+    </button>
+    <div style="display:flex;justify-content:space-between;margin-top:14px;gap:8px">
+      <button class="modal-cancel" onclick="closeEditTemplateModal()">Cancelar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="saveEditTemplate()">✓ Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="saveTemplateModal">
   <div class="modal" style="max-width:380px">
     <div class="modal-title">💾 Guardar como plantilla</div>
@@ -5195,8 +5213,164 @@ function toggleTemplateExpand(id) {
 function openTemplateCtx(btn, id, mealType) {
   openCtxMenu(btn, [
     { icon: '▶', label: 'Aplicar',  action: () => openApplyTemplateModal(mealType) },
+    { icon: '✏️', label: 'Editar',   action: () => openEditTemplateModal(id) },
     { icon: '🗑', label: 'Eliminar', action: () => deleteTemplate(id), danger: true },
   ]);
+}
+
+// ── Template editing ──
+let _editingTemplateId = null;
+let _editingTemplateItems = []; // [{food_name, quantity, unit, calories, protein_g, carbs_g, fat_g, fiber_g, sugar_g, _tmpId}]
+
+function openEditTemplateModal(id) {
+  const t = templates.find(t => t.id === id);
+  if (!t) return;
+  _editingTemplateId = id;
+  _editingTemplateItems = t.items.map((i, idx) => ({ ...i, _tmpId: idx }));
+  document.getElementById('editTemplateName').value = t.name;
+  renderEditTemplateItems();
+  document.getElementById('editTemplateModal').classList.add('show');
+}
+
+function closeEditTemplateModal() {
+  document.getElementById('editTemplateModal').classList.remove('show');
+  _editingTemplateId = null;
+  _editingTemplateItems = [];
+}
+
+function renderEditTemplateItems() {
+  const container = document.getElementById('editTemplateItems');
+  if (!_editingTemplateItems.length) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;text-align:center">Sin alimentos — agregá uno abajo</div>';
+    return;
+  }
+  container.innerHTML = _editingTemplateItems.map((item, idx) => `
+    <div style="background:var(--surface2);border-radius:10px;padding:10px 12px" id="tpl-edit-item-${item._tmpId}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:13px;color:var(--text);font-family:var(--font-display);flex:1;min-width:0">${item.food_name}</div>
+        <button onclick="removeEditTemplateItem(${item._tmpId})"
+          style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 0 0 8px;line-height:1;flex-shrink:0">×</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="number" value="${item.quantity}" min="0.1" step="0.1" inputmode="decimal"
+          onchange="updateEditTemplateItem(${item._tmpId},'quantity',this.value)"
+          style="width:65px;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px">
+        <select onchange="updateEditTemplateItem(${item._tmpId},'unit',this.value)"
+          style="flex:1;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px">
+          ${['gramos','ml','oz','tazas','cdas','cditas','porciones','unidades','rebanadas','piezas']
+            .map(u => `<option${u===item.unit?' selected':''}>${u}</option>`).join('')}
+        </select>
+        <div style="font-size:12px;color:var(--accent);white-space:nowrap;flex-shrink:0">${Math.round(item.calories||0)} kcal</div>
+      </div>
+    </div>`).join('');
+}
+
+function updateEditTemplateItem(tmpId, field, value) {
+  const item = _editingTemplateItems.find(i => i._tmpId === tmpId);
+  if (!item) return;
+
+  if (field === 'quantity' || field === 'unit') {
+    const newQty  = parseFloat(field === 'quantity' ? value : item.quantity) || item.quantity;
+    const newUnit = field === 'unit' ? value : item.unit;
+
+    // Find base food to recalculate
+    const baseFood = [...(window.foodsDb||[]), ...(window.customFoods||[])].find(f => f.name === item.food_name);
+    if (baseFood) {
+      const isGramBased = ['gramos','ml','oz'].includes(newUnit);
+      const baseIsGram  = ['gramos','ml','oz'].includes(baseFood.unit);
+      const servings    = (foodServings[baseFood.name] || []);
+      let ratio;
+
+      if (newUnit === baseFood.unit) {
+        ratio = newQty / baseFood.qty;
+      } else if (isGramBased && !baseIsGram) {
+        const baseServing = servings.find(s => s.serving_name === baseFood.unit);
+        const gpbu = baseServing ? baseServing.grams : null;
+        ratio = gpbu ? newQty / (baseFood.qty * gpbu) : newQty / baseFood.qty;
+      } else if (isGramBased) {
+        ratio = newQty / baseFood.qty;
+      } else {
+        const match = servings.find(s => s.serving_name === newUnit);
+        if (match) {
+          if (baseIsGram) {
+            ratio = (newQty * match.grams) / baseFood.qty;
+          } else {
+            const baseServing = servings.find(s => s.serving_name === baseFood.unit);
+            const gpbu = baseServing ? baseServing.grams : 1;
+            ratio = (newQty * match.grams) / (baseFood.qty * gpbu);
+          }
+        } else {
+          ratio = newQty / baseFood.qty;
+        }
+      }
+
+      item.quantity  = newQty;
+      item.unit      = newUnit;
+      item.calories  = Math.round(baseFood.cal * ratio * 10) / 10;
+      item.protein_g = Math.round(baseFood.p   * ratio * 10) / 10;
+      item.carbs_g   = Math.round(baseFood.c   * ratio * 10) / 10;
+      item.fat_g     = Math.round(baseFood.f   * ratio * 10) / 10;
+      item.fiber_g   = Math.round((baseFood.fib||0) * ratio * 10) / 10;
+      item.sugar_g   = Math.round((baseFood.sug||0) * ratio * 10) / 10;
+    } else {
+      item[field] = field === 'quantity' ? parseFloat(value) : value;
+    }
+    renderEditTemplateItems();
+  }
+}
+
+function removeEditTemplateItem(tmpId) {
+  _editingTemplateItems = _editingTemplateItems.filter(i => i._tmpId !== tmpId);
+  renderEditTemplateItems();
+}
+
+function addItemToEditTemplate() {
+  // Reuse existing food search: open the food bottom sheet pre-configured to add to template
+  _addingToTemplate = true;
+  openRegisterSheet();
+}
+
+let _addingToTemplate = false;
+
+// Hook into existing selectFood — if _addingToTemplate is true, add to template instead
+const _origSelectFood = window.selectFood;
+
+async function saveEditTemplate() {
+  const name = document.getElementById('editTemplateName').value.trim();
+  if (!name) { showToast('Ingresá un nombre para la plantilla', true); return; }
+  if (!_editingTemplateItems.length) { showToast('Agregá al menos un alimento', true); return; }
+  if (!_editingTemplateId) return;
+
+  // Update name
+  await sb.from('meal_templates').update({ name }).eq('id', _editingTemplateId);
+
+  // Replace all items
+  await sb.from('meal_template_items').delete().eq('template_id', _editingTemplateId);
+  const newItems = _editingTemplateItems.map((item, idx) => ({
+    template_id: _editingTemplateId,
+    food_name:   item.food_name,
+    quantity:    item.quantity,
+    unit:        item.unit,
+    calories:    item.calories,
+    protein_g:   item.protein_g,
+    carbs_g:     item.carbs_g,
+    fat_g:       item.fat_g,
+    fiber_g:     item.fiber_g || 0,
+    sugar_g:     item.sugar_g || 0,
+    sort_order:  idx,
+  }));
+  await sb.from('meal_template_items').insert(newItems);
+
+  // Update local state
+  const t = templates.find(t => t.id === _editingTemplateId);
+  if (t) {
+    t.name  = name;
+    t.items = newItems;
+  }
+
+  closeEditTemplateModal();
+  renderTemplatesList();
+  showToast('✓ Plantilla actualizada');
 }
 
 function openDishCtx(btn, dishId) {
@@ -7319,22 +7493,14 @@ async function generatePDF() {
     y+=sqH+3;
   }
 
-  // Heatmap gradient — exact same logic as app's heatmapColor+lerpRGB
-  function lerpPDF(a,b,t){ return a.map((v,i)=>Math.round(v+(b[i]-v)*t)); }
+  // Heatmap colors — 5 discrete states matching app's consistencyColor()
   function pctRGB(pct){
-    if(pct===null) return [210,212,205];
-    // >100: green → blue (#639922 → #378ADD)
-    if(pct>100){
-      const t=Math.min((pct-100)/30,1);
-      return lerpPDF([99,153,34],[55,138,221],t);
-    }
-    // 0–100: red→orange→light-green→green
-    // #E24B4A #EF9F27 #97C459 #639922
-    const stops=[[226,75,74],[239,159,39],[151,196,89],[99,153,34]];
-    const t=Math.max(0,Math.min(pct,100))/100;
-    if(t<=0.33)       return lerpPDF(stops[0],stops[1],t/0.33);
-    else if(t<=0.66)  return lerpPDF(stops[1],stops[2],(t-0.33)/0.33);
-    else              return lerpPDF(stops[2],stops[3],(t-0.66)/0.34);
+    if(pct===null) return [210,212,205];   // gray  — sin datos
+    if(pct>110)    return [55,138,221];    // blue  — excede +110%
+    if(pct>=80)    return [99,153,34];     // green — cumplido 80–110%
+    if(pct>=50)    return [239,159,39];    // amber — parcial 50–80%
+    if(pct>0)      return [226,75,74];     // red   — no cumplido <50%
+    return [210,212,205];                  // gray  — sin datos (0)
   }
   function heatmapRowGrad(label,pctFn){
     const sqW=statsRange===7?8:4.5; const sqH=3; const sqGap=1;
@@ -7354,38 +7520,25 @@ async function generatePDF() {
   }
 
   function heatmapLegendGrad(){
-    checkSpace(18); y+=3;
-    // Two-segment bar: 0-100% gradient (75% of width) + 100%+ blue zone (25%)
-    const barX=margin+22; const barW=CW-22; const barH=3;
-    const gradW=Math.round(barW*0.78);
-    const blueW=barW-gradW;
-
-    // Gradient segment: 0–100%  (40 slices)
-    for(let i=0;i<40;i++){
-      const pct=Math.round((i/40)*100);
-      const [r,g,b]=pctRGB(pct);
-      doc.setFillColor(r,g,b);
-      doc.rect(barX+(gradW/40)*i, y, gradW/40+0.3, barH, 'F');
-    }
-    // Blue segment: 100%+ (solid #378ADD)
-    doc.setFillColor(55,138,221);
-    doc.rect(barX+gradW, y, blueW, barH, 'F');
-
-    // Divider line at 100%
-    doc.setDrawColor(...C.dark); doc.setLineWidth(0.5);
-    doc.line(barX+gradW, y-1, barX+gradW, y+barH+1);
-
-    // Labels
-    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.muted);
-    doc.text('0%',   barX,          y+barH+4);
-    doc.text('50%',  barX+gradW*0.47, y+barH+4);
-    doc.text('100%', barX+gradW-3,  y+barH+4, {align:'right'});
-    doc.text('+100%',barX+gradW+blueW/2, y+barH+4, {align:'center'});
-
-    // Gray swatch for no data
-    doc.setFillColor(210,212,205); doc.roundedRect(margin,y,4,barH,0.5,0.5,'F');
-    doc.text('Sin datos', margin+5, y+3.5);
-    y+=barH+10;
+    checkSpace(14); y+=3;
+    const items=[
+      {rgb:[226,75,74],  label:'<50%'},
+      {rgb:[239,159,39], label:'50–80%'},
+      {rgb:[99,153,34],  label:'80–110%'},
+      {rgb:[55,138,221], label:'>110%'},
+      {rgb:[210,212,205],label:'Sin datos'},
+    ];
+    const barX=margin+22;
+    const sqW=7; const sqH=3.5; const gap=2;
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+    let lx=barX;
+    items.forEach(({rgb,label})=>{
+      doc.setFillColor(...rgb);
+      doc.roundedRect(lx,y,sqW,sqH,0.6,0.6,'F');
+      doc.text(label,lx+sqW+1.5,y+sqH-0.5);
+      lx+=sqW+doc.getTextWidth(label)+5;
+    });
+    y+=sqH+6;
   }
 
   // Supplement boolean heatmap: green=tomado, red=no tomado (si hay datos), gray=sin datos
