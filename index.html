@@ -4470,14 +4470,18 @@ const DOW_LABELS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const DOW_FULL   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
 function getGoalsForDate(dateStr) {
-  // Returns effective goals for a given date, respecting weekly overrides
+  // Returns effective goals for a given date, respecting weekly overrides.
+  // Falls back to 0 for any undefined value — safe to call before loadSettings completes.
   const base = {
-    cal: settings.goalCal, protein: settings.goalProtein,
-    carbs: settings.goalCarbs, fat: settings.goalFat,
-    water: settings.goalWater, isotonic: settings.goalIsotonic,
+    cal:      settings.goalCal      || 0,
+    protein:  settings.goalProtein  || 0,
+    carbs:    settings.goalCarbs    || 0,
+    fat:      settings.goalFat      || 0,
+    water:    settings.goalWater    || 0,
+    isotonic: settings.goalIsotonic || 0,
   };
   if (!settings.adaptiveGoalsEnabled || !settings.weeklyGoals) return base;
-  const dow = new Date(dateStr + 'T12:00:00').getDay(); // 0=Sun
+  const dow = new Date(dateStr + 'T12:00:00').getDay();
   const override = settings.weeklyGoals[String(dow)];
   if (!override) return base;
   return {
@@ -6428,10 +6432,9 @@ function renderStatsSummary(food, hyd) {
     }
   });
   const hydDayVals = Object.values(hydByDate);
-  // Use statsRange as denominator so avg reflects habit over full period
   const totalHyd = hydDayVals.reduce((s,v)=>s+v, 0);
   const avgHydTotal = hydDayVals.length ? Math.round(totalHyd / hydDayVals.length) : 0;
-  const goalHydTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
+  const hydDisplay = avgHydTotal >= 1000 ? `${(avgHydTotal/1000).toFixed(1)}L` : `${avgHydTotal}ml`;
 
   // Raw numeric values for progress bar calculations
   const rawVals = {
@@ -6442,16 +6445,33 @@ function renderStatsSummary(food, hyd) {
     hyd:  avgHydTotal,
   };
 
-  const hydDisplay = avgHydTotal >= 1000 ? `${(avgHydTotal/1000).toFixed(1)}L` : `${avgHydTotal}ml`;
-  const goalHydDisplay = goalHydTotal >= 1000 ? `${(goalHydTotal/1000).toFixed(1)}L` : `${goalHydTotal}ml`;
+  // Weighted-average goal over the period (accounts for adaptive goals per day-of-week)
+  const todayForGoal = new Date(statsToDate + 'T12:00:00');
+  let sumGoalCal = 0, sumGoalProt = 0, sumGoalCarb = 0, sumGoalFat = 0, sumGoalHyd = 0;
+  for (let i = effRange - 1; i >= 0; i--) {
+    const d = new Date(todayForGoal); d.setDate(d.getDate() - i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const g = getGoalsForDate(ds);
+    sumGoalCal  += g.cal      || 0;
+    sumGoalProt += g.protein  || 0;
+    sumGoalCarb += g.carbs    || 0;
+    sumGoalFat  += g.fat      || 0;
+    sumGoalHyd  += (g.water||0) + (g.isotonic||0);
+  }
+  const avgGoalCal  = Math.round(sumGoalCal  / effRange) || 0;
+  const avgGoalProt = Math.round(sumGoalProt / effRange) || 0;
+  const avgGoalCarb = Math.round(sumGoalCarb / effRange) || 0;
+  const avgGoalFat  = Math.round(sumGoalFat  / effRange) || 0;
+  const avgGoalHyd  = Math.round(sumGoalHyd  / effRange) || 0;
+  const goalHydDisplay = avgGoalHyd >= 1000 ? `${(avgGoalHyd/1000).toFixed(1)}L` : `${avgGoalHyd}ml`;
 
   const cards = [
-    { label:'Cal promedio/día', rawVal: rawVals.cal,  display: rawVals.cal,              unit:'kcal',           goal: settings.goalCal,     color:'var(--accent)'  },
-    { label:'Proteína promedio', rawVal: rawVals.prot, display: rawVals.prot,             unit:'g/día',          goal: settings.goalProtein, color:'var(--accent2)' },
-    { label:'Carbos promedio',   rawVal: rawVals.carb, display: rawVals.carb,             unit:'g/día',          goal: settings.goalCarbs,   color:'#5bc0de'        },
-    { label:'Grasas promedio',   rawVal: rawVals.fat,  display: rawVals.fat,              unit:'g/día',          goal: settings.goalFat,     color:'#e07840'        },
-    { label:'Hidratación/día',   rawVal: rawVals.hyd,  display: hydDisplay,               unit:'agua + hidratante', goal: goalHydTotal||null, goalDisplay: goalHydDisplay, color:'#4a90d9' },
-    { label:'Días registrados',  rawVal: n,            display: n,                        unit:`de ${statsRange}`, goal: null,               color:'var(--muted)'   },
+    { label:'Cal promedio/día',  rawVal: rawVals.cal,  display: rawVals.cal,  unit:'kcal',              goal: avgGoalCal  || null, color:'var(--accent)'  },
+    { label:'Proteína promedio', rawVal: rawVals.prot, display: rawVals.prot, unit:'g/día',             goal: avgGoalProt || null, color:'var(--accent2)' },
+    { label:'Carbos promedio',   rawVal: rawVals.carb, display: rawVals.carb, unit:'g/día',             goal: avgGoalCarb || null, color:'#5bc0de'        },
+    { label:'Grasas promedio',   rawVal: rawVals.fat,  display: rawVals.fat,  unit:'g/día',             goal: avgGoalFat  || null, color:'#e07840'        },
+    { label:'Hidratación/día',   rawVal: rawVals.hyd,  display: hydDisplay,   unit:'agua + hidratante', goal: avgGoalHyd  || null, goalDisplay: goalHydDisplay, color:'#4a90d9' },
+    { label:'Días registrados',  rawVal: n,            display: n,            unit:`de ${effRange}`,    goal: null,                color:'var(--muted)'   },
   ];
 
   document.getElementById('statsSummaryGrid').innerHTML = cards.map(c => {
@@ -6581,6 +6601,7 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
 
 async function renderStatsConsistency(food, hyd) {
   const sec = document.getElementById('statsConsistency');
+  // Check if ANY goal is set (base or weekly override)
   const hasGoals = settings.goalCal || settings.goalProtein || settings.goalCarbs || settings.goalFat || settings.goalWater || settings.goalIsotonic;
   if (!hasGoals || !food.length) { sec.style.display='none'; return; }
   sec.style.display = 'block';
@@ -6599,31 +6620,39 @@ async function renderStatsConsistency(food, hyd) {
     hydByDate[e.date] = (hydByDate[e.date]||0) + e.amount;
   });
 
-  const metrics = [
-    { label:'🔥 Calorías',  key:'cal', goal: settings.goalCal },
-    { label:'💪 Proteína',  key:'p',   goal: settings.goalProtein },
-    { label:'🍞 Carbos',    key:'c',   goal: settings.goalCarbs },
-    { label:'🫒 Grasas',    key:'f',   goal: settings.goalFat },
-  ].filter(m => m.goal);
+  // Metric keys — filter only those with at least one day having a goal set
+  const metricDefs = [
+    { label:'🔥 Calorías', key:'cal',     goalKey:'cal'      },
+    { label:'💪 Proteína', key:'p',       goalKey:'protein'  },
+    { label:'🍞 Carbos',   key:'c',       goalKey:'carbs'    },
+    { label:'🫒 Grasas',   key:'f',       goalKey:'fat'      },
+  ].filter(m => settings['goal' + m.goalKey.charAt(0).toUpperCase() + m.goalKey.slice(1)] ||
+                (settings.weeklyGoals && Object.values(settings.weeklyGoals).some(g => g[m.goalKey])));
 
   let html = '';
 
-  // Macro rows
-  metrics.forEach(m => {
+  // Macro rows — use per-day adaptive goal
+  metricDefs.forEach(m => {
     html += buildHeatmapRow(m.label, effRange, dateStr => {
       const d = byDate[dateStr];
       if (!d) return null;
-      return Math.round((d[m.key] / m.goal) * 100);
+      const goal = getGoalsForDate(dateStr)[m.goalKey];
+      if (!goal) return null;
+      return Math.round((d[m.key] / goal) * 100);
     }, false);
   });
 
-  // Hydration
-  const goalHydTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
-  if (goalHydTotal) {
+  // Hydration — per-day adaptive goal
+  const hasHydGoal = settings.goalWater || settings.goalIsotonic ||
+    (settings.weeklyGoals && Object.values(settings.weeklyGoals).some(g => g.water || g.isotonic));
+  if (hasHydGoal) {
     html += buildHeatmapRow('💧 Hidratación', effRange, dateStr => {
       const v = hydByDate[dateStr];
       if (v == null) return null;
-      return Math.round((v / goalHydTotal) * 100);
+      const g = getGoalsForDate(dateStr);
+      const goalHyd = (g.water||0) + (g.isotonic||0);
+      if (!goalHyd) return null;
+      return Math.round((v / goalHyd) * 100);
     }, false);
   }
 
@@ -6643,7 +6672,7 @@ async function renderStatsConsistency(food, hyd) {
   }
 
   // ── Legend at the bottom ──
-  const hasNumeric = metrics.length > 0 || goalHydTotal > 0;
+  const hasNumeric = metricDefs.length > 0 || hasHydGoal;
   let legendHTML = `<div style="margin-top:10px">`;
 
   if (hasNumeric) {
@@ -6676,6 +6705,7 @@ function renderChartTrend(food) {
   const labels = [];
   const calData = [];
   const goalLine = [];
+  let anyGoal = false;
   for (let i = effRange-1; i >= 0; i--) {
     const d = new Date(todayLocal);
     d.setDate(d.getDate()-i);
@@ -6684,8 +6714,15 @@ function renderChartTrend(food) {
     labels.push(shortLabel);
     const dayCal = food.filter(e=>e.log_date===dateStr).reduce((s,e)=>s+(e.calories||0),0);
     calData.push(Math.round(dayCal));
-    goalLine.push(settings.goalCal || null);
+    const dayGoal = getGoalsForDate(dateStr).cal || null;
+    goalLine.push(dayGoal);
+    if (dayGoal) anyGoal = true;
   }
+
+  // Average goal for Meta label plugin
+  const avgGoalForLabel = anyGoal
+    ? Math.round(goalLine.filter(Boolean).reduce((s,v)=>s+v,0) / goalLine.filter(Boolean).length)
+    : null;
 
   if (chartTrendInstance) { chartTrendInstance.destroy(); chartTrendInstance = null; }
   const ctx = document.getElementById('chartTrend').getContext('2d');
@@ -6706,7 +6743,7 @@ function renderChartTrend(food) {
           borderWidth: 1,
           borderRadius: 4,
         },
-        ...(settings.goalCal ? [{
+        ...(anyGoal ? [{
           label: 'Meta',
           data: goalLine,
           type: 'line',
@@ -6719,7 +6756,7 @@ function renderChartTrend(food) {
       ],
     },
     options: {
-      layout: { padding: { right: settings.goalCal ? 38 : 4 } },
+      layout: { padding: { right: anyGoal ? 38 : 4 } },
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
@@ -6732,9 +6769,10 @@ function renderChartTrend(food) {
           bodyColor: textColor,
           padding: 8,
           callbacks: {
-            label: c => c.dataset.label === 'Meta' ? null : ` ${c.raw} kcal`,
+            label: c => c.dataset.label === 'Meta'
+              ? ` Meta: ${c.raw} kcal`
+              : ` ${c.raw} kcal`,
           },
-          filter: item => item.dataset.label !== 'Meta',
         },
       },
       scales: {
@@ -6748,7 +6786,7 @@ function renderChartTrend(food) {
     },
     plugins: [chartMetaLabelPlugin, chartCrosshairPlugin],
   });
-  if (settings.goalCal) chartTrendInstance._goalVal = settings.goalCal;
+  if (avgGoalForLabel) chartTrendInstance._goalVal = avgGoalForLabel;
 }
 
 // ── ④ Meal distribution ──
@@ -6832,13 +6870,23 @@ function renderStatsHyd(hyd) {
   const hydContent = document.getElementById('statsHydContent');
   const hydCanvas  = document.getElementById('chartHyd');
 
-  if (!avgTotal && !settings.goalWater && !settings.goalIsotonic) {
+  if (!avgTotal && !settings.goalWater && !settings.goalIsotonic &&
+      !(settings.weeklyGoals && Object.values(settings.weeklyGoals||{}).some(g=>g.water||g.isotonic))) {
     hydContent.innerHTML = '<div style="color:var(--muted);font-size:13px">Sin datos de hidratación.</div>';
     hydCanvas.style.display = 'none';
     return;
   }
 
-  const goalTotal = (settings.goalWater||0) + (settings.goalIsotonic||0);
+  // Weighted avg hydration goal over period
+  const todayForHydGoal = new Date(statsToDate + 'T12:00:00');
+  let sumHydGoal = 0;
+  for (let i = effRange-1; i >= 0; i--) {
+    const d = new Date(todayForHydGoal); d.setDate(d.getDate()-i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const g = getGoalsForDate(ds);
+    sumHydGoal += (g.water||0) + (g.isotonic||0);
+  }
+  const goalTotal = Math.round(sumHydGoal / effRange);
   const disp = v => v >= 1000 ? `${(v/1000).toFixed(1)}L` : `${v}ml`;
 
   // Always show chart
@@ -8067,16 +8115,30 @@ async function generatePDF() {
   const nHyd=Object.keys(hydByDate).length||1;
   const avgW=Object.values(waterByDate).length?Math.round(Object.values(waterByDate).reduce((s,v)=>s+v,0)/nHyd):0;
   const avgHid=Object.values(hidByDate2).length?Math.round(Object.values(hidByDate2).reduce((s,v)=>s+v,0)/nHyd):0;
-  const goalHydTotal=(settings.goalWater||0)+(settings.goalIsotonic||0);
+
+  // Weighted avg goals over PDF period
+  const todayPDF=new Date(statsToDate+'T12:00:00');
+  let pdfSumCal=0,pdfSumProt=0,pdfSumCarb=0,pdfSumFat=0,pdfSumHyd=0;
+  for(let i=effRange-1;i>=0;i--){
+    const d=new Date(todayPDF);d.setDate(d.getDate()-i);
+    const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const g=getGoalsForDate(ds);
+    pdfSumCal+=g.cal||0; pdfSumProt+=g.protein||0; pdfSumCarb+=g.carbs||0;
+    pdfSumFat+=g.fat||0; pdfSumHyd+=(g.water||0)+(g.isotonic||0);
+  }
+  const pdfGoalCal=Math.round(pdfSumCal/effRange)||0;
+  const pdfGoalProt=Math.round(pdfSumProt/effRange)||0;
+  const pdfGoalCarb=Math.round(pdfSumCarb/effRange)||0;
+  const pdfGoalFat=Math.round(pdfSumFat/effRange)||0;
+  const goalHydTotal=Math.round(pdfSumHyd/effRange)||0;
 
   // ── ① Promedios diarios ──
-  // Estimate height: title(13) + 7rows*8 + padding = ~69mm
   sectionSpace(70); sectionTitle('1. Promedios diarios de nutricion');
   row('Dias con registro',`${n} de ${statsRange}  (promedio sobre dias con datos)`);
-  row('Calorias',`${Math.round(avg('cal'))} kcal${settings.goalCal?'  (meta: '+settings.goalCal+')':''}`,true);
-  row('Proteina',`${avg('p').toFixed(1)} g${settings.goalProtein?'  (meta: '+settings.goalProtein+'g)':''}` );
-  row('Carbohidratos',`${avg('c').toFixed(1)} g${settings.goalCarbs?'  (meta: '+settings.goalCarbs+'g)':''}`,true);
-  row('Grasas',`${avg('f').toFixed(1)} g${settings.goalFat?'  (meta: '+settings.goalFat+'g)':''}` );
+  row('Calorias',`${Math.round(avg('cal'))} kcal${pdfGoalCal?'  (meta prom: '+pdfGoalCal+')':''}`,true);
+  row('Proteina',`${avg('p').toFixed(1)} g${pdfGoalProt?'  (meta prom: '+pdfGoalProt+'g)':''}` );
+  row('Carbohidratos',`${avg('c').toFixed(1)} g${pdfGoalCarb?'  (meta prom: '+pdfGoalCarb+'g)':''}`,true);
+  row('Grasas',`${avg('f').toFixed(1)} g${pdfGoalFat?'  (meta prom: '+pdfGoalFat+'g)':''}` );
   row('Fibra',`${avg('fib').toFixed(1)} g`);
   row('Azucar',`${avg('sug').toFixed(1)} g`,true);
   y+=4;
@@ -8085,10 +8147,23 @@ async function generatePDF() {
   // Two-col: stats left, chart right
   const hydCanvas=document.getElementById('chartHyd');
   const hydVisible=hydCanvas&&hydCanvas.style.display!=='none';
+  // For PDF rows use avg of base goals (pdfGoalCal etc already computed above)
+  const pdfGoalWater = Math.round(
+    Array.from({length:effRange},(_,i)=>{
+      const d=new Date(todayPDF);d.setDate(d.getDate()-(effRange-1-i));
+      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return getGoalsForDate(ds).water||0;
+    }).reduce((s,v)=>s+v,0)/effRange);
+  const pdfGoalIsotonic = Math.round(
+    Array.from({length:effRange},(_,i)=>{
+      const d=new Date(todayPDF);d.setDate(d.getDate()-(effRange-1-i));
+      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      return getGoalsForDate(ds).isotonic||0;
+    }).reduce((s,v)=>s+v,0)/effRange);
   const hydRows=[
-    ['Agua promedio/dia (dias con datos)',`${disp(avgW)}${settings.goalWater?'  (meta: '+disp(settings.goalWater)+')':''}`],
-    ['Hidratante promedio/dia',`${disp(avgHid)}${settings.goalIsotonic?'  (meta: '+disp(settings.goalIsotonic)+')':''}`],
-    ['Total hidratacion promedio/dia',`${disp(avgW+avgHid)}${goalHydTotal?'  (meta: '+disp(goalHydTotal)+')':''}`],
+    ['Agua promedio/dia (dias con datos)',`${disp(avgW)}${pdfGoalWater?'  (meta prom: '+disp(pdfGoalWater)+')':''}`],
+    ['Hidratante promedio/dia',`${disp(avgHid)}${pdfGoalIsotonic?'  (meta prom: '+disp(pdfGoalIsotonic)+')':''}`],
+    ['Total hidratacion promedio/dia',`${disp(avgW+avgHid)}${goalHydTotal?'  (meta prom: '+disp(goalHydTotal)+')':''}`],
   ];
   sectionSpace(hydVisible?80:55); sectionTitle('2. Hidratacion promedio');
   if(hydVisible){
@@ -8098,23 +8173,28 @@ async function generatePDF() {
     y+=4;
   }
 
-  // ── ③ Consistencia de metas ──
+  // ── ③ Consistencia de metas — per-day adaptive ──
   const metricList=[
-    {label:'Calorias',key:'cal',goal:settings.goalCal},
-    {label:'Proteina',key:'p',goal:settings.goalProtein},
-    {label:'Carbos',key:'c',goal:settings.goalCarbs},
-    {label:'Grasas',key:'f',goal:settings.goalFat},
-  ].filter(m=>m.goal);
+    {label:'Calorias',key:'cal',goalKey:'cal'},
+    {label:'Proteina',key:'p',goalKey:'protein'},
+    {label:'Carbos',key:'c',goalKey:'carbs'},
+    {label:'Grasas',key:'f',goalKey:'fat'},
+  ].filter(m=>pdfGoalCal||pdfGoalProt||pdfGoalCarb||pdfGoalFat)
+   .filter(m=>({cal:pdfGoalCal,protein:pdfGoalProt,carbs:pdfGoalCarb,fat:pdfGoalFat})[m.goalKey]);
   const heatH=(metricList.length+(goalHydTotal?1:0)+supplements.length)*8+30;
   sectionSpace(Math.min(heatH,60)); sectionTitle('3. Consistencia de metas — heatmap');
   metricList.forEach(m=>{
     heatmapRowGrad(m.label,ds=>{
-      const d=byDate[ds]; return d?Math.round((d[m.key]/m.goal)*100):null;
+      const d=byDate[ds]; if(!d) return null;
+      const g=getGoalsForDate(ds)[m.goalKey]; if(!g) return null;
+      return Math.round((d[m.key]/g)*100);
     });
   });
   if(goalHydTotal){
     heatmapRowGrad('Hidratacion',ds=>{
-      const v=hydByDate[ds]; return v!=null?Math.round((v/goalHydTotal)*100):null;
+      const v=hydByDate[ds]; if(v==null) return null;
+      const g=getGoalsForDate(ds); const gh=(g.water||0)+(g.isotonic||0);
+      return gh?Math.round((v/gh)*100):null;
     });
   }
   if(supplements.length){
@@ -8405,8 +8485,9 @@ function renderHydDonuts() {
   const todayHyd = hydEntries.filter(e => e.date === today);
   const waterAmt = todayHyd.filter(e => e.drinkId === 'water').reduce((s,e) => s + e.amount, 0);
   const isoAmt   = todayHyd.filter(e => e.drinkId === 'hidratante').reduce((s,e) => s + e.amount, 0);
-  const goalW = settings.goalWater    || 2000;
-  const goalI = settings.goalIsotonic || 500;
+  const todayG = getGoalsForDate(today);
+  const goalW = todayG.water    || 2000;
+  const goalI = todayG.isotonic || 500;
 
   const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
   const trackColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
