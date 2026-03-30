@@ -1538,6 +1538,12 @@ select { cursor: pointer; }
       <div id="statsMealContent"></div>
     </div>
 
+    <!-- Macros por tiempo de comida -->
+    <div class="card" id="statsMealMacrosCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Macros promedio por tiempo de comida</div>
+      <div id="statsMealMacrosContent"></div>
+    </div>
+
     <!-- Origen de comidas -->
     <div class="card" id="statsOriginCard" style="display:none">
       <div class="section-label" style="margin-bottom:8px">Origen de comidas</div>
@@ -2957,7 +2963,10 @@ function norm(str) {
 
 let _fsSearchTimeout = null;
 
+let _foodSelected = false; // flag to suppress dropdown reopen after selection
+
 function onFoodInput(val) {
+  if (_foodSelected) { _foodSelected = false; return; } // swallow the onfocus after selectFood
   clearTimeout(dropdownTimeout);
   clearTimeout(_fsSearchTimeout);
   const dd = document.getElementById('foodDropdown');
@@ -3009,6 +3018,7 @@ function onFoodInput(val) {
 }
 
 function selectFood(food) {
+  _foodSelected = true;
   document.getElementById('foodName').value = food.displayName || food.name;
   document.getElementById('foodDropdown').classList.remove('show');
   if (food._past) { selectedFoodBase = null; return; }
@@ -3466,13 +3476,22 @@ async function renderCarouselDay() {
     const pct      = goal ? Math.min(Math.round((val / goal) * 100), 100) : 0;
     const pctColor = !goal ? color : pct >= 90 ? '#639922' : pct >= 60 ? color : '#EF9F27';
     const pctLabel = goal ? `${pct}%` : '';
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:1px">
-      <span style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${label}</span>
-      <span style="font-size:12px;font-weight:500;color:${color};width:36px;text-align:right;flex-shrink:0">${fmt(val)}</span>
-      <div style="flex:1;height:4px;border-radius:3px;background:var(--border)">
-        <div style="width:${pct}%;height:100%;border-radius:3px;background:${color};transition:width .4s"></div>
+    const goalLine = goal
+      ? `<div style="display:flex;justify-content:space-between;margin-top:2px">
+           <span style="font-size:10px;color:var(--muted)">de ${fmt(goal)}</span>
+           ${val < goal ? `<span style="font-size:10px;color:var(--muted)">faltan ${fmt(goal - val)}</span>` : `<span style="font-size:10px;color:#639922">✓ meta</span>`}
+         </div>`
+      : '';
+    return `<div style="margin-bottom:2px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${label}</span>
+        <span style="font-size:12px;font-weight:500;color:${color};width:36px;text-align:right;flex-shrink:0">${fmt(val)}</span>
+        <div style="flex:1;height:4px;border-radius:3px;background:var(--border)">
+          <div style="width:${pct}%;height:100%;border-radius:3px;background:${color};transition:width .4s"></div>
+        </div>
+        <span style="font-size:11px;font-weight:500;color:${pctColor};width:30px;text-align:right;flex-shrink:0">${pctLabel}</span>
       </div>
-      <span style="font-size:11px;font-weight:500;color:${pctColor};width:30px;text-align:right;flex-shrink:0">${pctLabel}</span>
+      ${goalLine}
     </div>`;
   };
 
@@ -3639,13 +3658,23 @@ async function renderCarouselDay() {
     const isHyd    = key === 'Hidratación';
     const isCurrent = key === currentMeal;
     const mealCal  = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.calories||0),0);
+    const mealProt = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.protein_g||0),0);
+    const mealCarb = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.carbs_g||0),0);
+    const mealFat  = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.fat_g||0),0);
+    const hasMacros = mealProt > 0 || mealCarb > 0 || mealFat > 0;
     const ctxBtn   = !isHyd
       ? `<button class="ctx-btn" onclick="openMealGroupContextMenu(this,'${key}','${dateStr}')" title="Opciones">⋯</button>`
       : '';
 
     // Header
+    const macroSub = (!isHyd && hasMacros)
+      ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">P:${Math.round(mealProt)}g · C:${Math.round(mealCarb)}g · G:${Math.round(mealFat)}g</div>`
+      : '';
     const header = `<div class="meal-group-header">
-      <span class="meal-group-title">${icon} ${key}${mealCal?' · '+Math.round(mealCal)+' kcal':''}</span>
+      <div>
+        <span class="meal-group-title">${icon} ${key}${mealCal?' · '+Math.round(mealCal)+' kcal':''}</span>
+        ${macroSub}
+      </div>
       <div style="display:flex;align-items:center;gap:4px">${ctxBtn}</div>
     </div>`;
 
@@ -6366,6 +6395,7 @@ async function renderStats() {
     renderStatsSummary(food, hyd);
     await renderStatsConsistency(food, hyd);
     renderStatsMeal(food);
+    renderStatsMealMacros(food);
     renderStatsHyd(hyd);
     renderStatsTopFoods(food);
     renderStatsTopDrinks(food);
@@ -6557,8 +6587,8 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
     const bg = colorFn ? colorFn(val) : consistencyColor(val, isBoolean);
     const tip = isBoolean
       ? (val === null ? 'Sin datos' : val ? '✓ Completado' : '✗ No completado')
-      : (val === null ? 'Sin datos' : `${Math.round(val)}%`);
-    squares.push({ bg, tip: `${dayLabel}: ${tip}` });
+      : (val === null ? 'Sin datos' : `${Math.round(val)}% de la meta`);
+    squares.push({ bg, tip: `${dayLabel}: ${tip}`, raw: val, isBoolean });
     if (val !== null) {
       totalCount++;
       if (isBoolean ? val : val >= 80) metCount++;
@@ -6567,7 +6597,11 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
 
   const pctMet   = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : null;
   const pctColor = pctMet === null ? 'var(--muted)' : pctMet >= 80 ? '#639922' : pctMet >= 50 ? '#EF9F27' : '#E24B4A';
-  const sq = (s) => `<div title="${s.tip}" style="flex:1;height:18px;border-radius:3px;background:${s.bg};min-width:0;cursor:default"></div>`;
+  // sq() builds one heatmap cell — title for hover, onclick for mobile tap
+  const sq = (s) => `<div
+    title="${s.tip}"
+    onclick="showHeatmapPopover(this,'${s.tip}')"
+    style="flex:1;height:18px;border-radius:3px;background:${s.bg};min-width:0;cursor:pointer;-webkit-tap-highlight-color:transparent"></div>`;
 
   let grid;
   if (days <= 7) {
@@ -6600,6 +6634,42 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
       </div>
       ${grid}
     </div>`;
+}
+
+// Heatmap cell tap popover
+function showHeatmapPopover(el, text) {
+  // Remove any existing popover
+  document.querySelectorAll('.heatmap-popover').forEach(p => p.remove());
+
+  const pop = document.createElement('div');
+  pop.className = 'heatmap-popover';
+  pop.textContent = text;
+  pop.style.cssText = `
+    position:fixed;z-index:9999;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;padding:6px 10px;
+    font-size:12px;color:var(--text);
+    box-shadow:0 4px 16px rgba(0,0,0,0.18);
+    pointer-events:none;white-space:nowrap;
+    font-family:var(--font-display);
+  `;
+  document.body.appendChild(pop);
+
+  // Position near the cell
+  const rect = el.getBoundingClientRect();
+  const pw   = pop.offsetWidth || 160;
+  let   left = rect.left + rect.width / 2 - pw / 2;
+  let   top  = rect.top - 36;
+  // clamp to viewport
+  left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+  if (top < 8) top = rect.bottom + 6;
+  pop.style.left = left + 'px';
+  pop.style.top  = top  + 'px';
+
+  // Auto-dismiss after 2s or on next tap
+  const dismiss = () => { pop.remove(); document.removeEventListener('touchstart', dismiss); };
+  setTimeout(dismiss, 2000);
+  setTimeout(() => document.addEventListener('touchstart', dismiss, { once: true }), 50);
 }
 
 async function renderStatsConsistency(food, hyd) {
@@ -6848,6 +6918,72 @@ function renderStatsMeal(food) {
   }).join('');
 
   content.innerHTML = `<div>${rows}</div>`;
+}
+
+// ── ④b Macros per meal ──
+function renderStatsMealMacros(food) {
+  const card    = document.getElementById('statsMealMacrosCard');
+  const content = document.getElementById('statsMealMacrosContent');
+  if (!food.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const MEAL_ORDER  = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
+  const MEAL_ICONS  = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+  const MEAL_COLORS = {
+    'Desayuno':'#a8c060','Snack Mañana':'#d4a840','Almuerzo':'#4a90d9',
+    'Snack Tarde':'#e07840','Cena':'#9b59b6','Extra':'#7a8460',
+  };
+
+  // Aggregate by meal × date, then average
+  const mealData = {}; // { meal: { dates: Set, cal, p, c, f } }
+  food.forEach(e => {
+    if (!mealData[e.meal_type]) mealData[e.meal_type] = { dates: new Set(), cal:0, p:0, c:0, f:0 };
+    const m = mealData[e.meal_type];
+    m.dates.add(e.log_date);
+    m.cal += e.calories  || 0;
+    m.p   += e.protein_g || 0;
+    m.c   += e.carbs_g   || 0;
+    m.f   += e.fat_g     || 0;
+  });
+
+  const meals = MEAL_ORDER.filter(m => mealData[m]);
+  if (!meals.length) { card.style.display = 'none'; return; }
+
+  // Header row
+  const headerStyle = 'font-size:10px;color:var(--muted);text-align:right;padding:0 4px';
+  content.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr repeat(4,44px);gap:0;margin-bottom:6px;padding:0 0 4px;border-bottom:1px solid var(--border)">
+      <span style="font-size:10px;color:var(--muted)">Comida</span>
+      <span style="${headerStyle}">Kcal</span>
+      <span style="${headerStyle}">Prot</span>
+      <span style="${headerStyle}">Carbs</span>
+      <span style="${headerStyle}">Grasas</span>
+    </div>
+    ${meals.map(meal => {
+      const m    = mealData[meal];
+      const days = m.dates.size || 1;
+      const avgCal = Math.round(m.cal / days);
+      const avgP   = Math.round(m.p   / days);
+      const avgC   = Math.round(m.c   / days);
+      const avgF   = Math.round(m.f   / days);
+      const color  = MEAL_COLORS[meal] || '#7a8460';
+      const icon   = MEAL_ICONS[meal]  || '🍽️';
+      const cellStyle = `font-size:12px;color:var(--text);text-align:right;padding:0 4px;font-family:var(--font-display)`;
+      return `
+        <div style="display:grid;grid-template-columns:1fr repeat(4,44px);align-items:center;padding:7px 0;border-bottom:0.5px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:3px;height:28px;border-radius:2px;background:${color};flex-shrink:0"></div>
+            <div>
+              <div style="font-size:12px;color:var(--text)">${icon} ${meal}</div>
+              <div style="font-size:10px;color:var(--muted)">${days} día${days!==1?'s':''}</div>
+            </div>
+          </div>
+          <span style="${cellStyle}">${avgCal}</span>
+          <span style="${cellStyle};color:#4a90d9">${avgP}g</span>
+          <span style="${cellStyle};color:#d4a840">${avgC}g</span>
+          <span style="${cellStyle};color:#e07840">${avgF}g</span>
+        </div>`;
+    }).join('')}`;
 }
 
 // ── ⑤ Hydration ──
@@ -8826,6 +8962,7 @@ function openBS(id) {
   if (id === 'bsHyd')  { clearHydDate(); }
 
   document.getElementById(id).classList.add('show');
+  initBSSwipe(id);
   if (id === 'bsSupp') renderSuppChecklist();
   if (id === 'bsHyd') {
     hydCarouselIdx = 0;
@@ -8839,6 +8976,43 @@ function openBS(id) {
 
 function closeBS(id) {
   document.getElementById(id).classList.remove('show');
+}
+
+// ── Swipe-down to close bottom sheets ──
+function initBSSwipe(id) {
+  const overlay = document.getElementById(id);
+  if (!overlay || overlay._swipeInit) return;
+  overlay._swipeInit = true;
+  const sheet = overlay.querySelector('.bottom-sheet');
+  if (!sheet) return;
+
+  let startY = 0, curY = 0, dragging = false;
+
+  sheet.addEventListener('touchstart', e => {
+    // Only start drag from handle or top 48px of sheet
+    const touch = e.touches[0];
+    const rect  = sheet.getBoundingClientRect();
+    if (touch.clientY - rect.top > 48) return;
+    startY  = touch.clientY;
+    curY    = 0;
+    dragging = true;
+    sheet.style.transition = 'none';
+  }, { passive: true });
+
+  sheet.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    curY = e.touches[0].clientY - startY;
+    if (curY < 0) curY = 0; // no drag up
+    sheet.style.transform = `translateY(${curY}px)`;
+  }, { passive: true });
+
+  sheet.addEventListener('touchend', () => {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = '';
+    sheet.style.transform  = '';
+    if (curY > 80) closeBS(id);
+  });
 }
 
 function closeBSIfOverlay(event, id) {
