@@ -3475,23 +3475,15 @@ async function renderCarouselDay() {
   const barRow = (label, val, goal, color, fmt) => {
     const pct      = goal ? Math.min(Math.round((val / goal) * 100), 100) : 0;
     const pctColor = !goal ? color : pct >= 90 ? '#639922' : pct >= 60 ? color : '#EF9F27';
+    const valLabel = goal ? `${fmt(val)}/${fmt(goal)}` : fmt(val);
     const pctLabel = goal ? `${pct}%` : '';
-    const goalLine = goal
-      ? `<div style="display:flex;justify-content:space-between;margin-top:2px">
-           <span style="font-size:10px;color:var(--muted)">de ${fmt(goal)}</span>
-           ${val < goal ? `<span style="font-size:10px;color:var(--muted)">faltan ${fmt(goal - val)}</span>` : `<span style="font-size:10px;color:#639922">✓ meta</span>`}
-         </div>`
-      : '';
-    return `<div style="margin-bottom:2px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${label}</span>
-        <span style="font-size:12px;font-weight:500;color:${color};width:36px;text-align:right;flex-shrink:0">${fmt(val)}</span>
-        <div style="flex:1;height:4px;border-radius:3px;background:var(--border)">
-          <div style="width:${pct}%;height:100%;border-radius:3px;background:${color};transition:width .4s"></div>
-        </div>
-        <span style="font-size:11px;font-weight:500;color:${pctColor};width:30px;text-align:right;flex-shrink:0">${pctLabel}</span>
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:1px">
+      <span style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${label}</span>
+      <span style="font-size:11px;font-weight:500;color:${color};width:60px;text-align:right;flex-shrink:0;white-space:nowrap">${valLabel}</span>
+      <div style="flex:1;height:4px;border-radius:3px;background:var(--border)">
+        <div style="width:${pct}%;height:100%;border-radius:3px;background:${color};transition:width .4s"></div>
       </div>
-      ${goalLine}
+      <span style="font-size:11px;font-weight:500;color:${pctColor};width:30px;text-align:right;flex-shrink:0">${pctLabel}</span>
     </div>`;
   };
 
@@ -6573,7 +6565,7 @@ function lerpRGB(a, b, t) {
   return `rgb(${r},${g},${bl})`;
 }
 
-function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
+function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null, rawFn = null) {
   const today = statsToDate ? new Date(statsToDate + 'T12:00:00') : new Date();
   const squares = [];
   let metCount = 0, totalCount = 0;
@@ -6585,10 +6577,24 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
     const dayLabel = d.toLocaleDateString('es-CR', { weekday:'short', day:'numeric', month:'short' });
     const val = pctFn(dateStr);
     const bg = colorFn ? colorFn(val) : consistencyColor(val, isBoolean);
-    const tip = isBoolean
-      ? (val === null ? 'Sin datos' : val ? '✓ Completado' : '✗ No completado')
-      : (val === null ? 'Sin datos' : `${Math.round(val)}% de la meta`);
-    squares.push({ bg, tip: `${dayLabel}: ${tip}`, raw: val, isBoolean });
+
+    // Build popover text
+    let popText;
+    if (isBoolean) {
+      popText = val === null ? 'Sin datos' : val ? '✓ Completado' : '✗ No completado';
+    } else if (val === null) {
+      popText = 'Sin datos';
+    } else if (rawFn) {
+      const { raw, goal } = rawFn(dateStr);
+      const rawRounded = typeof raw === 'number' ? Math.round(raw * 10) / 10 : raw;
+      const goalRounded = typeof goal === 'number' ? Math.round(goal * 10) / 10 : goal;
+      popText = goal ? `${rawRounded} / ${goalRounded}` : `${rawRounded}`;
+    } else {
+      popText = `${Math.round(val)}% de la meta`;
+    }
+
+    const tip = `${dayLabel}: ${popText}`;
+    squares.push({ bg, tip });
     if (val !== null) {
       totalCount++;
       if (isBoolean ? val : val >= 80) metCount++;
@@ -6597,10 +6603,9 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null) {
 
   const pctMet   = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : null;
   const pctColor = pctMet === null ? 'var(--muted)' : pctMet >= 80 ? '#639922' : pctMet >= 50 ? '#EF9F27' : '#E24B4A';
-  // sq() builds one heatmap cell — title for hover, onclick for mobile tap
   const sq = (s) => `<div
     title="${s.tip}"
-    onclick="showHeatmapPopover(this,'${s.tip}')"
+    onclick="showHeatmapPopover(this,${JSON.stringify(s.tip)})"
     style="flex:1;height:18px;border-radius:3px;background:${s.bg};min-width:0;cursor:pointer;-webkit-tap-highlight-color:transparent"></div>`;
 
   let grid;
@@ -6706,13 +6711,19 @@ async function renderStatsConsistency(food, hyd) {
 
   // Macro rows — use per-day adaptive goal
   metricDefs.forEach(m => {
+    const unit = m.key === 'cal' ? 'kcal' : 'g';
     html += buildHeatmapRow(m.label, effRange, dateStr => {
       const d = byDate[dateStr];
       if (!d) return null;
       const goal = getGoalsForDate(dateStr)[m.goalKey];
       if (!goal) return null;
       return Math.round((d[m.key] / goal) * 100);
-    }, false);
+    }, false, null, dateStr => {
+      const d = byDate[dateStr];
+      const goal = getGoalsForDate(dateStr)[m.goalKey];
+      const raw = d ? Math.round(d[m.key]) : 0;
+      return { raw: `${raw}${unit}`, goal: `${Math.round(goal)}${unit}` };
+    });
   });
 
   // Hydration — per-day adaptive goal
@@ -6726,7 +6737,13 @@ async function renderStatsConsistency(food, hyd) {
       const goalHyd = (g.water||0) + (g.isotonic||0);
       if (!goalHyd) return null;
       return Math.round((v / goalHyd) * 100);
-    }, false);
+    }, false, null, dateStr => {
+      const v = hydByDate[dateStr] || 0;
+      const g = getGoalsForDate(dateStr);
+      const goalHyd = (g.water||0) + (g.isotonic||0);
+      const fmt = n => n >= 1000 ? `${(n/1000).toFixed(1)}L` : `${Math.round(n)}ml`;
+      return { raw: fmt(v), goal: fmt(goalHyd) };
+    });
   }
 
   // Supplements (boolean)
