@@ -1630,6 +1630,10 @@ select { cursor: pointer; }
   <div class="bottom-sheet-overlay" id="bsRegister" onclick="closeBSIfOverlay(event,'bsRegister')">
     <div class="bottom-sheet" style="padding-bottom:env(safe-area-inset-bottom)">
       <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">➕ Registrar</div>
+        <button class="bs-close" onclick="closeBS('bsRegister')">✕</button>
+      </div>
       <div class="bs-body" style="padding:16px 20px 24px">
 
         <!-- Contextual suggestion — filled by JS -->
@@ -6603,10 +6607,13 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null, rawFn = 
 
   const pctMet   = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : null;
   const pctColor = pctMet === null ? 'var(--muted)' : pctMet >= 80 ? '#639922' : pctMet >= 50 ? '#EF9F27' : '#E24B4A';
-  const sq = (s) => `<div
-    title="${s.tip}"
-    onclick="showHeatmapPopover(this,${JSON.stringify(s.tip)})"
-    style="flex:1;height:18px;border-radius:3px;background:${s.bg};min-width:0;cursor:pointer;-webkit-tap-highlight-color:transparent"></div>`;
+  const sq = (s) => {
+    const safeText = s.tip.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+    return `<div
+      title="${safeText}"
+      onclick="showHeatmapPopover(this,'${safeText}')"
+      style="flex:1;height:18px;border-radius:3px;background:${s.bg};min-width:0;cursor:pointer;-webkit-tap-highlight-color:transparent"></div>`;
+  };
 
   let grid;
   if (days <= 7) {
@@ -6643,12 +6650,13 @@ function buildHeatmapRow(label, days, pctFn, isBoolean, colorFn = null, rawFn = 
 
 // Heatmap cell tap popover
 function showHeatmapPopover(el, text) {
-  // Remove any existing popover
+  // Decode HTML entities that were escaped for the onclick attribute
+  const decoded = text.replace(/&#39;/g, "'").replace(/&quot;/g, '"');
   document.querySelectorAll('.heatmap-popover').forEach(p => p.remove());
 
   const pop = document.createElement('div');
   pop.className = 'heatmap-popover';
-  pop.textContent = text;
+  pop.textContent = decoded;
   pop.style.cssText = `
     position:fixed;z-index:9999;
     background:var(--surface);border:1px solid var(--border);
