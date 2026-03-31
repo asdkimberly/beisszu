@@ -7179,31 +7179,38 @@ async function renderStatsBurn(food) {
     balance.push(b > 0 ? c - b : null);
   }
 
-  // Stats
-  const daysWithBurn = burned.filter(v => v).length || 1;
-  const avgConsumed  = Math.round(consumed.filter(v=>v>0).reduce((s,v)=>s+v,0) / (consumed.filter(v=>v>0).length||1));
-  const avgBurned    = Math.round(burned.filter(v=>v).reduce((s,v)=>s+v,0) / daysWithBurn);
-  const avgBalance   = avgConsumed - avgBurned;
-  const isDeficit    = avgBalance <= 0;
-  const balColor     = isDeficit ? '#a8c060' : '#e07840';
-  const balLabel     = isDeficit ? 'déficit' : 'superávit';
+  // Period totals — sum all days in range
+  const totalConsumed = consumed.reduce((s,v) => s + (v||0), 0);
+  const totalBurned   = burned.filter(v => v).reduce((s,v) => s + v, 0);
+  const totalBalance  = totalConsumed - totalBurned;
+  const daysWithBurn  = burned.filter(v => v).length || 1;
+
+  // Labels adapt to range
+  const periodLabel = effRange <= 1 ? 'hoy' : effRange <= 7 ? `${effRange} días` : effRange <= 31 ? `${effRange} días` : 'el período';
+  const isDeficit   = totalBalance <= 0;
+  const balColor    = isDeficit ? '#a8c060' : '#e07840';
+  const balLabel    = isDeficit ? 'déficit' : 'superávit';
+
+  const fmtKcal = v => Math.abs(v) >= 10000
+    ? `${(v/1000).toFixed(1)}k`
+    : v.toString();
 
   // Summary chips
   document.getElementById('statsBurnContent').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
       <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
         <div style="font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Consumo</div>
-        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text)">${avgConsumed}</div>
-        <div style="font-size:10px;color:var(--muted)">kcal prom.</div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text)">${fmtKcal(totalConsumed)}</div>
+        <div style="font-size:10px;color:var(--muted)">kcal en ${periodLabel}</div>
       </div>
       <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
         <div style="font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Gasto</div>
-        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text)">${avgBurned}</div>
-        <div style="font-size:10px;color:var(--muted)">kcal prom.</div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:var(--text)">${fmtKcal(totalBurned)}</div>
+        <div style="font-size:10px;color:var(--muted)">${daysWithBurn} día${daysWithBurn!==1?'s':''} con datos</div>
       </div>
       <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">
         <div style="font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Balance</div>
-        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:${balColor}">${avgBalance > 0 ? '+' : ''}${avgBalance}</div>
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:${balColor}">${totalBalance > 0 ? '+' : ''}${fmtKcal(totalBalance)}</div>
         <div style="font-size:10px;color:var(--muted)">${balLabel}</div>
       </div>
     </div>`;
