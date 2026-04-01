@@ -923,23 +923,89 @@ select { cursor: pointer; }
 .hyd-dot.active { background: var(--accent); }
 
 /* ══ CAROUSEL HEADER ══ */
-.carousel-header {
-  display: flex; align-items: center; justify-content: space-between;
+/* ══ DATE CAROUSEL STRIP ══ */
+.date-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 2px 6px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.date-strip::-webkit-scrollbar { display: none; }
+
+.date-circle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+  min-width: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+.date-circle-dow {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  line-height: 1;
+}
+.date-circle {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  background: var(--surface2);
+  border: 1.5px solid transparent;
+  transition: all 0.18s;
+  position: relative;
+}
+.date-circle-num {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text2);
+  line-height: 1;
+}
+.date-circle-mon {
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1;
+  margin-top: 1px;
+}
+.date-circle-wrap.active .date-circle {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.date-circle-wrap.active .date-circle-num { color: #0e110a; font-weight: 600; }
+.date-circle-wrap.active .date-circle-mon { color: #0e110a; opacity: 0.7; }
+.date-circle-wrap.active .date-circle-dow { color: var(--accent); }
+.date-circle-wrap.today:not(.active) .date-circle {
+  border-color: var(--accent);
+}
+.date-circle-wrap.today:not(.active) .date-circle-num { color: var(--accent); }
+.date-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.7;
+}
+.date-dot.empty { background: transparent; }
+
+.carousel-date-label {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text);
   padding: 4px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.carousel-arrow {
-  width: 36px; height: 36px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 50%; font-size: 20px; color: var(--text2);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.18s; flex-shrink: 0;
-}
-.carousel-arrow:active { background: var(--accent); color: #0e110a; border-color: var(--accent); }
-.carousel-arrow:disabled { opacity: 0.25; cursor: default; }
-.carousel-title {
-  font-family: var(--font-display); font-size: 18px; font-weight: 400;
-  color: var(--text); text-align: center; flex: 1;
-}
+
 
 /* ══ SECTION HEADER ROW ══ */
 .section-header-row {
@@ -1070,6 +1136,8 @@ select { cursor: pointer; }
     <div class="header-right">
       <button onclick="openSearch()" title="Buscar"
         style="background:none;border:none;cursor:pointer;font-size:17px;padding:2px 6px;color:var(--text2);line-height:1;opacity:0.8">🔍</button>
+      <button onclick="openCalendarPicker()" title="Calendario"
+        style="background:none;border:none;cursor:pointer;font-size:17px;padding:2px 6px;color:var(--text2);line-height:1;opacity:0.8">📅</button>
       <div class="time-badge" id="timeBadge">--:--</div>
       <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Cambiar tema">🌙</button>
     </div>
@@ -1083,15 +1151,13 @@ select { cursor: pointer; }
   <!-- ══ PAGE: INICIO ══ -->
   <div class="page active" id="page-home">
 
-    <!-- Carousel header -->
-    <div class="carousel-header">
-      <button class="carousel-arrow" id="carouselPrev" onclick="carouselNavigate(-1)">‹</button>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="carousel-title" id="carouselTitle">Hoy</div>
-        <button id="duplicateDayBtn" onclick="duplicateDay()" title="Copiar este día a hoy"
-          style="display:none;background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;opacity:0.7;line-height:1">📋</button>
-      </div>
-      <button class="carousel-arrow" id="carouselNext" onclick="carouselNavigate(1)">›</button>
+    <!-- Date strip carousel -->
+    <div id="dateStrip" class="date-strip"></div>
+    <!-- Date label below strip -->
+    <div class="carousel-date-label">
+      <span id="carouselTitle">Hoy</span>
+      <button id="duplicateDayBtn" onclick="duplicateDay()" title="Copiar este día a hoy"
+        style="display:none;background:none;border:none;cursor:pointer;font-size:15px;padding:0;opacity:0.7;line-height:1">📋</button>
     </div>
 
     <!-- Day summary card — Option D: grouped bars by category -->
@@ -2166,6 +2232,28 @@ select { cursor: pointer; }
 </div>
 
 <!-- ══ GLOBAL SEARCH OVERLAY ══ -->
+<!-- ══ CALENDAR PICKER ══ -->
+<div id="calendarOverlay" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.55);align-items:flex-end;justify-content:center">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:85dvh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)">
+    <!-- Handle -->
+    <div style="width:40px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 0"></div>
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px 8px">
+      <button onclick="calendarPrevMonth()" style="background:none;border:none;font-size:22px;color:var(--text2);cursor:pointer;padding:4px 8px;line-height:1">‹</button>
+      <div id="calendarMonthLabel" style="font-family:var(--font-display);font-size:16px;color:var(--text);font-weight:500"></div>
+      <button onclick="calendarNextMonth()" style="background:none;border:none;font-size:22px;color:var(--text2);cursor:pointer;padding:4px 8px;line-height:1">›</button>
+    </div>
+    <!-- Day-of-week labels -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);padding:0 12px;margin-bottom:4px">
+      ${['Lu','Ma','Mi','Ju','Vi','Sá','Do'].map(d =>
+        `<div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">${d}</div>`
+      ).join('')}
+    </div>
+    <!-- Calendar grid -->
+    <div id="calendarGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:0 12px 20px;overflow-y:auto"></div>
+  </div>
+</div>
+
 <div id="searchOverlay" style="display:none;position:fixed;inset:0;z-index:200;background:var(--bg);flex-direction:column">
   <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)">
     <input type="text" id="searchInput" placeholder="Buscar alimentos, platillos, entradas…"
@@ -3424,34 +3512,103 @@ let carouselIndex = 0;      // current index (0 = today/most recent)
 
 function buildCarouselDays(preserveDate = false) {
   const currentDate = preserveDate ? carouselDays[carouselIndex] : null;
-  const dateSet = new Set([
-    ...entries.map(e => e.log_date),
-    ...hydEntries.map(e => e.date),
-  ]);
-  dateSet.add(getTodayDate());
+
+  // Always include last 60 days + today + any days with data
+  const dateSet = new Set();
+  const today = getTodayDate();
+  for (let i = 59; i >= 0; i--) {
+    const d = new Date(today + 'T12:00:00');
+    d.setDate(d.getDate() - i);
+    dateSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+  }
+  // Also include any days with data outside the 60-day window
+  entries.forEach(e => dateSet.add(e.log_date));
+  hydEntries.forEach(e => dateSet.add(e.date));
+
   carouselDays = [...dateSet].sort();
 
   if (preserveDate && currentDate) {
-    // After edit/delete — stay on same date
     const idx = carouselDays.indexOf(currentDate);
     carouselIndex = idx !== -1 ? idx : carouselDays.length - 1;
   } else {
-    // On initial load — restore last visited date from localStorage
     const saved = localStorage.getItem('bz_carousel_date');
     if (saved && carouselDays.includes(saved)) {
       carouselIndex = carouselDays.indexOf(saved);
     } else {
-      carouselIndex = carouselDays.length - 1;
+      carouselIndex = carouselDays.length - 1; // today
     }
   }
+}
+
+function renderDateStrip() {
+  const strip = document.getElementById('dateStrip');
+  if (!strip) return;
+
+  const today    = getTodayDate();
+  const datesWithData = new Set([
+    ...entries.map(e => e.log_date),
+    ...hydEntries.map(e => e.date),
+  ]);
+
+  const DAYS_SHORT   = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
+  const MONTHS_SHORT = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  strip.innerHTML = carouselDays.map((ds, idx) => {
+    const d   = new Date(ds + 'T12:00:00');
+    const dow = DAYS_SHORT[d.getDay()];
+    const num = d.getDate();
+    const mon = MONTHS_SHORT[d.getMonth()];
+    const isActive = idx === carouselIndex;
+    const isToday  = ds === today;
+    const hasData  = datesWithData.has(ds);
+
+    return `<div class="date-circle-wrap${isActive?' active':''}${isToday?' today':''}"
+      onclick="carouselSelectIndex(${idx})" id="dc-${idx}">
+      <span class="date-circle-dow">${dow}</span>
+      <div class="date-circle">
+        <span class="date-circle-num">${num}</span>
+        <span class="date-circle-mon">${mon}</span>
+      </div>
+      <div class="date-dot${hasData?'':' empty'}"></div>
+    </div>`;
+  }).join('');
+
+  // Scroll active circle into center
+  requestAnimationFrame(() => {
+    const active = document.getElementById(`dc-${carouselIndex}`);
+    if (active) {
+      const scrollTo = active.offsetLeft - strip.offsetWidth / 2 + active.offsetWidth / 2;
+      strip.scrollLeft = scrollTo;
+    }
+  });
+
+  // Init swipe on day-card to navigate (only once)
+  const dayCard = document.getElementById('homeDayCard');
+  if (dayCard && !dayCard._swipeCarousel) {
+    dayCard._swipeCarousel = true;
+    let sx = 0;
+    dayCard.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+    dayCard.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 50) carouselNavigate(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
+}
+
+function carouselSelectIndex(idx) {
+  if (idx === carouselIndex) return;
+  carouselIndex = idx;
+  localStorage.setItem('bz_carousel_date', carouselDays[carouselIndex]);
+  renderDateStrip();
+  renderCarouselDay();
 }
 
 function carouselNavigate(dir) {
   const newIndex = carouselIndex + dir;
   if (newIndex < 0 || newIndex >= carouselDays.length) return;
   carouselIndex = newIndex;
-  // Persist the selected date so it survives a page refresh
   localStorage.setItem('bz_carousel_date', carouselDays[carouselIndex]);
+  renderDateStrip();
   renderCarouselDay();
 }
 
@@ -3473,8 +3630,7 @@ async function renderCarouselDay() {
   const dupBtn = document.getElementById('duplicateDayBtn');
   if (dupBtn) dupBtn.style.display = dateStr !== getTodayDate() ? 'inline-block' : 'none';
   renderBurnedInput(dateStr);
-  document.getElementById('carouselPrev').disabled = carouselIndex === 0;
-  document.getElementById('carouselNext').disabled = carouselIndex === carouselDays.length - 1;
+  renderDateStrip();
 
   const dayEntries = entries.filter(e => e.log_date === dateStr);
   const dayHyd     = hydEntries.filter(e => e.date === dateStr);
@@ -9093,7 +9249,109 @@ function closeBSIfOverlay(event, id) {
   if (event.target === document.getElementById(id)) closeBS(id);
 }
 
-// ══ VOICE REGISTRATION ══
+// ══ CALENDAR PICKER ══
+let _calYear  = 0;
+let _calMonth = 0; // 0-11
+
+function openCalendarPicker() {
+  const today = new Date();
+  _calYear  = today.getFullYear();
+  _calMonth = today.getMonth();
+  renderCalendarGrid();
+  const overlay = document.getElementById('calendarOverlay');
+  overlay.style.display = 'flex';
+
+  // Close on overlay tap
+  overlay.onclick = e => { if (e.target === overlay) closeCalendarPicker(); };
+
+  // Swipe down to close
+  const sheet = overlay.querySelector('div');
+  let sy = 0;
+  sheet.addEventListener('touchstart', e => { sy = e.touches[0].clientY; }, { passive: true, once: false });
+  sheet.addEventListener('touchend', e => {
+    if (e.changedTouches[0].clientY - sy > 80) closeCalendarPicker();
+  }, { passive: true });
+}
+
+function closeCalendarPicker() {
+  document.getElementById('calendarOverlay').style.display = 'none';
+}
+
+function calendarPrevMonth() {
+  _calMonth--;
+  if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+  renderCalendarGrid();
+}
+
+function calendarNextMonth() {
+  _calMonth++;
+  if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+  renderCalendarGrid();
+}
+
+function renderCalendarGrid() {
+  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('calendarMonthLabel').textContent = `${MONTHS[_calMonth]} ${_calYear}`;
+
+  const today = getTodayDate();
+  const selectedDate = carouselDays[carouselIndex];
+  const datesWithData = new Set([
+    ...entries.map(e => e.log_date),
+    ...hydEntries.map(e => e.date),
+  ]);
+
+  // First day of month (adjusted: Mon=0 … Sun=6)
+  const firstDay = new Date(_calYear, _calMonth, 1).getDay(); // 0=Sun
+  const offset   = (firstDay + 6) % 7; // shift so Mon=0
+  const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+
+  const grid = document.getElementById('calendarGrid');
+  let html = '';
+
+  // Empty cells before first day
+  for (let i = 0; i < offset; i++) {
+    html += `<div></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday    = ds === today;
+    const isSelected = ds === selectedDate;
+    const hasData    = datesWithData.has(ds);
+    const isFuture   = ds > today;
+
+    const bgColor    = isSelected ? 'var(--accent)' : 'transparent';
+    const numColor   = isSelected ? '#0e110a' : isToday ? 'var(--accent)' : isFuture ? 'var(--muted)' : 'var(--text)';
+    const borderStyle = isToday && !isSelected ? '1.5px solid var(--accent)' : '1.5px solid transparent';
+    const dotColor   = isSelected ? 'rgba(14,17,10,0.5)' : 'var(--accent)';
+    const opacity    = isFuture ? '0.4' : '1';
+
+    html += `<div onclick="${isFuture ? '' : `calendarSelectDate('${ds}')`}"
+      style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px 0;cursor:${isFuture?'default':'pointer'};opacity:${opacity};-webkit-tap-highlight-color:transparent">
+      <div style="width:36px;height:36px;border-radius:50%;background:${bgColor};border:${borderStyle};display:flex;align-items:center;justify-content:center;transition:all .15s">
+        <span style="font-family:var(--font-display);font-size:14px;color:${numColor};font-weight:${isSelected?'600':'400'}">${day}</span>
+      </div>
+      <div style="width:4px;height:4px;border-radius:50%;background:${hasData?dotColor:'transparent'}"></div>
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function calendarSelectDate(ds) {
+  // If date not in carouselDays, add it temporarily
+  if (!carouselDays.includes(ds)) {
+    carouselDays.push(ds);
+    carouselDays.sort();
+  }
+  const idx = carouselDays.indexOf(ds);
+  carouselIndex = idx;
+  localStorage.setItem('bz_carousel_date', ds);
+  closeCalendarPicker();
+  renderDateStrip();
+  renderCarouselDay();
+}
 let _voiceRecognition = null;
 
 function startVoiceEntry() {
