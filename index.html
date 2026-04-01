@@ -942,10 +942,8 @@ select { cursor: pointer; }
   align-items: center;
   gap: 3px;
   flex-shrink: 0;
-  cursor: pointer;
   min-width: 44px;
   -webkit-tap-highlight-color: transparent;
-  padding-bottom: 4px;
 }
 .date-circle-dow {
   font-size: 10px;
@@ -964,6 +962,8 @@ select { cursor: pointer; }
   border: 1.5px solid transparent;
   transition: all 0.18s;
   position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .date-circle-num {
   font-family: var(--font-display);
@@ -3573,10 +3573,9 @@ function renderDateStrip() {
     const isToday  = ds === today;
     const hasData  = datesWithData.has(ds);
 
-    return `<div class="date-circle-wrap${isActive?' active':''}${isToday?' today':''}"
-      onclick="carouselSelectIndex(${idx})" id="dc-${idx}">
+    return `<div class="date-circle-wrap${isActive?' active':''}${isToday?' today':''}" id="dc-${idx}">
       <span class="date-circle-dow">${dow}</span>
-      <div class="date-circle">
+      <div class="date-circle" onclick="carouselSelectIndex(${idx})">
         <span class="date-circle-num">${num}</span>
         <span class="date-circle-mon">${mon}</span>
       </div>
