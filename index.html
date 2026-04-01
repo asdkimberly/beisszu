@@ -138,6 +138,7 @@ body::before {
   overflow-y: auto;
 }
 .page.active { display: flex; }
+#page-home { gap: 12px; }
 
 /* ══ BOTTOM NAV ══ */
 .bottom-nav {
@@ -928,7 +929,7 @@ select { cursor: pointer; }
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding: 4px 2px 6px;
+  padding: 4px 2px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -939,11 +940,12 @@ select { cursor: pointer; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   flex-shrink: 0;
   cursor: pointer;
   min-width: 44px;
   -webkit-tap-highlight-color: transparent;
+  padding-bottom: 4px;
 }
 .date-circle-dow {
   font-size: 10px;
@@ -1000,7 +1002,7 @@ select { cursor: pointer; }
   font-size: 15px;
   font-weight: 400;
   color: var(--text);
-  padding: 4px 0 0;
+  padding: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1149,17 +1151,15 @@ select { cursor: pointer; }
   <!-- ══ PAGE: INICIO ══ -->
   <div class="page active" id="page-home">
 
-    <!-- Date strip + label — wrapped together so page gap doesn't split them -->
-    <div style="display:flex;flex-direction:column;gap:0;margin-bottom:-10px">
+    <!-- Date strip + label — single flex column, no gaps -->
+    <div style="display:flex;flex-direction:column;gap:4px">
       <div style="display:flex;align-items:flex-start;gap:4px">
         <div id="dateStrip" class="date-strip" style="flex:1"></div>
-        <!-- Calendar button aligned to circle center (DOW ~13px + circle 40px / 2 = ~33px from top) -->
         <div style="flex-shrink:0;padding-top:13px">
           <button onclick="openCalendarPicker()" title="Calendario"
             style="width:40px;height:40px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text2);-webkit-tap-highlight-color:transparent">📅</button>
         </div>
       </div>
-      <!-- Date label immediately below, no gap -->
       <div class="carousel-date-label">
         <span id="carouselTitle">Hoy</span>
         <button id="duplicateDayBtn" onclick="duplicateDay()" title="Copiar este día a hoy"
