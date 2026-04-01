@@ -938,7 +938,7 @@ select { cursor: pointer; }
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   align-items: flex-start;
-  flex-shrink: 0;
+  height: 68px;
 }
 .date-strip::-webkit-scrollbar { display: none; }
 
@@ -1149,7 +1149,7 @@ select { cursor: pointer; }
     <!-- Date strip + calendar + label — zero implicit spacing -->
     <div style="margin-bottom:12px">
       <div style="display:flex;align-items:flex-start;gap:4px;overflow:hidden">
-        <div id="dateStrip" class="date-strip" style="flex:1;overflow-x:auto;overflow-y:hidden"></div>
+        <div id="dateStrip" class="date-strip" style="flex:1;height:68px"></div>
         <div style="flex-shrink:0;margin-top:13px">
           <button onclick="openCalendarPicker()" title="Calendario"
             style="width:40px;height:40px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text2);-webkit-tap-highlight-color:transparent">📅</button>
