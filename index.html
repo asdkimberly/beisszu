@@ -138,7 +138,10 @@ body::before {
   overflow-y: auto;
 }
 .page.active { display: flex; }
-#page-home { gap: 12px; }
+#page-home {
+  gap: 0;
+  padding-top: 8px;
+}
 
 /* ══ BOTTOM NAV ══ */
 .bottom-nav {
@@ -929,10 +932,12 @@ select { cursor: pointer; }
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 4px 2px 0;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  align-items: flex-start;
 }
 .date-strip::-webkit-scrollbar { display: none; }
 
@@ -1152,9 +1157,9 @@ select { cursor: pointer; }
   <div class="page active" id="page-home">
 
     <!-- Date strip + label — single flex column, no gaps -->
-    <div style="display:flex;flex-direction:column;gap:4px">
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
       <div style="display:flex;align-items:flex-start;gap:4px">
-        <div id="dateStrip" class="date-strip" style="flex:1"></div>
+        <div id="dateStrip" class="date-strip" style="flex:1;min-height:0"></div>
         <div style="flex-shrink:0;padding-top:13px">
           <button onclick="openCalendarPicker()" title="Calendario"
             style="width:40px;height:40px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text2);-webkit-tap-highlight-color:transparent">📅</button>
@@ -1167,8 +1172,8 @@ select { cursor: pointer; }
       </div>
     </div>
 
-    <!-- Day summary card — Option D: grouped bars by category -->
-    <div class="day-card" id="homeDayCard">
+    <!-- Day summary card -->
+    <div class="day-card" id="homeDayCard" style="margin-bottom:14px">
 
       <!-- Section: NUTRICIÓN -->
       <div id="homeNutrSection">
@@ -1221,7 +1226,7 @@ select { cursor: pointer; }
     </div>
 
     <!-- Entries grouped by meal type -->
-    <div id="homeMealGroups"></div>
+    <div id="homeMealGroups" style="display:flex;flex-direction:column;gap:14px"></div>
 
   </div>
 
