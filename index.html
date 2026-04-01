@@ -1000,7 +1000,8 @@ select { cursor: pointer; }
   font-size: 15px;
   font-weight: 400;
   color: var(--text);
-  padding: 4px 0 8px;
+  padding: 0 0 4px;
+  margin-top: -8px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1136,8 +1137,6 @@ select { cursor: pointer; }
     <div class="header-right">
       <button onclick="openSearch()" title="Buscar"
         style="background:none;border:none;cursor:pointer;font-size:17px;padding:2px 6px;color:var(--text2);line-height:1;opacity:0.8">🔍</button>
-      <button onclick="openCalendarPicker()" title="Calendario"
-        style="background:none;border:none;cursor:pointer;font-size:17px;padding:2px 6px;color:var(--text2);line-height:1;opacity:0.8">📅</button>
       <div class="time-badge" id="timeBadge">--:--</div>
       <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Cambiar tema">🌙</button>
     </div>
@@ -1151,8 +1150,12 @@ select { cursor: pointer; }
   <!-- ══ PAGE: INICIO ══ -->
   <div class="page active" id="page-home">
 
-    <!-- Date strip carousel -->
-    <div id="dateStrip" class="date-strip"></div>
+    <!-- Date strip carousel + calendar button in same row -->
+    <div style="display:flex;align-items:center;gap:4px">
+      <div id="dateStrip" class="date-strip" style="flex:1"></div>
+      <button onclick="openCalendarPicker()" title="Calendario"
+        style="flex-shrink:0;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text2);-webkit-tap-highlight-color:transparent">📅</button>
+    </div>
     <!-- Date label below strip -->
     <div class="carousel-date-label">
       <span id="carouselTitle">Hoy</span>
@@ -2245,9 +2248,13 @@ select { cursor: pointer; }
     </div>
     <!-- Day-of-week labels -->
     <div style="display:grid;grid-template-columns:repeat(7,1fr);padding:0 12px;margin-bottom:4px">
-      ${['Lu','Ma','Mi','Ju','Vi','Sá','Do'].map(d =>
-        `<div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">${d}</div>`
-      ).join('')}
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">Lu</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">Ma</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">Mi</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">Ju</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">Vi</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">Sá</div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);padding:2px 0">Do</div>
     </div>
     <!-- Calendar grid -->
     <div id="calendarGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:0 12px 20px;overflow-y:auto"></div>
@@ -3581,18 +3588,6 @@ function renderDateStrip() {
       strip.scrollLeft = scrollTo;
     }
   });
-
-  // Init swipe on day-card to navigate (only once)
-  const dayCard = document.getElementById('homeDayCard');
-  if (dayCard && !dayCard._swipeCarousel) {
-    dayCard._swipeCarousel = true;
-    let sx = 0;
-    dayCard.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
-    dayCard.addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].clientX - sx;
-      if (Math.abs(dx) > 50) carouselNavigate(dx < 0 ? 1 : -1);
-    }, { passive: true });
-  }
 }
 
 function carouselSelectIndex(idx) {
