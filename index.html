@@ -1774,13 +1774,15 @@ select { cursor: pointer; }
             <div class="cal-number" id="calDisplay">0</div>
             <div class="cal-label">calorías estimadas</div>
           </div>
-          <div class="three-col">
+          <div class="two-col">
             <div class="macro-input"><label>Proteína</label><input type="number" id="protein" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">g</div></div>
             <div class="macro-input"><label>Carbos</label><input type="number" id="carbs" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">g</div></div>
-            <div class="macro-input"><label>Grasas</label><input type="number" id="fat" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">g</div></div>
           </div>
-          <div class="three-col">
+          <div class="two-col">
+            <div class="macro-input"><label>Grasas</label><input type="number" id="fat" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">g</div></div>
             <div class="macro-input"><label>Calorías</label><input type="number" id="calories" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">kcal</div></div>
+          </div>
+          <div class="two-col">
             <div class="macro-input"><label>Fibra</label><input type="number" id="fiber" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
             <div class="macro-input"><label>Azúcar</label><input type="number" id="sugar" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
           </div>
@@ -1809,6 +1811,18 @@ select { cursor: pointer; }
           <div class="origin-toggle">
             <button class="origin-btn active" id="originHome" onclick="selectOrigin('Casa')">🏠 Casa</button>
             <button class="origin-btn" id="originRestaurant" onclick="selectOrigin('Fuera')">🌍 Fuera</button>
+          </div>
+          <div class="settings-row" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div>
+              <div class="settings-label">Es bebida</div>
+              <div style="font-size:11px;color:var(--muted)">Se contará en análisis de bebidas</div>
+            </div>
+            <div onclick="toggleFoodBeverage()" id="foodBeverageToggle"
+              style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0"
+              data-active="false">
+              <div id="foodBeverageThumb"
+                style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>
+            </div>
           </div>
           <div class="settings-row" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div>
@@ -2851,6 +2865,15 @@ function toggleFoodAlcohol() {
   thu.style.left = active ? '22px' : '2px';
 }
 
+function toggleFoodBeverage() {
+  const tog = document.getElementById('foodBeverageToggle');
+  const thu = document.getElementById('foodBeverageThumb');
+  const active = tog.dataset.active !== 'true';
+  tog.dataset.active = String(active);
+  tog.style.background = active ? '#4a90d9' : 'var(--border)';
+  thu.style.left = active ? '22px' : '2px';
+}
+
 function switchProfileTab(tab) {
   const sections = ['metas','suplementos','cuenta'];
   const navEl = document.querySelector('#page-profile .profile-nav-rows');
@@ -3023,6 +3046,8 @@ function onFoodInput(val) {
 
 function selectFood(food) {
   _foodSelected = true;
+  clearTimeout(_fsSearchTimeout); // cancel any pending FatSecret search
+  _fsSearchTimeout = null;
   document.getElementById('foodName').value = food.displayName || food.name;
   document.getElementById('foodDropdown').classList.remove('show');
   if (food._past) { selectedFoodBase = null; return; }
@@ -3049,6 +3074,12 @@ function selectFood(food) {
   const isAlc = food.is_alcoholic || false;
   if (alcTog) { alcTog.dataset.active = String(isAlc); alcTog.style.background = isAlc ? '#e07840' : 'var(--border)'; }
   if (alcThu) alcThu.style.left = isAlc ? '22px' : '2px';
+  // Auto-set beverage toggle from food data
+  const bevTog = document.getElementById('foodBeverageToggle');
+  const bevThu = document.getElementById('foodBeverageThumb');
+  const isBev = food.is_beverage || food._fromFatSecret && (food.unit === 'ml' || food.unit === 'oz') || false;
+  if (bevTog) { bevTog.dataset.active = String(isBev); bevTog.style.background = isBev ? '#4a90d9' : 'var(--border)'; }
+  if (bevThu) bevThu.style.left = isBev ? '22px' : '2px';
   updateCalDisplay();
   document.getElementById('autofillBadge').style.display = 'flex';
   // Initialize _servingGrams for the food's default unit
@@ -3177,7 +3208,10 @@ function openFoodConfirm() {
   const prot  = parseFloat(document.getElementById('protein').value)  || 0;
   const carb  = parseFloat(document.getElementById('carbs').value)    || 0;
   const fat   = parseFloat(document.getElementById('fat').value)      || 0;
-  if (!cal && !prot && !carb && !fat) { showToast('Agrega al menos calorías o macros', true); return; }
+  if (!cal && !prot && !carb && !fat) {
+    // Allow zero-macro entries (e.g. Coca-Cola Zero, water with flavoring)
+    // Only warn if the food has no name — already checked above
+  }
 
   const calVal = cal || Math.round(prot*4 + carb*4 + fat*9);
   const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
@@ -3204,6 +3238,7 @@ function openFoodConfirm() {
     origin:    selectedOrigin,
     dish_id:   selectedFoodBase?._dishId || null,
     is_alcoholic: document.getElementById('foodAlcoholToggle')?.dataset.active === 'true' || selectedFoodBase?.isAlcoholic || false,
+    is_beverage:  document.getElementById('foodBeverageToggle')?.dataset.active === 'true' || selectedFoodBase?.is_beverage || false,
     _dishIngs: selectedFoodBase?._dishIngs || null,
   };
 
@@ -3374,6 +3409,11 @@ function resetForm() {
   const alcThu = document.getElementById('foodAlcoholThumb');
   if (alcTog) { alcTog.dataset.active = 'false'; alcTog.style.background = 'var(--border)'; }
   if (alcThu) alcThu.style.left = '2px';
+  // Reset beverage toggle
+  const bevTog = document.getElementById('foodBeverageToggle');
+  const bevThu = document.getElementById('foodBeverageThumb');
+  if (bevTog) { bevTog.dataset.active = 'false'; bevTog.style.background = 'var(--border)'; }
+  if (bevThu) bevThu.style.left = '2px';
   updateCalDisplay();
 }
 
@@ -7131,6 +7171,8 @@ function renderStatsHyd(hyd) {
 // ── ⑥ Top foods ──
 // Beverages: check is_beverage flag from foods DB, fallback to unit ml
 function isBeverage(entry) {
+  // Check flag saved directly on the entry (set at registration time)
+  if (entry.is_beverage) return true;
   // Check flag in global foods DB
   const dbFood = foodsDb.find(f => f.name === entry.food_name);
   if (dbFood && dbFood.is_beverage) return true;
