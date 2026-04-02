@@ -7757,30 +7757,32 @@ function renderStatsEatingOut(food) {
       <span style="font-size:9px;color:var(--muted);white-space:nowrap">${p.dayLabel}</span>
     </div>`).join('');
 
-  // Wrap pills — for 30 days split in 2 rows of 15
+  // Wrap pills — first row: labels above / remaining rows: labels below
   let pillGrid;
-  if (statsRange === 30) {
-    const row1 = pills.slice(0,15).map(p=>`<div title="${p.dayLabel}: ${p.isOut?'Comió fuera':'En casa'}" style="flex:1;height:14px;border-radius:4px;background:${p.isOut?'#5bc0de':'var(--border)'};opacity:${p.isOut?'1':'0.35'};cursor:default"></div>`).join('');
-    const row2 = pills.slice(15).map(p=>`<div title="${p.dayLabel}: ${p.isOut?'Comió fuera':'En casa'}" style="flex:1;height:14px;border-radius:4px;background:${p.isOut?'#5bc0de':'var(--border)'};opacity:${p.isOut?'1':'0.35'};cursor:default"></div>`).join('');
-    pillGrid = `
-      <div style="display:flex;gap:3px;margin-bottom:3px">${row1}</div>
-      <div style="display:flex;gap:3px">${row2}</div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px">
-        <span style="font-size:9px;color:var(--muted)">${pills[0].dayLabel}</span>
-        <span style="font-size:9px;color:var(--muted)">${pills[14].dayLabel}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:2px">
-        <span style="font-size:9px;color:var(--muted)">${pills[15].dayLabel}</span>
-        <span style="font-size:9px;color:var(--muted)">${pills[29].dayLabel}</span>
-      </div>`;
-  } else {
+  const chunkSize = 15;
+  if (effRange <= 7) {
     const row = pills.map(p=>`<div title="${p.dayLabel}: ${p.isOut?'Comió fuera':'En casa'}" style="flex:1;height:20px;border-radius:5px;background:${p.isOut?'#5bc0de':'var(--border)'};opacity:${p.isOut?'1':'0.35'};cursor:default"></div>`).join('');
     pillGrid = `
-      <div style="display:flex;gap:3px;margin-bottom:4px">${row}</div>
-      <div style="display:flex;justify-content:space-between">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
         <span style="font-size:9px;color:var(--muted)">${pills[0].dayLabel}</span>
         <span style="font-size:9px;color:var(--muted)">${pills[pills.length-1].dayLabel}</span>
+      </div>
+      <div style="display:flex;gap:3px">${row}</div>`;
+  } else {
+    const chunks = [];
+    for (let i = 0; i < pills.length; i += chunkSize) {
+      chunks.push(pills.slice(i, i + chunkSize));
+    }
+    pillGrid = chunks.map((chunk, ci) => {
+      const row = chunk.map(p=>`<div title="${p.dayLabel}: ${p.isOut?'Comió fuera':'En casa'}" style="flex:1;height:14px;border-radius:4px;background:${p.isOut?'#5bc0de':'var(--border)'};opacity:${p.isOut?'1':'0.35'};cursor:default"></div>`).join('');
+      const labels = `<div style="display:flex;justify-content:space-between;">
+        <span style="font-size:9px;color:var(--muted)">${chunk[0].dayLabel}</span>
+        <span style="font-size:9px;color:var(--muted)">${chunk[chunk.length-1].dayLabel}</span>
       </div>`;
+      return ci === 0
+        ? `${labels}<div style="display:flex;gap:3px;margin-bottom:8px">${row}</div>`
+        : `<div style="display:flex;gap:3px;margin-bottom:2px">${row}</div>${labels}`;
+    }).join('');
   }
 
   // Legend
