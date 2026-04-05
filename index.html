@@ -1132,33 +1132,48 @@ select { cursor: pointer; }
       </div>
     </div>
 
-    <!-- Day summary card -->
     <!-- Compact daily indicator — 3 bars -->
-    <div id="homeDayIndicator" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px">
+    <div id="homeDayIndicator" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
       <!-- Nutrición -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:11px;color:var(--muted);width:76px;flex-shrink:0">🥗 Nutrición</span>
-        <div style="flex:1;height:5px;border-radius:3px;background:var(--border)">
-          <div id="indCalBarFill" style="height:100%;border-radius:3px;background:var(--accent);width:0%;transition:width .4s"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font-size:12px;color:var(--text2);min-width:90px;flex-shrink:0">🥗 Nutrición</span>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+          <div id="indCalBarFill" style="height:100%;border-radius:2px;background:var(--accent);width:0%;transition:width .5s ease"></div>
         </div>
-        <span id="indCalSub" style="font-size:11px;color:var(--muted);width:44px;text-align:right;flex-shrink:0"></span>
+        <span id="indCalSub" style="font-size:12px;color:var(--muted);min-width:40px;text-align:right;flex-shrink:0"></span>
       </div>
       <!-- Hidratación -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:11px;color:var(--muted);width:76px;flex-shrink:0">💧 Hidratación</span>
-        <div style="flex:1;height:5px;border-radius:3px;background:var(--border)">
-          <div id="indHydBarFill" style="height:100%;border-radius:3px;background:#4a90d9;width:0%;transition:width .4s"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font-size:12px;color:var(--text2);min-width:90px;flex-shrink:0">💧 Hidratación</span>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+          <div id="indHydBarFill" style="height:100%;border-radius:2px;background:#4a90d9;width:0%;transition:width .5s ease"></div>
         </div>
-        <span id="indHyd" style="font-size:11px;color:var(--muted);width:44px;text-align:right;flex-shrink:0"></span>
+        <span id="indHyd" style="font-size:12px;color:var(--muted);min-width:40px;text-align:right;flex-shrink:0"></span>
       </div>
       <!-- Suplementos -->
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:var(--muted);width:76px;flex-shrink:0">💊 Supls</span>
-        <div style="flex:1;height:5px;border-radius:3px;background:var(--border)">
-          <div id="indSuppBarFill" style="height:100%;border-radius:3px;background:#9b59b6;width:0%;transition:width .4s"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;color:var(--text2);min-width:90px;flex-shrink:0">💊 Suplementos</span>
+        <div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+          <div id="indSuppBarFill" style="height:100%;border-radius:2px;background:#9b59b6;width:0%;transition:width .5s ease"></div>
         </div>
-        <span id="indSupp" style="font-size:11px;color:var(--muted);width:44px;text-align:right;flex-shrink:0"></span>
+        <span id="indSupp" style="font-size:12px;color:var(--muted);min-width:40px;text-align:right;flex-shrink:0"></span>
       </div>
+    </div>
+
+    <!-- 3 section tabs -->
+    <div style="display:flex;gap:8px">
+      <button id="homeTabNutr" onclick="switchHomeTab('nutr')"
+        style="flex:1;padding:9px 6px;border-radius:10px;border:1.5px solid var(--accent);background:var(--accent);cursor:pointer;font-size:12px;color:#0e110a;font-family:var(--font-display);font-weight:600">
+        🥗 Nutrición
+      </button>
+      <button id="homeTabHyd" onclick="switchHomeTab('hyd')"
+        style="flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;color:var(--text2);font-family:var(--font-display)">
+        💧 Hidratación
+      </button>
+      <button id="homeTabSupp" onclick="switchHomeTab('supp')"
+        style="flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;color:var(--text2);font-family:var(--font-display)">
+        💊 Suplementos
+      </button>
     </div>
 
     <!-- Hidden inputs for compatibility -->
@@ -1168,29 +1183,28 @@ select { cursor: pointer; }
       <div id="todayFat"></div><div id="todayFib"></div><div id="todaySug"></div>
     </div>
 
-    <!-- ══ SECCIÓN: NUTRICIÓN ══ -->
-    <div style="display:flex;flex-direction:column;gap:10px">
+    <!-- ══ SECCIÓN ACTIVA ══ -->
+    <!-- Nutrición panel -->
+    <div id="homePanelNutr" style="display:flex;flex-direction:column;gap:10px">
       <div id="homeMealGroups"></div>
     </div>
 
-    <!-- ══ SECCIÓN: HIDRATACIÓN ══ -->
-    <div id="homeHydSection" style="display:flex;flex-direction:column;gap:0">
-      <div class="section-header-row" style="margin-bottom:8px">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--font-display)">💧 Hidratación</div>
-        <button onclick="openBS('bsHyd')"
-          style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:var(--font-display)">+ Agregar</button>
-      </div>
+    <!-- Hidratación panel -->
+    <div id="homePanelHyd" style="display:none;flex-direction:column;gap:10px">
       <div id="homeHydEntries"></div>
+      <button onclick="openBS('bsHyd')"
+        style="width:100%;padding:12px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;font-size:13px;color:var(--accent);font-family:var(--font-display)">
+        + Registrar hidratación
+      </button>
     </div>
 
-    <!-- ══ SECCIÓN: SUPLEMENTOS ══ -->
-    <div id="homeSuppSection" style="display:flex;flex-direction:column;gap:0">
-      <div class="section-header-row" style="margin-bottom:8px">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--font-display)">💊 Suplementos</div>
-        <button onclick="openBS('bsSupp')"
-          style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:var(--font-display)">Registrar</button>
-      </div>
+    <!-- Suplementos panel -->
+    <div id="homePanelSupp" style="display:none;flex-direction:column;gap:10px">
       <div id="homeSuppEntries"></div>
+      <button onclick="openBS('bsSupp')"
+        style="width:100%;padding:12px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;font-size:13px;color:var(--accent);font-family:var(--font-display)">
+        + Registrar suplementos
+      </button>
     </div>
 
   </div>
@@ -3707,19 +3721,15 @@ async function renderCarouselDay() {
       const items = keyEntries.map(e => makeSmartLogItem(e)).join('') ||
         `<div style="padding:10px 0 6px;font-size:12px;color:var(--muted)">Sin entradas</div>`;
 
-      const addRow = `<div style="display:flex;gap:6px;padding:6px 0 4px;border-top:0.5px solid var(--border);margin-top:4px">
+      const addRow = `<div style="border-top:0.5px solid var(--border);margin-top:2px;padding:6px 0 2px">
         <button onclick="openFoodForMeal('${key}')"
-          style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--text2);cursor:pointer;font-family:var(--font-display)">🥗 Alimento</button>
-        ${dishes.length?`<button onclick="openDishPickerForMeal('${key}')"
-          style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--text2);cursor:pointer;font-family:var(--font-display)">🍽️ Platillo</button>`:''}
-        ${templates.filter(t=>t.meal_type===key).length?`<button onclick="openTemplatePickerForMeal('${key}')"
-          style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--text2);cursor:pointer;font-family:var(--font-display)">📋 Plantilla</button>`:''}
-        <button onclick="openBS('bsRegister')"
-          style="padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:14px;cursor:pointer">⋯</button>
+          style="width:100%;padding:7px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-size:12px;color:var(--accent);font-family:var(--font-display);text-align:left">
+          + Agregar
+        </button>
       </div>`;
 
-      return `<div class="meal-group" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px 12px 4px">
-        <div class="meal-group-header" onclick="toggleMealGroup('${key}')" style="cursor:pointer;user-select:none">
+      return `<div class="meal-group" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+        <div class="meal-group-header" onclick="toggleMealGroup('${key}')" style="cursor:pointer;user-select:none;padding:10px 12px 8px">
           <div>
             <span class="meal-group-title">${icon} ${key}${mealCal?' · '+Math.round(mealCal)+' kcal':''}</span>
             ${macroSub}
@@ -3729,7 +3739,7 @@ async function renderCarouselDay() {
             <span style="font-size:14px;color:var(--muted);transition:transform .2s;${isCollapsed?'transform:rotate(-90deg)':''}" id="mealChevron-${key.replace(/\s/g,'')}">⌄</span>
           </div>
         </div>
-        <div id="${colId}" style="display:${isCollapsed?'none':'block'}">
+        <div id="${colId}" style="display:${isCollapsed?'none':'block'};padding:0 12px">
           ${items}
           ${addRow}
         </div>
@@ -3737,39 +3747,31 @@ async function renderCarouselDay() {
     }).join('');
   }
 
-  // ── Hydration section ──
-  const hydSec = document.getElementById('homeHydSection');
+  // ── Hydration panel ──
   const hydEntriesEl = document.getElementById('homeHydEntries');
-  if (hydSec && hydEntriesEl) {
-    if (dayHyd.length > 0 || totalHydGoal > 0) {
-      hydSec.style.display = 'flex';
-      hydEntriesEl.innerHTML = dayHyd.length
-        ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 12px">` +
-          dayHyd.map(e => makeHydLogItem(e)).join('') +
-          `</div>`
-        : `<div style="font-size:12px;color:var(--muted);padding:4px 0">Sin registros de hidratación</div>`;
-    } else {
-      hydSec.style.display = 'none';
-    }
+  if (hydEntriesEl) {
+    hydEntriesEl.innerHTML = dayHyd.length
+      ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0 12px">` +
+        dayHyd.map(e => makeHydLogItem(e)).join('') +
+        `</div>`
+      : `<div style="font-size:13px;color:var(--muted);padding:4px 0">Sin registros de hidratación hoy.</div>`;
   }
 
-  // ── Supplements section ──
-  const suppSec = document.getElementById('homeSuppSection');
+  // ── Supplements panel ──
   const suppEntriesEl = document.getElementById('homeSuppEntries');
-  if (suppSec && suppEntriesEl) {
+  if (suppEntriesEl) {
     if (totalSupps > 0) {
-      suppSec.style.display = 'flex';
       const dayLog = suppLog[dateStr] || [];
-      suppEntriesEl.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 12px">` +
+      suppEntriesEl.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0 12px">` +
         supplements.map(s => {
           const taken = dayLog.some(l => l.supplement_id === s.id);
-          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid var(--border)">
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid var(--border)">
             <span style="font-size:13px;color:var(--text)">${s.name}</span>
             <span style="font-size:12px;font-weight:500;color:${taken?'#a8c060':'var(--muted)'}">${taken?'✓ tomado':'—'}</span>
           </div>`;
         }).join('') + `</div>`;
     } else {
-      suppSec.style.display = 'none';
+      suppEntriesEl.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:4px 0">No hay suplementos configurados.</div>`;
     }
   }
 
@@ -3862,6 +3864,24 @@ async function saveBurnedCalsFromVisible(val) {
 function openFoodForMeal(mealType) {
   openBS('bsFood');
   setTimeout(() => selectMealByName(mealType), 100);
+}
+
+let _homeTab = 'nutr';
+function switchHomeTab(tab) {
+  _homeTab = tab;
+  const allTabs   = ['nutr','hyd','supp'];
+  allTabs.forEach(t => {
+    const btn   = document.getElementById('homeTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const panel = document.getElementById('homePanel' + t.charAt(0).toUpperCase() + t.slice(1));
+    const active = t === tab;
+    if (btn) {
+      btn.style.background  = active ? 'var(--accent)' : 'var(--surface2)';
+      btn.style.border      = active ? '1.5px solid var(--accent)' : '1px solid var(--border)';
+      btn.style.color       = active ? '#0e110a' : 'var(--text2)';
+      btn.style.fontWeight  = active ? '600' : '400';
+    }
+    if (panel) panel.style.display = active ? 'flex' : 'none';
+  });
 }
 
 // Open dish picker and pre-select meal
