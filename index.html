@@ -1721,16 +1721,12 @@ select { cursor: pointer; }
 
   </div>
 
-  <nav class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
+  <nav class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
     <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
-      <span class="nav-icon">🏠</span>Inicio
+      <span class="nav-icon">🍴</span>Registro
     </button>
     <button class="nav-btn" id="nav-foods" onclick="switchTab('foods')">
       <span class="nav-icon">🥦</span>Alimentos
-    </button>
-    <button class="nav-btn-register" onclick="openRegisterSheet()" aria-label="Registrar">
-      <div class="nav-register-circle">+</div>
-      <span class="nav-register-label">Registrar</span>
     </button>
     <button class="nav-btn" id="nav-stats" onclick="switchTab('stats')">
       <span class="nav-icon">📊</span>Análisis
@@ -2507,7 +2503,7 @@ let _lang = 'es';
 const I18N = {
   es: {
     // ── Navegación ──
-    nav_home:        'Inicio',
+    nav_home:        'Registro',
     nav_foods:       'Alimentos',
     nav_analytics:   'Análisis',
     nav_profile:     'Perfil',
