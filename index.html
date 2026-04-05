@@ -895,36 +895,6 @@ select { cursor: pointer; }
 }
 
 /* ══ HYD CAROUSEL ══ */
-.hyd-carousel { overflow: hidden; margin: 0 -20px; }
-.hyd-carousel-track {
-  display: flex; transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
-}
-.hyd-slide {
-  min-width: 100vw; max-width: 480px;
-  padding: 16px 20px 8px;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-}
-.hyd-donut-center {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  pointer-events: none;
-}
-.hyd-donut-value {
-  font-family: var(--font-display); font-size: 26px;
-  font-weight: 300; color: var(--text); line-height: 1;
-}
-.hyd-donut-unit  { font-size: 11px; color: var(--muted); }
-.hyd-donut-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
-.hyd-donut-goal  { font-size: 12px; color: var(--muted); text-align: center; }
-.hyd-dots {
-  display: flex; justify-content: center; gap: 8px; padding: 10px 0 4px;
-}
-.hyd-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--border); cursor: pointer; transition: background 0.2s;
-}
-.hyd-dot.active { background: var(--accent); }
 
 /* ══ CAROUSEL HEADER ══ */
 /* ══ DATE CAROUSEL STRIP ══ */
@@ -1163,22 +1133,31 @@ select { cursor: pointer; }
     </div>
 
     <!-- Day summary card -->
-    <!-- Compact daily indicator (nutrición · hidratación · suplementos) -->
-    <div id="homeDayIndicator" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px;margin-bottom:4px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <span style="font-family:var(--font-display);font-size:22px;font-weight:300;color:var(--text)" id="indCal">0</span>
-          <span style="font-size:11px;color:var(--muted)" id="indCalSub">kcal</span>
+    <!-- Compact daily indicator — 3 bars -->
+    <div id="homeDayIndicator" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px">
+      <!-- Nutrición -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted);width:76px;flex-shrink:0">🥗 Nutrición</span>
+        <div style="flex:1;height:5px;border-radius:3px;background:var(--border)">
+          <div id="indCalBarFill" style="height:100%;border-radius:3px;background:var(--accent);width:0%;transition:width .4s"></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:12px;color:var(--muted)" id="indHyd">—</span>
-          <span style="font-size:12px;color:var(--muted)" id="indSupp">—</span>
-          <button onclick="switchTab('stats');setStatsTab('hoy')"
-            style="font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;font-family:var(--font-display);white-space:nowrap">Ver detalle →</button>
-        </div>
+        <span id="indCalSub" style="font-size:11px;color:var(--muted);width:44px;text-align:right;flex-shrink:0"></span>
       </div>
-      <div id="indCalBar" style="height:3px;border-radius:2px;background:var(--border)">
-        <div id="indCalBarFill" style="height:100%;border-radius:2px;background:var(--accent);width:0%;transition:width .4s"></div>
+      <!-- Hidratación -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted);width:76px;flex-shrink:0">💧 Hidratación</span>
+        <div style="flex:1;height:5px;border-radius:3px;background:var(--border)">
+          <div id="indHydBarFill" style="height:100%;border-radius:3px;background:#4a90d9;width:0%;transition:width .4s"></div>
+        </div>
+        <span id="indHyd" style="font-size:11px;color:var(--muted);width:44px;text-align:right;flex-shrink:0"></span>
+      </div>
+      <!-- Suplementos -->
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--muted);width:76px;flex-shrink:0">💊 Supls</span>
+        <div style="flex:1;height:5px;border-radius:3px;background:var(--border)">
+          <div id="indSuppBarFill" style="height:100%;border-radius:3px;background:#9b59b6;width:0%;transition:width .4s"></div>
+        </div>
+        <span id="indSupp" style="font-size:11px;color:var(--muted);width:44px;text-align:right;flex-shrink:0"></span>
       </div>
     </div>
 
@@ -1189,24 +1168,30 @@ select { cursor: pointer; }
       <div id="todayFat"></div><div id="todayFib"></div><div id="todaySug"></div>
     </div>
 
-    <!-- Quick actions row -->
-    <div style="display:flex;gap:8px">
-      <button onclick="openBS('bsHyd')"
-        style="flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;color:var(--text2);display:flex;align-items:center;justify-content:center;gap:5px;font-family:var(--font-display)">
-        💧 Agua
-      </button>
-      <button onclick="openBS('bsSupp')"
-        style="flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;color:var(--text2);display:flex;align-items:center;justify-content:center;gap:5px;font-family:var(--font-display)">
-        💊 Supls
-      </button>
-      <button onclick="openBS('bsRegister')"
-        style="flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;color:var(--text2);display:flex;align-items:center;justify-content:center;gap:5px;font-family:var(--font-display)">
-        ⋯ Más
-      </button>
+    <!-- ══ SECCIÓN: NUTRICIÓN ══ -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div id="homeMealGroups"></div>
     </div>
 
-    <!-- Entries grouped by meal type -->
-    <div id="homeMealGroups" style="display:flex;flex-direction:column;gap:14px"></div>
+    <!-- ══ SECCIÓN: HIDRATACIÓN ══ -->
+    <div id="homeHydSection" style="display:flex;flex-direction:column;gap:0">
+      <div class="section-header-row" style="margin-bottom:8px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--font-display)">💧 Hidratación</div>
+        <button onclick="openBS('bsHyd')"
+          style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:var(--font-display)">+ Agregar</button>
+      </div>
+      <div id="homeHydEntries"></div>
+    </div>
+
+    <!-- ══ SECCIÓN: SUPLEMENTOS ══ -->
+    <div id="homeSuppSection" style="display:flex;flex-direction:column;gap:0">
+      <div class="section-header-row" style="margin-bottom:8px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--font-display)">💊 Suplementos</div>
+        <button onclick="openBS('bsSupp')"
+          style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:var(--font-display)">Registrar</button>
+      </div>
+      <div id="homeSuppEntries"></div>
+    </div>
 
   </div>
 
@@ -1960,62 +1945,31 @@ select { cursor: pointer; }
       </div>
       <div class="bs-body">
 
-        <!-- Donut carousel -->
-        <div class="hyd-carousel">
-          <div class="hyd-carousel-track" id="hydCarouselTrack">
-
-            <!-- Slide 1: Agua -->
-            <div class="hyd-slide">
-              <div style="position:relative;width:160px;height:160px;margin:0 auto">
-                <canvas id="hydDonutWater" width="160" height="160"></canvas>
-                <div class="hyd-donut-center">
-                  <div class="hyd-donut-value" id="hydDonutWaterVal">0</div>
-                  <div class="hyd-donut-unit">ml</div>
-                  <div class="hyd-donut-label">💧 Agua</div>
-                </div>
-              </div>
-              <div class="hyd-donut-goal" id="hydDonutWaterGoal"></div>
-            </div>
-
-            <!-- Slide 2: Hidratante -->
-            <div class="hyd-slide">
-              <div style="position:relative;width:160px;height:160px;margin:0 auto">
-                <canvas id="hydDonutIso" width="160" height="160"></canvas>
-                <div class="hyd-donut-center">
-                  <div class="hyd-donut-value" id="hydDonutIsoVal">0</div>
-                  <div class="hyd-donut-unit">ml</div>
-                  <div class="hyd-donut-label">🏋️ Hidratante</div>
-                </div>
-              </div>
-              <div class="hyd-donut-goal" id="hydDonutIsoGoal"></div>
-            </div>
-
-          </div>
-
-          <!-- Dots -->
-          <div class="hyd-dots">
-            <div class="hyd-dot active" id="hydDot0" onclick="hydCarouselGo(0)"></div>
-            <div class="hyd-dot" id="hydDot1" onclick="hydCarouselGo(1)"></div>
-          </div>
-        </div>
-
-        <!-- Form -->
-        <div class="card" style="margin-top:4px">
+        <!-- Drink type -->
+        <div class="card">
           <div class="section-label">Tipo de bebida</div>
           <div class="drink-grid" id="drinkTypeGrid" style="grid-template-columns:1fr 1fr"></div>
         </div>
+
+        <!-- Amount -->
         <div class="card" style="margin-top:12px">
           <div id="hydAmountRow">
             <div class="section-label">Cantidad</div>
-            <div class="quick-btns" style="margin-bottom:10px">
-              <button class="quick-btn" onclick="addQuickWater(250)">+250ml</button>
-              <button class="quick-btn" onclick="addQuickWater(400)">+400ml</button>
-              <button class="quick-btn" onclick="addQuickWater(500)">+500ml</button>
-              <button class="quick-btn" onclick="addQuickWater(600)">+600ml</button>
-            </div>
-            <div class="field">
+            <!-- Custom amount first -->
+            <div class="field" style="margin-bottom:10px">
               <label>Cantidad personalizada (ml)</label>
               <input type="number" id="hydCustomAmt" placeholder="500" inputmode="numeric">
+            </div>
+            <!-- Quick buttons in 2 rows of 4 -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px">
+              <button class="quick-btn" onclick="addQuickWater(150)">150ml</button>
+              <button class="quick-btn" onclick="addQuickWater(250)">250ml</button>
+              <button class="quick-btn" onclick="addQuickWater(350)">350ml</button>
+              <button class="quick-btn" onclick="addQuickWater(400)">400ml</button>
+              <button class="quick-btn" onclick="addQuickWater(500)">500ml</button>
+              <button class="quick-btn" onclick="addQuickWater(600)">600ml</button>
+              <button class="quick-btn" onclick="addQuickWater(750)">750ml</button>
+              <button class="quick-btn" onclick="addQuickWater(1000)">1L</button>
             </div>
           </div>
           <div id="hydCountRow" style="display:none">
@@ -3682,160 +3636,157 @@ async function renderCarouselDay() {
   const calPct     = calGoal ? Math.round((totCal / calGoal) * 100) : null;
   const calColor   = calGoal ? heatmapColorCal(calPct) : 'var(--accent)';
 
-  // ── Compact indicator ──
-  const indCal  = document.getElementById('indCal');
-  const indCalSub = document.getElementById('indCalSub');
+  // ── Compact indicator — 3 bars ──
   const indBarFill = document.getElementById('indCalBarFill');
-  if (indCal) indCal.textContent = Math.round(totCal);
-  if (indCalSub) indCalSub.textContent = calGoal ? `/ ${calGoal} kcal · ${calPct}%` : 'kcal';
-  if (indCal) indCal.style.color = calColor;
+  const indCalSub  = document.getElementById('indCalSub');
   if (indBarFill) {
     indBarFill.style.width = calGoal ? Math.min(calPct, 100) + '%' : '0%';
     indBarFill.style.background = calColor;
   }
+  if (indCalSub) indCalSub.textContent = calGoal ? `${calPct}%` : `${Math.round(totCal)} kcal`;
 
-  // Hydration indicator
-  const waterAmt = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
-  const hydAmt   = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
-  const totalHyd = waterAmt + hydAmt;
+  // Hydration bar
+  const waterAmt     = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
+  const hydAmt       = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
+  const totalHyd     = waterAmt + hydAmt;
   const totalHydGoal = (todayGoals.water||0) + (todayGoals.isotonic||0);
-  const disp = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${Math.round(v)}ml`;
-  const indHydEl = document.getElementById('indHyd');
-  if (indHydEl) {
-    if (totalHyd > 0 || totalHydGoal > 0) {
-      const hydPct = totalHydGoal ? Math.round((totalHyd/totalHydGoal)*100) : null;
-      const hydColor = !hydPct ? '#4a90d9' : hydPct > 100 ? '#378ADD' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
-      indHydEl.textContent = `💧 ${disp(totalHyd)}${totalHydGoal ? ` · ${hydPct}%` : ''}`;
-      indHydEl.style.color = hydColor;
-    } else {
-      indHydEl.textContent = '';
-    }
-  }
+  const disp         = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${Math.round(v)}ml`;
+  const hydPct       = totalHydGoal ? Math.round((totalHyd/totalHydGoal)*100) : null;
+  const hydColor     = !hydPct ? '#4a90d9' : hydPct > 100 ? '#378ADD' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
+  const indHydFill   = document.getElementById('indHydBarFill');
+  const indHydEl     = document.getElementById('indHyd');
+  if (indHydFill) { indHydFill.style.width = totalHydGoal ? Math.min(hydPct,100)+'%' : '0%'; indHydFill.style.background = hydColor; }
+  if (indHydEl)   indHydEl.textContent = hydPct !== null ? `${hydPct}%` : totalHyd ? disp(totalHyd) : '—';
+  if (indHydEl)   indHydEl.style.color = hydColor;
 
-  // Supplements indicator
+  // Supplements bar
   await loadSuppLogForDate(dateStr);
   const burned      = burnedCals[dateStr] || 0;
   const takenSupps  = (suppLog[dateStr]||[]).filter(l=>supplements.find(s=>s.id===l.supplement_id));
   const totalSupps  = supplements.length;
+  const suppPct     = totalSupps ? Math.round((takenSupps.length/totalSupps)*100) : null;
+  const suppColor   = !suppPct ? 'var(--muted)' : suppPct >= 100 ? '#a8c060' : suppPct > 0 ? '#EF9F27' : 'var(--muted)';
+  const indSuppFill = document.getElementById('indSuppBarFill');
   const indSuppEl   = document.getElementById('indSupp');
-  if (indSuppEl) {
-    if (totalSupps) {
-      const allTaken  = takenSupps.length >= totalSupps;
-      const suppColor = allTaken ? '#a8c060' : takenSupps.length > 0 ? '#EF9F27' : 'var(--muted)';
-      indSuppEl.textContent = `💊 ${takenSupps.length}/${totalSupps}`;
-      indSuppEl.style.color = suppColor;
-    } else {
-      indSuppEl.textContent = '';
-    }
-  }
+  if (indSuppFill) { indSuppFill.style.width = suppPct !== null ? Math.min(suppPct,100)+'%' : '0%'; indSuppFill.style.background = suppColor; }
+  if (indSuppEl)   { indSuppEl.textContent = totalSupps ? `${takenSupps.length}/${totalSupps}` : '—'; indSuppEl.style.color = suppColor; }
 
   // If Análisis·Hoy is visible, refresh it too
   if (currentTab === 'stats' && _statsTab === 'hoy') {
     renderStatsHoy(dateStr, dayEntries, dayHyd, totCal, totProt, totCarb, totFat, totFib, totSug, burned, takenSupps);
   }
 
-  // ── Meal groups with smart entries + quick actions ──
+  // ── Meal groups — always visible, collapsible ──
   const MEAL_ORDER = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
-  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰','Hidratación':'💧' };
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
 
-  const allEntries = [
-    ...dayEntries.map(e => ({...e, _type:'food', _time:e.logged_at})),
-    ...dayHyd.map(e => ({...e, _type:'hyd', _time:e.logged_at})),
-  ].sort((a,b) => new Date(a._time)-new Date(b._time));
-
-  const groups = {};
-  allEntries.forEach(e => {
-    const key = e._type==='hyd' ? 'Hidratación' : e.meal_type;
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(e);
+  const foodGroups = {};
+  dayEntries.forEach(e => {
+    const key = e.meal_type || 'Extra';
+    if (!foodGroups[key]) foodGroups[key] = [];
+    foodGroups[key].push(e);
   });
 
-  // Which meal is "current" for suggestions
-  const currentMeal = getCurrentMealType();
-  const orderedKeys = [...MEAL_ORDER.filter(k => groups[k] || k === currentMeal || dayEntries.length===0),
-    ...(groups['Hidratación']?['Hidratación']:[])];
-  // Deduplicate
-  const seenKeys = new Set();
-  const finalKeys = orderedKeys.filter(k => { if(seenKeys.has(k)) return false; seenKeys.add(k); return true; });
-
   const mealGroupsEl = document.getElementById('homeMealGroups');
+  if (mealGroupsEl) {
+    mealGroupsEl.innerHTML = MEAL_ORDER.map(key => {
+      const icon       = MEAL_ICONS[key] || '🍽️';
+      const keyEntries = foodGroups[key] || [];
+      const mealCal    = keyEntries.reduce((s,e)=>s+(e.calories||0),0);
+      const mealProt   = keyEntries.reduce((s,e)=>s+(e.protein_g||0),0);
+      const mealCarb   = keyEntries.reduce((s,e)=>s+(e.carbs_g||0),0);
+      const mealFat    = keyEntries.reduce((s,e)=>s+(e.fat_g||0),0);
+      const hasMacros  = mealProt>0||mealCarb>0||mealFat>0;
+      const colId      = `mealCol-${key.replace(/\s/g,'')}`;
+      const isCollapsed = (_mealCollapsed[key] === true);
 
-  mealGroupsEl.innerHTML = finalKeys.map(key => {
-    const icon     = MEAL_ICONS[key] || '🍽️';
-    const keyEntries = groups[key] || [];
-    const isHyd    = key === 'Hidratación';
-    const isCurrent = key === currentMeal;
-    const mealCal  = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.calories||0),0);
-    const mealProt = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.protein_g||0),0);
-    const mealCarb = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.carbs_g||0),0);
-    const mealFat  = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.fat_g||0),0);
-    const hasMacros = mealProt > 0 || mealCarb > 0 || mealFat > 0;
-    const ctxBtn   = !isHyd
-      ? `<button class="ctx-btn" onclick="openMealGroupContextMenu(this,'${key}','${dateStr}')" title="Opciones">⋯</button>`
-      : '';
+      const macroSub = hasMacros
+        ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">P:${Math.round(mealProt)}g · C:${Math.round(mealCarb)}g · G:${Math.round(mealFat)}g</div>`
+        : '';
 
-    // Header
-    const macroSub = (!isHyd && hasMacros)
-      ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">P:${Math.round(mealProt)}g · C:${Math.round(mealCarb)}g · G:${Math.round(mealFat)}g</div>`
-      : '';
-    const header = `<div class="meal-group-header">
-      <div>
-        <span class="meal-group-title">${icon} ${key}${mealCal?' · '+Math.round(mealCal)+' kcal':''}</span>
-        ${macroSub}
-      </div>
-      <div style="display:flex;align-items:center;gap:4px">${ctxBtn}</div>
-    </div>`;
+      const items = keyEntries.map(e => makeSmartLogItem(e)).join('') ||
+        `<div style="padding:10px 0 6px;font-size:12px;color:var(--muted)">Sin entradas</div>`;
 
-    // Items — smart rendering
-    let items = '';
-    if (keyEntries.length === 0 && !isHyd) {
-      // Empty slot with quick actions
-      const relTemplates = templates.filter(t => t.meal_type === key).slice(0,2);
-      const tmplBtns = relTemplates.map(t =>
-        `<button class="meal-quick-btn" onclick="quickApplyTemplate(${t.id})">📋 ${t.name}</button>`
-      ).join('');
-      const dishBtn = dishes.length
-        ? `<button class="meal-quick-btn" onclick="openDishPickerForMeal('${key}')">🍽️ Platillo</button>` : '';
-      items = `<div class="meal-empty-slot">
-        <span style="font-size:11px;color:var(--muted)">Sin entradas</span>
-        <div class="meal-empty-actions">
-          <button class="meal-quick-btn" onclick="openFoodForMeal('${key}')">+ Alimento</button>
-          ${dishBtn}
-          ${tmplBtns}
+      const addRow = `<div style="display:flex;gap:6px;padding:6px 0 4px;border-top:0.5px solid var(--border);margin-top:4px">
+        <button onclick="openFoodForMeal('${key}')"
+          style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--text2);cursor:pointer;font-family:var(--font-display)">🥗 Alimento</button>
+        ${dishes.length?`<button onclick="openDishPickerForMeal('${key}')"
+          style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--text2);cursor:pointer;font-family:var(--font-display)">🍽️ Platillo</button>`:''}
+        ${templates.filter(t=>t.meal_type===key).length?`<button onclick="openTemplatePickerForMeal('${key}')"
+          style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--text2);cursor:pointer;font-family:var(--font-display)">📋 Plantilla</button>`:''}
+        <button onclick="openBS('bsRegister')"
+          style="padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:14px;cursor:pointer">⋯</button>
+      </div>`;
+
+      return `<div class="meal-group" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px 12px 4px">
+        <div class="meal-group-header" onclick="toggleMealGroup('${key}')" style="cursor:pointer;user-select:none">
+          <div>
+            <span class="meal-group-title">${icon} ${key}${mealCal?' · '+Math.round(mealCal)+' kcal':''}</span>
+            ${macroSub}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="ctx-btn" onclick="event.stopPropagation();openMealGroupContextMenu(this,'${key}','${dateStr}')" title="Opciones">⋯</button>
+            <span style="font-size:14px;color:var(--muted);transition:transform .2s;${isCollapsed?'transform:rotate(-90deg)':''}" id="mealChevron-${key.replace(/\s/g,'')}">⌄</span>
+          </div>
+        </div>
+        <div id="${colId}" style="display:${isCollapsed?'none':'block'}">
+          ${items}
+          ${addRow}
         </div>
       </div>`;
+    }).join('');
+  }
+
+  // ── Hydration section ──
+  const hydSec = document.getElementById('homeHydSection');
+  const hydEntriesEl = document.getElementById('homeHydEntries');
+  if (hydSec && hydEntriesEl) {
+    if (dayHyd.length > 0 || totalHydGoal > 0) {
+      hydSec.style.display = 'flex';
+      hydEntriesEl.innerHTML = dayHyd.length
+        ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 12px">` +
+          dayHyd.map(e => makeHydLogItem(e)).join('') +
+          `</div>`
+        : `<div style="font-size:12px;color:var(--muted);padding:4px 0">Sin registros de hidratación</div>`;
     } else {
-      items = keyEntries.map(e =>
-        e._type === 'food' ? makeSmartLogItem(e) : makeHydLogItem(e)
-      ).join('');
+      hydSec.style.display = 'none';
     }
+  }
 
-    let itemsWrapped;
-    if (keyEntries.length === 0 && !isHyd) {
-      itemsWrapped = items; // empty slot — no card needed
+  // ── Supplements section ──
+  const suppSec = document.getElementById('homeSuppSection');
+  const suppEntriesEl = document.getElementById('homeSuppEntries');
+  if (suppSec && suppEntriesEl) {
+    if (totalSupps > 0) {
+      suppSec.style.display = 'flex';
+      const dayLog = suppLog[dateStr] || [];
+      suppEntriesEl.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 12px">` +
+        supplements.map(s => {
+          const taken = dayLog.some(l => l.supplement_id === s.id);
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid var(--border)">
+            <span style="font-size:13px;color:var(--text)">${s.name}</span>
+            <span style="font-size:12px;font-weight:500;color:${taken?'#a8c060':'var(--muted)'}">${taken?'✓ tomado':'—'}</span>
+          </div>`;
+        }).join('') + `</div>`;
     } else {
-      const addBtn = !isHyd ? `<button class="meal-add-btn" onclick="openFoodForMeal('${key}')">＋ Agregar a ${key}</button>` : '';
-      itemsWrapped = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 12px;margin-bottom:4px">${items}${addBtn}</div>`;
+      suppSec.style.display = 'none';
     }
+  }
 
-    return `<div class="meal-group">${header}${itemsWrapped}</div>`;
-  }).join('');
-
-  // Next meal suggestion banner (if today and next meal has templates)
-  if (dateStr === getTodayDate()) {
+  // Next meal suggestion banner
+  const currentMeal = getCurrentMealType();
+  if (dateStr === getTodayDate() && mealGroupsEl) {
     const nextMealIdx = MEAL_ORDER.indexOf(currentMeal) + 1;
     if (nextMealIdx < MEAL_ORDER.length) {
-      const nextMeal = MEAL_ORDER[nextMealIdx];
+      const nextMeal      = MEAL_ORDER[nextMealIdx];
       const nextTemplates = templates.filter(t => t.meal_type === nextMeal);
-      if (nextTemplates.length && !groups[nextMeal]) {
+      if (nextTemplates.length && !foodGroups[nextMeal]) {
         const banner = document.createElement('div');
-        banner.style.cssText = 'margin-top:8px;background:rgba(108,144,60,0.07);border:1px solid rgba(108,144,60,0.2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between';
+        banner.style.cssText = 'background:rgba(108,144,60,0.07);border:1px solid rgba(108,144,60,0.2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between';
         const tmpl = nextTemplates[0];
         banner.innerHTML = `
           <div>
-            <div style="font-size:12px;color:var(--text);font-family:var(--font-display)">
-              ${MEAL_ICONS[nextMeal]} Próximo: ${nextMeal}
-            </div>
+            <div style="font-size:12px;color:var(--text);font-family:var(--font-display)">${MEAL_ICONS[nextMeal]} Próximo: ${nextMeal}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">📋 ${tmpl.name}</div>
           </div>
           <button onclick="quickApplyTemplate(${tmpl.id});this.closest('div[style]').remove()"
@@ -3846,6 +3797,24 @@ async function renderCarouselDay() {
       }
     }
   }
+}
+
+// Meal collapse state
+let _mealCollapsed = {};
+function toggleMealGroup(key) {
+  _mealCollapsed[key] = !_mealCollapsed[key];
+  const colId   = `mealCol-${key.replace(/\s/g,'')}`;
+  const chevId  = `mealChevron-${key.replace(/\s/g,'')}`;
+  const col     = document.getElementById(colId);
+  const chev    = document.getElementById(chevId);
+  if (col)  col.style.display  = _mealCollapsed[key] ? 'none' : 'block';
+  if (chev) chev.style.transform = _mealCollapsed[key] ? 'rotate(-90deg)' : '';
+}
+
+function openTemplatePickerForMeal(meal) {
+  // Pre-select meal then open template picker
+  selectedMeal = meal;
+  openTemplatePicker();
 }
 
 // Inline note save
@@ -5476,7 +5445,7 @@ async function logHydration() {
   clearHydDate();
   showToast(`${selectedDrink.icon} Registrado`);
   buildCarouselDays();
-  renderHydDonuts();
+  
   closeBS('bsHyd');
   switchTab('home');
 }
@@ -9310,12 +9279,7 @@ function openBS(id) {
   initBSSwipe(id);
   if (id === 'bsSupp') renderSuppChecklist();
   if (id === 'bsHyd') {
-    hydCarouselIdx = 0;
-    requestAnimationFrame(() => {
-      initHydCarouselSwipe();
-      hydCarouselGo(0);
-      renderHydDonuts();
-    });
+    initHydration();
   }
 }
 
