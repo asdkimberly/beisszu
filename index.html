@@ -3425,13 +3425,28 @@ async function confirmAndSaveEntry() {
 async function submitEntry() { confirmAndSaveEntry(); }
 
 async function loadEntries() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 90);
   const { data } = await sb.from('food_log').select('*').eq('user_id', currentUser.id)
-    .gte('log_date', thirtyDaysAgo.toISOString().split('T')[0])
+    .gte('log_date', cutoffDate.toISOString().split('T')[0])
     .order('logged_at', { ascending: true });
   entries = data || [];
   attachDishIngredients();
+}
+
+// Lazy-load entries for a specific date if not already in memory
+async function ensureEntriesForDate(dateStr) {
+  const already = entries.some(e => e.log_date === dateStr);
+  if (already) return;
+  const { data } = await sb.from('food_log').select('*')
+    .eq('user_id', currentUser.id)
+    .eq('log_date', dateStr)
+    .order('logged_at', { ascending: true });
+  if (data && data.length) {
+    entries.push(...data);
+    entries.sort((a, b) => (a.logged_at || '').localeCompare(b.logged_at || ''));
+    attachDishIngredients();
+  }
 }
 
 // Attach dish ingredients to entries — called after both entries and dishes are loaded
@@ -3625,6 +3640,9 @@ async function renderCarouselDay() {
   renderBurnedInput(dateStr);
   renderDateStrip();
 
+  // Lazy-load entries for dates outside the initial 90-day window
+  await ensureEntriesForDate(dateStr);
+
   const dayEntries = entries.filter(e => e.log_date === dateStr);
   const dayHyd     = hydEntries.filter(e => e.date === dateStr);
 
@@ -3666,15 +3684,21 @@ async function renderCarouselDay() {
 
   // ── Helper: horizontal bar row ──
   const barRow = (label, val, goal, color, fmt) => {
-    const pct      = goal ? Math.min(Math.round((val / goal) * 100), 100) : 0;
-    const pctColor = !goal ? color : pct >= 90 ? '#639922' : pct >= 60 ? color : '#EF9F27';
+    const pct      = goal ? Math.round((val / goal) * 100) : 0;
+    const barPct   = Math.min(pct, 100); // bar never exceeds full width
+    const exceeded = pct > 100;
+    const pctColor = !goal ? color
+      : exceeded     ? '#378ADD'
+      : pct >= 90    ? '#639922'
+      : pct >= 60    ? color
+      : '#EF9F27';
     const valLabel = goal ? `${fmt(val)}/${fmt(goal)}` : fmt(val);
     const pctLabel = goal ? `${pct}%` : '';
     return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:1px">
       <span style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${label}</span>
       <span style="font-size:11px;font-weight:500;color:${color};width:60px;text-align:right;flex-shrink:0;white-space:nowrap">${valLabel}</span>
       <div style="flex:1;height:4px;border-radius:3px;background:var(--border)">
-        <div style="width:${pct}%;height:100%;border-radius:3px;background:${color};transition:width .4s"></div>
+        <div style="width:${barPct}%;height:100%;border-radius:3px;background:${pctColor};transition:width .4s"></div>
       </div>
       <span style="font-size:11px;font-weight:500;color:${pctColor};width:30px;text-align:right;flex-shrink:0">${pctLabel}</span>
     </div>`;
@@ -3720,8 +3744,13 @@ async function renderCarouselDay() {
 
   if (totalHyd > 0 || totalGoal > 0) {
     hydSec.style.display = 'block';
-    const hydPct   = totalGoal ? Math.min(Math.round((totalHyd/totalGoal)*100), 100) : null;
-    const hydColor = !hydPct ? '#4a90d9' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
+    const hydPct   = totalGoal ? Math.round((totalHyd/totalGoal)*100) : null;
+    const hydBarPct = hydPct !== null ? Math.min(hydPct, 100) : null;
+    const hydColor = !hydPct ? '#4a90d9'
+      : hydPct > 100 ? '#378ADD'
+      : hydPct >= 100 ? '#639922'
+      : hydPct >= 60  ? '#4a90d9'
+      : '#EF9F27';
 
     let hydHTML = `<div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:8px">Hidratación</div>`;
 
@@ -3736,7 +3765,7 @@ async function renderCarouselDay() {
 
     if (totalGoal) {
       hydHTML += `<div style="height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
-        <div style="width:${hydPct}%;height:100%;border-radius:2px;background:${hydColor};transition:width .4s"></div>
+        <div style="width:${hydBarPct}%;height:100%;border-radius:2px;background:${hydColor};transition:width .4s"></div>
       </div>`;
     } else {
       hydHTML += `<div style="margin-bottom:10px"></div>`;
