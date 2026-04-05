@@ -557,7 +557,7 @@ select { cursor: pointer; }
 
 /* ── Context menu ── */
 .ctx-menu {
-  position: absolute;
+  position: fixed;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -5305,7 +5305,6 @@ let _ctxMenu = null;
 let _ctxCloseListener = null;
 
 function openCtxMenu(triggerBtn, items) {
-  // Remove previous outside-click listener before doing anything
   if (_ctxCloseListener) {
     document.removeEventListener('click', _ctxCloseListener);
     _ctxCloseListener = null;
@@ -5330,36 +5329,42 @@ function openCtxMenu(triggerBtn, items) {
     menu.appendChild(btn);
   });
 
-  // Anchor to trigger's nearest positioned ancestor (the log-item or meal-group)
-  const anchor = triggerBtn.closest('.log-item, .hyd-log-item, .meal-group') || triggerBtn.parentElement;
-  anchor.style.position = 'relative';
-  anchor.appendChild(menu);
+  // Append to body so it escapes overflow:hidden containers
+  menu.style.position = 'fixed';
+  document.body.appendChild(menu);
   _ctxMenu = menu;
 
-  // Smart positioning: measure space and decide up/down
+  // Measure menu height
+  const menuH = items.filter(i => i !== 'divider').length * 44 +
+                items.filter(i => i === 'divider').length * 13 + 12;
+  const menuW  = 200;
+
   const triggerRect = triggerBtn.getBoundingClientRect();
-  const anchorRect  = anchor.getBoundingClientRect();
-  const menuH = items.filter(i => i !== 'divider').length * 44 + items.filter(i => i === 'divider').length * 13 + 12;
   const vp = window.innerHeight;
-  const spaceBelow = vp - triggerRect.bottom;
+  const vw = window.innerWidth;
 
-  const right = anchorRect.right - triggerRect.right + 4;
+  // Horizontal: align right edge of menu with right edge of trigger
+  let left = triggerRect.right - menuW;
+  if (left < 8) left = 8;
+  if (left + menuW > vw - 8) left = vw - menuW - 8;
+
+  // Vertical: prefer below, fall back to above
   let top;
+  const spaceBelow = vp - triggerRect.bottom;
   if (spaceBelow >= menuH + 8) {
-    top = triggerRect.bottom - anchorRect.top + 4;
+    top = triggerRect.bottom + 4;
   } else {
-    top = triggerRect.top - anchorRect.top - menuH - 4;
+    top = triggerRect.top - menuH - 4;
   }
+  if (top < 8) top = 8;
 
-  menu.style.right = `${right}px`;
-  menu.style.top   = `${Math.max(0, top)}px`;
+  menu.style.left = `${left}px`;
+  menu.style.top  = `${top}px`;
 
-  // Register outside-click listener with a small delay so this click doesn't trigger it
+  // Close on outside click
   setTimeout(() => {
     _ctxCloseListener = (e) => {
-      if (!menu.contains(e.target)) {
-        closeCtxMenu();
-      }
+      if (!menu.contains(e.target)) closeCtxMenu();
     };
     document.addEventListener('click', _ctxCloseListener);
   }, 50);
@@ -6346,8 +6351,12 @@ function setStatsTab(tab) {
   const navRow      = document.getElementById('statsNavRow');
   const customRange = document.getElementById('statsCustomRange');
 
-  // Tab button states
-  document.getElementById('statsTabHoy').classList.toggle('active', tab === 'hoy');
+  // Tab button states — label the Hoy tab with the actual selected day
+  const hoyDateStr  = carouselDays[carouselIndex];
+  const hoyLabel    = hoyDateStr ? getCarouselTitle(hoyDateStr) : 'Hoy';
+  const hoyTabBtn   = document.getElementById('statsTabHoy');
+  if (hoyTabBtn) hoyTabBtn.textContent = hoyLabel;
+  hoyTabBtn.classList.toggle('active', tab === 'hoy');
   document.getElementById('statsRange7').classList.toggle('active', tab === 'period' && statsRange === 7);
   document.getElementById('statsRange30').classList.toggle('active', tab === 'period' && statsRange === 30);
   document.getElementById('statsRangeCustom').classList.toggle('active', tab === 'period' && statsRange === 'custom');
@@ -6393,8 +6402,13 @@ function setStatsRange(days) {
   _statsTab   = 'period';
   statsRange  = days;
   statsOffset = 0;
-  // Hoy tab inactive, hide its panel
-  document.getElementById('statsTabHoy').classList.remove('active');
+  // Hoy tab inactive, hide its panel — but keep label updated
+  const hoyTabBtn2 = document.getElementById('statsTabHoy');
+  if (hoyTabBtn2) {
+    const hoyDateStr = carouselDays[carouselIndex];
+    hoyTabBtn2.textContent = hoyDateStr ? getCarouselTitle(hoyDateStr) : 'Hoy';
+    hoyTabBtn2.classList.remove('active');
+  }
   const hoyPanel = document.getElementById('statsHoyPanel');
   if (hoyPanel) hoyPanel.style.display = 'none';
   // Show period stats cards again (not hoy-specific cards)
