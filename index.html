@@ -1133,50 +1133,56 @@ select { cursor: pointer; }
       </div>
     </div>
 
-    <!-- Day summary card -->
-    <div class="day-card" id="homeDayCard" style="margin-bottom:14px">
+    <!-- Card: Nutrición + Gasto calórico -->
+    <div class="day-card" id="homeDayCard">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:10px">Nutrición</div>
 
-      <!-- Section: NUTRICIÓN -->
-      <div id="homeNutrSection">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:8px">Nutrición</div>
-
-        <!-- Cal hero -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
-          <div>
-            <div style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--text);line-height:1" id="todayCal">0</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px" id="todayCalSub">kcal</div>
-          </div>
-          <div id="todayCalBadge" style="display:none;text-align:right">
-            <div id="todayCalPct" style="font-family:var(--font-display);font-size:20px;font-weight:300"></div>
-            <div style="font-size:10px;color:var(--muted)">de meta</div>
-          </div>
+      <!-- Cal hero -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--text);line-height:1" id="todayCal">0</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px" id="todayCalSub">kcal</div>
         </div>
-        <div id="todayCalBarWrap" style="display:none;height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
-          <div id="todayCalBar" style="height:100%;border-radius:2px;transition:width .4s"></div>
+        <div id="todayCalBadge" style="display:none;text-align:right">
+          <div id="todayCalPct" style="font-family:var(--font-display);font-size:20px;font-weight:300"></div>
+          <div style="font-size:10px;color:var(--muted)">de meta</div>
         </div>
-
-        <!-- Macros with goal: horizontal bars (rendered by JS) -->
-        <div id="homeMacroGoalRows" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
-
-        <!-- Macros without goal: 2×N grid (rendered by JS) -->
-        <div id="homeMacroNoGoalGrid" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:4px"></div>
+      </div>
+      <div id="todayCalBarWrap" style="display:none;height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
+        <div id="todayCalBar" style="height:100%;border-radius:2px;transition:width .4s"></div>
       </div>
 
-      <!-- Section: HIDRATACIÓN (rendered by JS, hidden if no data) -->
-      <div id="homeHydSection" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"></div>
+      <!-- Macros -->
+      <div id="homeMacroGoalRows" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
+      <div id="homeMacroNoGoalGrid" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:4px"></div>
 
-      <!-- Separator -->
-      <div style="height:1px;background:var(--border);margin:10px 0"></div>
+      <!-- Gasto calórico + balance -->
+      <div id="homeDayMeta" style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)"></div>
 
-      <!-- Supps + burn input + balance (rendered by JS) -->
-      <div id="homeDayMeta"></div>
+    </div>
 
-      <!-- Inline note -->
-      <div class="day-note-inline" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
-        <span style="font-size:15px;flex-shrink:0">📝</span>
-        <input type="text" id="dayNoteInline" placeholder="Nota del día…"
-          onblur="saveDayNoteInline()" onkeydown="if(event.key==='Enter')this.blur()">
+    <!-- Card: Hidratación -->
+    <div id="homeHydSection" style="display:none">
+      <div class="day-card">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:10px">Hidratación</div>
+        <div id="homeHydContent"></div>
       </div>
+    </div>
+
+    <!-- Card: Suplementos -->
+    <div id="homeSuppSection" style="display:none">
+      <div class="day-card">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:10px">Suplementos</div>
+        <div id="homeSuppContent"></div>
+      </div>
+    </div>
+
+    <!-- Card: Nota del día -->
+    <div class="day-card" id="homeNoteCard">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:8px">Nota</div>
+      <input type="text" id="dayNoteInline" placeholder="Nota del día…"
+        onblur="saveDayNoteInline()" onkeydown="if(event.key==='Enter')this.blur()"
+        style="width:100%;background:transparent;border:none;outline:none;font-size:14px;color:var(--text);font-family:var(--font-display)">
     </div>
 
     <!-- Hidden legacy inputs for compatibility -->
@@ -3656,107 +3662,86 @@ async function renderCarouselDay() {
       <span style="font-family:var(--font-display);font-size:14px;color:var(--text)">${m.val.toFixed(1)}g</span>
     </div>`).join('');
 
-  // ── Hydration section ──
+  // ── Hydration card ──
   const waterAmt  = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
   const hydAmt    = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
   const disp      = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${Math.round(v)}ml`;
   const totalHyd  = waterAmt + hydAmt;
   const totalGoal = (todayGoals.water||0) + (todayGoals.isotonic||0);
   const hydSec    = document.getElementById('homeHydSection');
+  const hydContent = document.getElementById('homeHydContent');
 
   if (totalHyd > 0 || totalGoal > 0) {
     hydSec.style.display = 'block';
-    const hydPct   = totalGoal ? Math.round((totalHyd/totalGoal)*100) : null;
+    const hydPct    = totalGoal ? Math.round((totalHyd/totalGoal)*100) : null;
     const hydBarPct = hydPct !== null ? Math.min(hydPct, 100) : null;
-    const hydColor = !hydPct ? '#4a90d9'
-      : hydPct > 100 ? '#378ADD'
-      : hydPct >= 100 ? '#639922'
-      : hydPct >= 60  ? '#4a90d9'
-      : '#EF9F27';
+    const hydColor  = !hydPct ? '#4a90d9' : hydPct > 100 ? '#378ADD' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
 
-    let hydHTML = `<div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:8px">Hidratación</div>`;
-
-    // Hydration hero
-    hydHTML += `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
+    let hydHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
       <div>
         <div style="font-family:var(--font-display);font-size:30px;font-weight:300;color:${hydColor};line-height:1">${disp(totalHyd)}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${totalGoal ? `de ${disp(totalGoal)}` : 'registrado'}</div>
       </div>
       ${hydPct !== null ? `<div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:${hydColor}">${hydPct}%</div>` : ''}
     </div>`;
-
     if (totalGoal) {
-      hydHTML += `<div style="height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
+      hydHTML += `<div style="height:4px;border-radius:2px;background:var(--border);margin-bottom:8px">
         <div style="width:${hydBarPct}%;height:100%;border-radius:2px;background:${hydColor};transition:width .4s"></div>
       </div>`;
-    } else {
-      hydHTML += `<div style="margin-bottom:10px"></div>`;
     }
-
-    // Individual bars
-    if (waterAmt > 0 || todayGoals.water) {
-      hydHTML += barRow('💧 Agua', waterAmt, todayGoals.water||0, '#4a90d9', disp);
-    }
-    if (hydAmt > 0 || todayGoals.isotonic) {
-      hydHTML += `<div style="margin-top:5px">` +
-        barRow('🏋️ Hid.', hydAmt, todayGoals.isotonic||0, '#5bc0de', disp) +
-        `</div>`;
-    }
-
-    hydSec.innerHTML = hydHTML;
+    if (waterAmt > 0 || todayGoals.water)    hydHTML += barRow('Agua', waterAmt, todayGoals.water||0, '#4a90d9', disp);
+    if (hydAmt   > 0 || todayGoals.isotonic) hydHTML += `<div style="margin-top:4px">${barRow('Hidratante', hydAmt, todayGoals.isotonic||0, '#5bc0de', disp)}</div>`;
+    hydContent.innerHTML = hydHTML;
   } else {
     hydSec.style.display = 'none';
   }
 
-  // ── Meta: supls + burn input + balance ──
+  // ── Supplements card ──
   const burned     = burnedCals[dateStr] || 0;
   await loadSuppLogForDate(dateStr);
   const takenSupps = (suppLog[dateStr]||[]).filter(l=>supplements.find(s=>s.id===l.supplement_id));
   const totalSupps = supplements.length;
+  const suppSec    = document.getElementById('homeSuppSection');
+  const suppContent = document.getElementById('homeSuppContent');
 
-  let metaHTML = '';
-
-  if (totalSupps) {
-    const allTaken  = takenSupps.length >= totalSupps;
-    const suppColor = allTaken ? '#a8c060' : takenSupps.length > 0 ? '#EF9F27' : 'var(--muted)';
-    const suppLabel = allTaken ? '✓ todos' : takenSupps.length > 0
-      ? `${takenSupps.length}/${totalSupps}` : 'ninguno';
-    const names = supplements.map(s => s.name).join(' · ');
-    metaHTML += `<div class="day-meta-row">
-      <span style="color:var(--muted)">💊 ${names}</span>
-      <span style="color:${suppColor};font-weight:500">${suppLabel}</span>
-    </div>`;
+  if (totalSupps > 0) {
+    suppSec.style.display = 'block';
+    const dayLog = suppLog[dateStr] || [];
+    suppContent.innerHTML = supplements.map(s => {
+      const taken     = dayLog.some(l => l.supplement_id === s.id);
+      const suppColor = taken ? '#a8c060' : 'var(--muted)';
+      return `<div class="day-meta-row">
+        <span style="color:var(--text)">${s.name}</span>
+        <span style="color:${suppColor};font-weight:500;font-size:12px">${taken ? '✓' : '—'}</span>
+      </div>`;
+    }).join('');
+  } else {
+    suppSec.style.display = 'none';
   }
 
-  // Burn input row
-  metaHTML += `<div class="day-meta-row" style="cursor:pointer" onclick="focusBurnInput()">
-    <span style="color:var(--muted)">🔥 Calorías quemadas</span>
+  // ── Gasto calórico + balance (compact, inside nutrición card) ──
+  const burnedRow = `<div style="display:flex;align-items:center;justify-content:space-between">
+    <span style="font-size:12px;color:var(--muted)">Gasto calórico</span>
     <div style="display:flex;align-items:center;gap:4px">
       <input type="number" id="burnedCalInputVisible" min="0" max="9999"
         placeholder="—" value="${burned||''}"
         onchange="saveBurnedCalsFromVisible(this.value)"
         onclick="event.stopPropagation()"
-        style="width:60px;text-align:right;font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none;-moz-appearance:textfield">
+        style="width:56px;text-align:right;font-family:var(--font-display);font-size:13px;color:var(--text);background:transparent;border:none;outline:none;-moz-appearance:textfield">
       <span style="font-size:11px;color:var(--muted)">kcal</span>
     </div>
   </div>`;
 
-  // Balance — below burn input
-  if (burned) {
+  const balanceRow = burned ? (() => {
     const balance  = Math.round(totCal - burned);
     const balColor = balance <= 0 ? '#a8c060' : '#e07840';
-    const balLabel = balance <= 0 ? 'déficit' : 'superávit';
-    metaHTML += `<div style="display:flex;align-items:center;justify-content:space-between;
-      padding:7px 10px;border-radius:10px;margin-top:6px;
-      background:${balance<=0?'rgba(168,192,96,0.08)':'rgba(224,120,64,0.08)'};
-      border:0.5px solid ${balance<=0?'rgba(168,192,96,0.25)':'rgba(224,120,64,0.25)'}">
-      <span style="font-size:11px;color:var(--muted)">Balance del día</span>
-      <span style="font-family:var(--font-display);font-size:16px;font-weight:500;color:${balColor}">${balance>0?'+':''}${balance} kcal</span>
-      <span style="font-size:10px;color:${balColor}">${balLabel}</span>
+    return `<div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:0.5px solid var(--border)">
+      <span style="font-size:12px;color:var(--muted)">Balance</span>
+      <span style="font-family:var(--font-display);font-size:14px;font-weight:500;color:${balColor}">${balance>0?'+':''}${balance} kcal · ${balance<=0?'déficit':'superávit'}</span>
     </div>`;
-  }
+  })() : '';
 
-  document.getElementById('homeDayMeta').innerHTML = metaHTML;
+  document.getElementById('homeDayMeta').innerHTML = burnedRow + balanceRow;
 
   // ── Inline note ──
   const noteInput = document.getElementById('dayNoteInline');
