@@ -2074,13 +2074,40 @@ select { cursor: pointer; }
           <button id="editOriginFuera" onclick="setEditOrigin('Fuera')" style="padding:10px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-display);font-size:13px;cursor:pointer">🌍 Fuera</button>
         </div>
       </div>
-      <div class="three-col">
-        <div class="macro-input"><label>Calorías</label><input type="number" id="editCalories" inputmode="decimal"><div class="macro-unit">kcal</div></div>
+      <!-- Toggles -->
+      <div class="settings-row" style="padding:4px 0">
+        <div>
+          <div class="settings-label">Es bebida</div>
+          <div style="font-size:11px;color:var(--muted)">Se contará en análisis de bebidas</div>
+        </div>
+        <div onclick="toggleEditBeverage()" id="editBeverageToggle"
+          style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0"
+          data-active="false">
+          <div id="editBeverageThumb"
+            style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>
+        </div>
+      </div>
+      <div class="settings-row" style="padding:4px 0">
+        <div>
+          <div class="settings-label">Bebida alcohólica</div>
+          <div style="font-size:11px;color:var(--muted)">Se contará en el análisis de alcohol</div>
+        </div>
+        <div onclick="toggleEditAlcohol()" id="editAlcoholToggle"
+          style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0"
+          data-active="false">
+          <div id="editAlcoholThumb"
+            style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>
+        </div>
+      </div>
+      <div class="two-col">
         <div class="macro-input"><label>Proteína</label><input type="number" id="editProtein" inputmode="decimal"><div class="macro-unit">g</div></div>
         <div class="macro-input"><label>Carbos</label><input type="number" id="editCarbs" inputmode="decimal"><div class="macro-unit">g</div></div>
       </div>
       <div class="two-col">
         <div class="macro-input"><label>Grasas</label><input type="number" id="editFat" inputmode="decimal"><div class="macro-unit">g</div></div>
+        <div class="macro-input"><label>Calorías</label><input type="number" id="editCalories" inputmode="decimal"><div class="macro-unit">kcal</div></div>
+      </div>
+      <div class="two-col">
         <div class="macro-input"><label>Fibra</label><input type="number" id="editFiber" inputmode="decimal"><div class="macro-unit">g</div></div>
         <div class="macro-input"><label>Azúcar</label><input type="number" id="editSugar" inputmode="decimal"><div class="macro-unit">g</div></div>
       </div>
@@ -4146,6 +4173,33 @@ let editingOrigin  = 'Casa';
 
 let _editBaseEntry = null;
 
+function toggleEditBeverage() {
+  const tog = document.getElementById('editBeverageToggle');
+  const thu = document.getElementById('editBeverageThumb');
+  const active = tog.dataset.active !== 'true';
+  tog.dataset.active = String(active);
+  tog.style.background = active ? '#4a90d9' : 'var(--border)';
+  thu.style.left = active ? '22px' : '2px';
+}
+
+function toggleEditAlcohol() {
+  const tog = document.getElementById('editAlcoholToggle');
+  const thu = document.getElementById('editAlcoholThumb');
+  const active = tog.dataset.active !== 'true';
+  tog.dataset.active = String(active);
+  tog.style.background = active ? '#e07840' : 'var(--border)';
+  thu.style.left = active ? '22px' : '2px';
+}
+
+function setEditToggle(id, thumbId, active, color) {
+  const tog = document.getElementById(id);
+  const thu = document.getElementById(thumbId);
+  if (!tog || !thu) return;
+  tog.dataset.active = String(active);
+  tog.style.background = active ? color : 'var(--border)';
+  thu.style.left = active ? '22px' : '2px';
+}
+
 function openEditModal(id) {
   const e = entries.find(e => e.id === id);
   if (!e) return;
@@ -4176,6 +4230,8 @@ function openEditModal(id) {
   document.getElementById('editSugar').value     = e.sugar_g   || 0;
   document.getElementById('editNotes').value     = e.notes     || '';
   setEditOrigin(editingOrigin);
+  setEditToggle('editBeverageToggle', 'editBeverageThumb', e.is_beverage  || false, '#4a90d9');
+  setEditToggle('editAlcoholToggle',  'editAlcoholThumb',  e.is_alcoholic || false, '#e07840');
   document.getElementById('editEntryModal').classList.add('show');
 }
 
@@ -4270,6 +4326,8 @@ async function saveEditEntry() {
     fiber_g:    parseFloat(document.getElementById('editFiber').value)     || 0,
     sugar_g:    parseFloat(document.getElementById('editSugar').value)     || 0,
     notes:      document.getElementById('editNotes').value.trim(),
+    is_beverage:  document.getElementById('editBeverageToggle')?.dataset.active === 'true',
+    is_alcoholic: document.getElementById('editAlcoholToggle')?.dataset.active  === 'true',
   };
   if (!updated.food_name) { showToast('El nombre no puede estar vacío', true); return; }
 
