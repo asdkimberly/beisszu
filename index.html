@@ -896,6 +896,7 @@ select { cursor: pointer; }
 
 /* ══ HYD CAROUSEL ══ */
 
+
 /* ══ CAROUSEL HEADER ══ */
 /* ══ DATE CAROUSEL STRIP ══ */
 .date-strip {
@@ -1132,87 +1133,61 @@ select { cursor: pointer; }
       </div>
     </div>
 
-    <!-- Compact daily indicator — 3 bars -->
-    <div id="homeDayIndicator" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
-      <!-- Calorías -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
-        <span style="font-size:12px;color:var(--text2);min-width:82px;flex-shrink:0">🥗 Calorías</span>
-        <div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
-          <div id="indCalBarFill" style="height:100%;border-radius:2px;background:var(--accent);width:0%;transition:width .5s ease"></div>
+    <!-- Day summary card -->
+    <div class="day-card" id="homeDayCard" style="margin-bottom:14px">
+
+      <!-- Section: NUTRICIÓN -->
+      <div id="homeNutrSection">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:8px">Nutrición</div>
+
+        <!-- Cal hero -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
+          <div>
+            <div style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--text);line-height:1" id="todayCal">0</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px" id="todayCalSub">kcal</div>
+          </div>
+          <div id="todayCalBadge" style="display:none;text-align:right">
+            <div id="todayCalPct" style="font-family:var(--font-display);font-size:20px;font-weight:300"></div>
+            <div style="font-size:10px;color:var(--muted)">de meta</div>
+          </div>
         </div>
-        <span id="indCalSub" style="font-size:12px;color:var(--muted);min-width:40px;text-align:right;flex-shrink:0"></span>
-      </div>
-      <!-- Hidratación -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
-        <span style="font-size:12px;color:var(--text2);min-width:82px;flex-shrink:0">💧 Hidratación</span>
-        <div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
-          <div id="indHydBarFill" style="height:100%;border-radius:2px;background:#4a90d9;width:0%;transition:width .5s ease"></div>
+        <div id="todayCalBarWrap" style="display:none;height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
+          <div id="todayCalBar" style="height:100%;border-radius:2px;transition:width .4s"></div>
         </div>
-        <span id="indHyd" style="font-size:12px;color:var(--muted);min-width:40px;text-align:right;flex-shrink:0"></span>
+
+        <!-- Macros with goal: horizontal bars (rendered by JS) -->
+        <div id="homeMacroGoalRows" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
+
+        <!-- Macros without goal: 2×N grid (rendered by JS) -->
+        <div id="homeMacroNoGoalGrid" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:4px"></div>
       </div>
-      <!-- Suplementos -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span style="font-size:12px;color:var(--text2);min-width:82px;flex-shrink:0">💊 Suplementos</span>
-        <div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
-          <div id="indSuppBarFill" style="height:100%;border-radius:2px;background:#9b59b6;width:0%;transition:width .5s ease"></div>
-        </div>
-        <span id="indSupp" style="font-size:12px;color:var(--muted);min-width:40px;text-align:right;flex-shrink:0"></span>
-      </div>
-      <!-- Ver detalle -->
-      <div style="border-top:0.5px solid var(--border);padding-top:8px;text-align:right">
-        <button onclick="switchTab('stats');setStatsTab('hoy')"
-          style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;font-family:var(--font-display)">
-          Ver detalle →
-        </button>
+
+      <!-- Section: HIDRATACIÓN (rendered by JS, hidden if no data) -->
+      <div id="homeHydSection" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"></div>
+
+      <!-- Separator -->
+      <div style="height:1px;background:var(--border);margin:10px 0"></div>
+
+      <!-- Supps + burn input + balance (rendered by JS) -->
+      <div id="homeDayMeta"></div>
+
+      <!-- Inline note -->
+      <div class="day-note-inline" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+        <span style="font-size:15px;flex-shrink:0">📝</span>
+        <input type="text" id="dayNoteInline" placeholder="Nota del día…"
+          onblur="saveDayNoteInline()" onkeydown="if(event.key==='Enter')this.blur()">
       </div>
     </div>
 
-    <!-- 3 section tabs — no gap between them, gap above and below -->
-    <div style="display:flex;gap:0;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-top:4px">
-      <button id="homeTabNutr" onclick="switchHomeTab('nutr')"
-        style="flex:1;padding:10px 4px;border:none;border-right:1px solid var(--border);background:var(--accent);cursor:pointer;font-size:12px;color:#0e110a;font-family:var(--font-display);font-weight:600">
-        🥗 Nutrición
-      </button>
-      <button id="homeTabHyd" onclick="switchHomeTab('hyd')"
-        style="flex:1;padding:10px 4px;border:none;border-right:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;color:var(--text2);font-family:var(--font-display)">
-        💧 Hidratación
-      </button>
-      <button id="homeTabSupp" onclick="switchHomeTab('supp')"
-        style="flex:1;padding:10px 4px;border:none;background:var(--surface2);cursor:pointer;font-size:12px;color:var(--text2);font-family:var(--font-display)">
-        💊 Suplementos
-      </button>
-    </div>
-
-    <!-- Hidden inputs for compatibility -->
+    <!-- Hidden legacy inputs for compatibility -->
     <div style="display:none">
       <input id="burnedCalInput" type="number" onchange="saveBurnedCals()">
       <div id="todayProt"></div><div id="todayCarbs"></div>
       <div id="todayFat"></div><div id="todayFib"></div><div id="todaySug"></div>
     </div>
 
-    <!-- ══ SECCIÓN ACTIVA ══ -->
-    <!-- Nutrición panel -->
-    <div id="homePanelNutr" style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
-      <div id="homeMealGroups"></div>
-    </div>
-
-    <!-- Hidratación panel -->
-    <div id="homePanelHyd" style="display:none;flex-direction:column;gap:10px;margin-top:6px">
-      <div id="homeHydEntries"></div>
-      <button onclick="openBS('bsHyd')"
-        style="width:100%;padding:12px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;font-size:13px;color:var(--accent);font-family:var(--font-display)">
-        + Registrar hidratación
-      </button>
-    </div>
-
-    <!-- Suplementos panel -->
-    <div id="homePanelSupp" style="display:none;flex-direction:column;gap:10px;margin-top:6px">
-      <div id="homeSuppEntries"></div>
-      <button onclick="openBS('bsSupp')"
-        style="width:100%;padding:12px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;cursor:pointer;font-size:13px;color:var(--accent);font-family:var(--font-display)">
-        + Registrar suplementos
-      </button>
-    </div>
+    <!-- Entries grouped by meal type -->
+    <div id="homeMealGroups" style="display:flex;flex-direction:column;gap:14px"></div>
 
   </div>
 
@@ -1492,10 +1467,9 @@ select { cursor: pointer; }
   <!-- ══ PAGE: ANÁLISIS ══ -->
   <div class="page" id="page-stats">
 
-    <!-- Header controls — Hoy tab + period tabs -->
+    <!-- Header controls -->
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div class="sub-tabs" style="flex:1">
-        <button class="sub-tab" id="statsTabHoy"    onclick="setStatsTab('hoy')">Hoy</button>
         <button class="sub-tab active" id="statsRange7"    onclick="setStatsRange(7)">7 días</button>
         <button class="sub-tab"        id="statsRange30"   onclick="setStatsRange(30)">30 días</button>
         <button class="sub-tab"        id="statsRangeCustom" onclick="setStatsRange('custom')">Rango</button>
@@ -1529,59 +1503,6 @@ select { cursor: pointer; }
       </div>
       <button id="statsNavNext" onclick="navigateStatsRange(1)"
         style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
-    </div>
-
-    <!-- ══ HOY PANEL ══ -->
-    <div id="statsHoyPanel" style="display:none;flex-direction:column;gap:12px">
-
-      <!-- Card: Nutrición -->
-      <div class="card" id="statsDayCard">
-        <div class="section-label" style="margin-bottom:10px">🥗 Nutrición</div>
-        <div id="statsNutrSection">
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
-            <div>
-              <div style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--text);line-height:1" id="statsTodayCal">0</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px" id="statsTodayCalSub">kcal</div>
-            </div>
-            <div id="statsTodayCalBadge" style="display:none;text-align:right">
-              <div id="statsTodayCalPct" style="font-family:var(--font-display);font-size:20px;font-weight:300"></div>
-              <div style="font-size:10px;color:var(--muted)">de meta</div>
-            </div>
-          </div>
-          <div id="statsTodayCalBarWrap" style="display:none;height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
-            <div id="statsTodayCalBar" style="height:100%;border-radius:2px;transition:width .4s"></div>
-          </div>
-          <div id="statsMacroGoalRows" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
-          <div id="statsMacroNoGoalGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:4px"></div>
-        </div>
-      </div>
-
-      <!-- Card: Hidratación -->
-      <div class="card" id="statsHydCardHoy" style="display:none">
-        <div class="section-label" style="margin-bottom:10px">💧 Hidratación</div>
-        <div id="statsHydSectionHoy"></div>
-      </div>
-
-      <!-- Card: Suplementos -->
-      <div class="card" id="statsSuppCardHoy" style="display:none">
-        <div class="section-label" style="margin-bottom:10px">💊 Suplementos</div>
-        <div id="statsSuppSectionHoy"></div>
-      </div>
-
-      <!-- Card: Gasto calórico -->
-      <div class="card" id="statsGastoCardHoy" style="display:none">
-        <div class="section-label" style="margin-bottom:10px">🔥 Gasto calórico</div>
-        <div id="statsDayMeta"></div>
-      </div>
-
-      <!-- Card: Nota del día -->
-      <div class="card">
-        <div class="section-label" style="margin-bottom:8px">📝 Nota del día</div>
-        <input type="text" id="statsDayNoteInline" placeholder="Nota del día…"
-          onblur="saveDayNoteInlineStats()" onkeydown="if(event.key==='Enter')this.blur()"
-          style="width:100%;background:transparent;border:none;outline:none;font-size:14px;color:var(--text);font-family:var(--font-display)">
-      </div>
-
     </div>
 
     <!-- Loading skeleton — visible until renderStats() runs -->
@@ -1705,12 +1626,16 @@ select { cursor: pointer; }
 
   </div>
 
-  <nav class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
+  <nav class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
     <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
-      <span class="nav-icon">🍴</span>Registro
+      <span class="nav-icon">🏠</span>Inicio
     </button>
     <button class="nav-btn" id="nav-foods" onclick="switchTab('foods')">
       <span class="nav-icon">🥦</span>Alimentos
+    </button>
+    <button class="nav-btn-register" onclick="openRegisterSheet()" aria-label="Registrar">
+      <div class="nav-register-circle">+</div>
+      <span class="nav-register-label">Registrar</span>
     </button>
     <button class="nav-btn" id="nav-stats" onclick="switchTab('stats')">
       <span class="nav-icon">📊</span>Análisis
@@ -1971,8 +1896,6 @@ select { cursor: pointer; }
           <div class="section-label">Tipo de bebida</div>
           <div class="drink-grid" id="drinkTypeGrid" style="grid-template-columns:1fr 1fr"></div>
         </div>
-
-        <!-- Amount -->
         <div class="card" style="margin-top:12px">
           <div id="hydAmountRow">
             <div class="section-label">Cantidad</div>
@@ -2487,7 +2410,7 @@ let _lang = 'es';
 const I18N = {
   es: {
     // ── Navegación ──
-    nav_home:        'Registro',
+    nav_home:        'Inicio',
     nav_foods:       'Alimentos',
     nav_analytics:   'Análisis',
     nav_profile:     'Perfil',
@@ -2868,9 +2791,10 @@ function switchTab(name) {
   if (name === 'home')    { renderToday(); }
   if (name === 'foods')   { renderFoodsList(); renderDishesList(); switchFoodsTab('alimentos'); }
   if (name === 'profile') { loadSettings(); renderSuppList(); profileGoBack(); }
-  if (name === 'stats')   {
+  if (name === 'stats')   { 
     if (!statsToDate) { statsToDate = getTodayDate(); effRange = statsRange === 'custom' ? 7 : statsRange; }
-    setStatsTab('hoy');
+    updateStatsNavRow();
+    renderStats();
   }
 }
 
@@ -3652,153 +3576,304 @@ async function renderCarouselDay() {
   const totFib  = dayEntries.reduce((s,e) => s+(e.fiber_g||0), 0);
   const totSug  = dayEntries.reduce((s,e) => s+(e.sugar_g||0), 0);
 
+  // ── Hero calories ──
+  document.getElementById('todayCal').textContent = Math.round(totCal);
+
+  // Use adaptive goals for this specific date
   const todayGoals = getGoalsForDate(dateStr);
-  const calGoal    = todayGoals.cal;
-  const calPct     = calGoal ? Math.round((totCal / calGoal) * 100) : null;
-  const calColor   = calGoal ? heatmapColorCal(calPct) : 'var(--accent)';
+  const calGoal  = todayGoals.cal;
+  const calPct   = calGoal ? Math.round((totCal / calGoal) * 100) : null;
+  const calColor = calGoal ? heatmapColorCal(calPct) : 'var(--accent)';
+  const calSub   = document.getElementById('todayCalSub');
+  const calBadge = document.getElementById('todayCalBadge');
+  const calBarW  = document.getElementById('todayCalBarWrap');
+  const calBar   = document.getElementById('todayCalBar');
+  const calPctEl = document.getElementById('todayCalPct');
 
-  // ── Compact indicator — 3 bars ──
-  const indBarFill = document.getElementById('indCalBarFill');
-  const indCalSub  = document.getElementById('indCalSub');
-  if (indBarFill) {
-    indBarFill.style.width = calGoal ? Math.min(calPct, 100) + '%' : '0%';
-    indBarFill.style.background = calColor;
+  if (calGoal) {
+    calSub.textContent = `de ${calGoal} kcal`;
+    calBadge.style.display = 'block';
+    calPctEl.textContent = calPct + '%';
+    calPctEl.style.color = calColor;
+    calBarW.style.display = 'block';
+    calBar.style.width = Math.min(calPct, 100) + '%';
+    calBar.style.background = calColor;
+  } else {
+    calSub.textContent = 'kcal';
+    calBadge.style.display = 'none';
+    calBarW.style.display = 'none';
   }
-  if (indCalSub) indCalSub.textContent = calGoal ? `${calPct}%` : `${Math.round(totCal)} kcal`;
 
-  // Hydration bar
-  const waterAmt     = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
-  const hydAmt       = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
-  const totalHyd     = waterAmt + hydAmt;
-  const totalHydGoal = (todayGoals.water||0) + (todayGoals.isotonic||0);
-  const disp         = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${Math.round(v)}ml`;
-  const hydPct       = totalHydGoal ? Math.round((totalHyd/totalHydGoal)*100) : null;
-  const hydColor     = !hydPct ? '#4a90d9' : hydPct > 100 ? '#378ADD' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
-  const indHydFill   = document.getElementById('indHydBarFill');
-  const indHydEl     = document.getElementById('indHyd');
-  if (indHydFill) { indHydFill.style.width = totalHydGoal ? Math.min(hydPct,100)+'%' : '0%'; indHydFill.style.background = hydColor; }
-  if (indHydEl)   indHydEl.textContent = hydPct !== null ? `${hydPct}%` : totalHyd ? disp(totalHyd) : '—';
-  if (indHydEl)   indHydEl.style.color = hydColor;
+  // ── Helper: horizontal bar row ──
+  const barRow = (label, val, goal, color, fmt) => {
+    const pct      = goal ? Math.round((val / goal) * 100) : 0;
+    const barPct   = Math.min(pct, 100); // bar never exceeds full width
+    const exceeded = pct > 100;
+    const pctColor = !goal ? color
+      : exceeded     ? '#378ADD'
+      : pct >= 90    ? '#639922'
+      : pct >= 60    ? color
+      : '#EF9F27';
+    const valLabel = goal ? `${fmt(val)}/${fmt(goal)}` : fmt(val);
+    const pctLabel = goal ? `${pct}%` : '';
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:1px">
+      <span style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${label}</span>
+      <span style="font-size:11px;font-weight:500;color:${color};width:60px;text-align:right;flex-shrink:0;white-space:nowrap">${valLabel}</span>
+      <div style="flex:1;height:4px;border-radius:3px;background:var(--border)">
+        <div style="width:${barPct}%;height:100%;border-radius:3px;background:${pctColor};transition:width .4s"></div>
+      </div>
+      <span style="font-size:11px;font-weight:500;color:${pctColor};width:30px;text-align:right;flex-shrink:0">${pctLabel}</span>
+    </div>`;
+  };
 
-  // Supplements bar
+  // ── Macros with goal: horizontal rows ──
+  const macroGoalDefs = [
+    { label:'Proteína', val:totProt, goal:todayGoals.protein, color:'#4a90d9', fmt:v=>`${v.toFixed(0)}g` },
+    { label:'Carbos',   val:totCarb, goal:todayGoals.carbs,   color:'#d4a840', fmt:v=>`${v.toFixed(0)}g` },
+    { label:'Grasas',   val:totFat,  goal:todayGoals.fat,     color:'#e07840', fmt:v=>`${v.toFixed(0)}g` },
+  ];
+  const macroNoGoalDefs = [
+    { label:'Fibra',  val:totFib, goal:settings.goalProtein ? null : null, color:'#a8c060' },
+    { label:'Azúcar', val:totSug, color:'#EF9F27' },
+  ];
+
+  const goalRows    = macroGoalDefs.filter(m => m.goal);
+  const noGoalMacs  = [
+    ...macroGoalDefs.filter(m => !m.goal),
+    ...macroNoGoalDefs,
+  ];
+
+  const macroGoalEl = document.getElementById('homeMacroGoalRows');
+  macroGoalEl.style.display = goalRows.length ? 'flex' : 'none';
+  macroGoalEl.innerHTML = goalRows.map(m => barRow(m.label, m.val, m.goal, m.color, m.fmt)).join('');
+
+  const macroNoGoalEl = document.getElementById('homeMacroNoGoalGrid');
+  const hasNoGoal = noGoalMacs.some(m => m.val > 0);
+  macroNoGoalEl.style.display = hasNoGoal ? 'grid' : 'none';
+  macroNoGoalEl.innerHTML = noGoalMacs.map(m => `
+    <div style="background:var(--surface2);border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-size:11px;color:var(--muted)">${m.label}</span>
+      <span style="font-family:var(--font-display);font-size:14px;color:var(--text)">${m.val.toFixed(1)}g</span>
+    </div>`).join('');
+
+  // ── Hydration section ──
+  const waterAmt  = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
+  const hydAmt    = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
+  const disp      = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${Math.round(v)}ml`;
+  const totalHyd  = waterAmt + hydAmt;
+  const totalGoal = (todayGoals.water||0) + (todayGoals.isotonic||0);
+  const hydSec    = document.getElementById('homeHydSection');
+
+  if (totalHyd > 0 || totalGoal > 0) {
+    hydSec.style.display = 'block';
+    const hydPct   = totalGoal ? Math.round((totalHyd/totalGoal)*100) : null;
+    const hydBarPct = hydPct !== null ? Math.min(hydPct, 100) : null;
+    const hydColor = !hydPct ? '#4a90d9'
+      : hydPct > 100 ? '#378ADD'
+      : hydPct >= 100 ? '#639922'
+      : hydPct >= 60  ? '#4a90d9'
+      : '#EF9F27';
+
+    let hydHTML = `<div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:8px">Hidratación</div>`;
+
+    // Hydration hero
+    hydHTML += `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
+      <div>
+        <div style="font-family:var(--font-display);font-size:30px;font-weight:300;color:${hydColor};line-height:1">${disp(totalHyd)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${totalGoal ? `de ${disp(totalGoal)}` : 'registrado'}</div>
+      </div>
+      ${hydPct !== null ? `<div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:${hydColor}">${hydPct}%</div>` : ''}
+    </div>`;
+
+    if (totalGoal) {
+      hydHTML += `<div style="height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
+        <div style="width:${hydBarPct}%;height:100%;border-radius:2px;background:${hydColor};transition:width .4s"></div>
+      </div>`;
+    } else {
+      hydHTML += `<div style="margin-bottom:10px"></div>`;
+    }
+
+    // Individual bars
+    if (waterAmt > 0 || todayGoals.water) {
+      hydHTML += barRow('💧 Agua', waterAmt, todayGoals.water||0, '#4a90d9', disp);
+    }
+    if (hydAmt > 0 || todayGoals.isotonic) {
+      hydHTML += `<div style="margin-top:5px">` +
+        barRow('🏋️ Hid.', hydAmt, todayGoals.isotonic||0, '#5bc0de', disp) +
+        `</div>`;
+    }
+
+    hydSec.innerHTML = hydHTML;
+  } else {
+    hydSec.style.display = 'none';
+  }
+
+  // ── Meta: supls + burn input + balance ──
+  const burned     = burnedCals[dateStr] || 0;
   await loadSuppLogForDate(dateStr);
-  const burned      = burnedCals[dateStr] || 0;
-  const takenSupps  = (suppLog[dateStr]||[]).filter(l=>supplements.find(s=>s.id===l.supplement_id));
-  const totalSupps  = supplements.length;
-  const suppPct     = totalSupps ? Math.round((takenSupps.length/totalSupps)*100) : null;
-  const suppColor   = !suppPct ? 'var(--muted)' : suppPct >= 100 ? '#a8c060' : suppPct > 0 ? '#EF9F27' : 'var(--muted)';
-  const indSuppFill = document.getElementById('indSuppBarFill');
-  const indSuppEl   = document.getElementById('indSupp');
-  if (indSuppFill) { indSuppFill.style.width = suppPct !== null ? Math.min(suppPct,100)+'%' : '0%'; indSuppFill.style.background = suppColor; }
-  if (indSuppEl)   { indSuppEl.textContent = totalSupps ? `${takenSupps.length}/${totalSupps}` : '—'; indSuppEl.style.color = suppColor; }
+  const takenSupps = (suppLog[dateStr]||[]).filter(l=>supplements.find(s=>s.id===l.supplement_id));
+  const totalSupps = supplements.length;
 
-  // If Análisis·Hoy is visible, refresh it too
-  if (currentTab === 'stats' && _statsTab === 'hoy') {
-    renderStatsHoy(dateStr, dayEntries, dayHyd, totCal, totProt, totCarb, totFat, totFib, totSug, burned, takenSupps);
+  let metaHTML = '';
+
+  if (totalSupps) {
+    const allTaken  = takenSupps.length >= totalSupps;
+    const suppColor = allTaken ? '#a8c060' : takenSupps.length > 0 ? '#EF9F27' : 'var(--muted)';
+    const suppLabel = allTaken ? '✓ todos' : takenSupps.length > 0
+      ? `${takenSupps.length}/${totalSupps}` : 'ninguno';
+    const names = supplements.map(s => s.name).join(' · ');
+    metaHTML += `<div class="day-meta-row">
+      <span style="color:var(--muted)">💊 ${names}</span>
+      <span style="color:${suppColor};font-weight:500">${suppLabel}</span>
+    </div>`;
   }
 
-  // ── Meal groups — always visible, collapsible ──
-  const MEAL_ORDER = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
-  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰' };
+  // Burn input row
+  metaHTML += `<div class="day-meta-row" style="cursor:pointer" onclick="focusBurnInput()">
+    <span style="color:var(--muted)">🔥 Calorías quemadas</span>
+    <div style="display:flex;align-items:center;gap:4px">
+      <input type="number" id="burnedCalInputVisible" min="0" max="9999"
+        placeholder="—" value="${burned||''}"
+        onchange="saveBurnedCalsFromVisible(this.value)"
+        onclick="event.stopPropagation()"
+        style="width:60px;text-align:right;font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none;-moz-appearance:textfield">
+      <span style="font-size:11px;color:var(--muted)">kcal</span>
+    </div>
+  </div>`;
 
-  const foodGroups = {};
-  dayEntries.forEach(e => {
-    const key = e.meal_type || 'Extra';
-    if (!foodGroups[key]) foodGroups[key] = [];
-    foodGroups[key].push(e);
+  // Balance — below burn input
+  if (burned) {
+    const balance  = Math.round(totCal - burned);
+    const balColor = balance <= 0 ? '#a8c060' : '#e07840';
+    const balLabel = balance <= 0 ? 'déficit' : 'superávit';
+    metaHTML += `<div style="display:flex;align-items:center;justify-content:space-between;
+      padding:7px 10px;border-radius:10px;margin-top:6px;
+      background:${balance<=0?'rgba(168,192,96,0.08)':'rgba(224,120,64,0.08)'};
+      border:0.5px solid ${balance<=0?'rgba(168,192,96,0.25)':'rgba(224,120,64,0.25)'}">
+      <span style="font-size:11px;color:var(--muted)">Balance del día</span>
+      <span style="font-family:var(--font-display);font-size:16px;font-weight:500;color:${balColor}">${balance>0?'+':''}${balance} kcal</span>
+      <span style="font-size:10px;color:${balColor}">${balLabel}</span>
+    </div>`;
+  }
+
+  document.getElementById('homeDayMeta').innerHTML = metaHTML;
+
+  // ── Inline note ──
+  const noteInput = document.getElementById('dayNoteInline');
+  if (noteInput) noteInput.value = dayNotes[dateStr] || '';
+
+  // ── Meal groups with smart entries + quick actions ──
+  const MEAL_ORDER = ['Desayuno','Snack Mañana','Almuerzo','Snack Tarde','Cena','Extra'];
+  const MEAL_ICONS = { 'Desayuno':'🌅','Snack Mañana':'🍎','Almuerzo':'☀️','Snack Tarde':'🥪','Cena':'🌙','Extra':'🍰','Hidratación':'💧' };
+
+  const allEntries = [
+    ...dayEntries.map(e => ({...e, _type:'food', _time:e.logged_at})),
+    ...dayHyd.map(e => ({...e, _type:'hyd', _time:e.logged_at})),
+  ].sort((a,b) => new Date(a._time)-new Date(b._time));
+
+  const groups = {};
+  allEntries.forEach(e => {
+    const key = e._type==='hyd' ? 'Hidratación' : e.meal_type;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
   });
 
+  // Which meal is "current" for suggestions
+  const currentMeal = getCurrentMealType();
+  const orderedKeys = [...MEAL_ORDER.filter(k => groups[k] || k === currentMeal || dayEntries.length===0),
+    ...(groups['Hidratación']?['Hidratación']:[])];
+  // Deduplicate
+  const seenKeys = new Set();
+  const finalKeys = orderedKeys.filter(k => { if(seenKeys.has(k)) return false; seenKeys.add(k); return true; });
+
   const mealGroupsEl = document.getElementById('homeMealGroups');
-  if (mealGroupsEl) {
-    mealGroupsEl.innerHTML = MEAL_ORDER.map(key => {
-      const icon       = MEAL_ICONS[key] || '🍽️';
-      const keyEntries = foodGroups[key] || [];
-      const mealCal    = keyEntries.reduce((s,e)=>s+(e.calories||0),0);
-      const mealProt   = keyEntries.reduce((s,e)=>s+(e.protein_g||0),0);
-      const mealCarb   = keyEntries.reduce((s,e)=>s+(e.carbs_g||0),0);
-      const mealFat    = keyEntries.reduce((s,e)=>s+(e.fat_g||0),0);
-      const hasMacros  = mealProt>0||mealCarb>0||mealFat>0;
-      const colId      = `mealCol-${key.replace(/\s/g,'')}`;
-      const isCollapsed = (_mealCollapsed[key] === true);
 
-      const macroSub = hasMacros
-        ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">P:${Math.round(mealProt)}g · C:${Math.round(mealCarb)}g · G:${Math.round(mealFat)}g</div>`
-        : '';
+  mealGroupsEl.innerHTML = finalKeys.map(key => {
+    const icon     = MEAL_ICONS[key] || '🍽️';
+    const keyEntries = groups[key] || [];
+    const isHyd    = key === 'Hidratación';
+    const isCurrent = key === currentMeal;
+    const mealCal  = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.calories||0),0);
+    const mealProt = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.protein_g||0),0);
+    const mealCarb = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.carbs_g||0),0);
+    const mealFat  = keyEntries.filter(e=>e._type==='food').reduce((s,e)=>s+(e.fat_g||0),0);
+    const hasMacros = mealProt > 0 || mealCarb > 0 || mealFat > 0;
+    const ctxBtn   = !isHyd
+      ? `<button class="ctx-btn" onclick="openMealGroupContextMenu(this,'${key}','${dateStr}')" title="Opciones">⋯</button>`
+      : '';
 
-      const items = keyEntries.map(e => makeSmartLogItem(e)).join('') ||
-        `<div style="padding:10px 0 6px;font-size:12px;color:var(--muted)">Sin entradas</div>`;
+    // Header
+    const macroSub = (!isHyd && hasMacros)
+      ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">P:${Math.round(mealProt)}g · C:${Math.round(mealCarb)}g · G:${Math.round(mealFat)}g</div>`
+      : '';
+    const header = `<div class="meal-group-header">
+      <div>
+        <span class="meal-group-title">${icon} ${key}${mealCal?' · '+Math.round(mealCal)+' kcal':''}</span>
+        ${macroSub}
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">${ctxBtn}</div>
+    </div>`;
 
-      const addRow = `<div style="border-top:0.5px solid var(--border);margin-top:4px">
-        <button onclick="openFoodForMeal('${key}')"
-          style="width:100%;padding:10px 0;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--accent);font-family:var(--font-display);font-weight:500;text-align:center">
-          + Agregar
-        </button>
-      </div>`;
-
-      return `<div class="meal-group" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
-        <div class="meal-group-header" onclick="toggleMealGroup('${key}')" style="cursor:pointer;user-select:none;padding:10px 12px 8px">
-          <div>
-            <span class="meal-group-title">${icon} ${key}${mealCal?' · '+Math.round(mealCal)+' kcal':''}</span>
-            ${macroSub}
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <button class="ctx-btn" onclick="event.stopPropagation();openMealGroupContextMenu(this,'${key}','${dateStr}')" title="Opciones">⋯</button>
-            <span style="font-size:14px;color:var(--muted);transition:transform .2s;${isCollapsed?'transform:rotate(-90deg)':''}" id="mealChevron-${key.replace(/\s/g,'')}">⌄</span>
-          </div>
+    // Items — smart rendering
+    let items = '';
+    if (keyEntries.length === 0 && !isHyd) {
+      // Empty slot with quick actions
+      const relTemplates = templates.filter(t => t.meal_type === key).slice(0,2);
+      const tmplBtns = relTemplates.map(t =>
+        `<button class="meal-quick-btn" onclick="quickApplyTemplate(${t.id})">📋 ${t.name}</button>`
+      ).join('');
+      const dishBtn = dishes.length
+        ? `<button class="meal-quick-btn" onclick="openDishPickerForMeal('${key}')">🍽️ Platillo</button>` : '';
+      items = `<div class="meal-empty-slot">
+        <span style="font-size:11px;color:var(--muted)">Sin entradas</span>
+        <div class="meal-empty-actions">
+          <button class="meal-quick-btn" onclick="openFoodForMeal('${key}')">+ Alimento</button>
+          ${dishBtn}
+          ${tmplBtns}
         </div>
-        <div id="${colId}" style="display:${isCollapsed?'none':'block'};padding:0 12px">
-          ${items}
-          ${addRow}
-        </div>
       </div>`;
-    }).join('');
-  }
-
-  // ── Hydration panel ──
-  const hydEntriesEl = document.getElementById('homeHydEntries');
-  if (hydEntriesEl) {
-    hydEntriesEl.innerHTML = dayHyd.length
-      ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0 12px">` +
-        dayHyd.map(e => makeHydLogItem(e)).join('') +
-        `</div>`
-      : `<div style="font-size:13px;color:var(--muted);padding:4px 0">Sin registros de hidratación hoy.</div>`;
-  }
-
-  // ── Supplements panel ──
-  const suppEntriesEl = document.getElementById('homeSuppEntries');
-  if (suppEntriesEl) {
-    if (totalSupps > 0) {
-      const dayLog = suppLog[dateStr] || [];
-      suppEntriesEl.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0 12px">` +
-        supplements.map(s => {
-          const taken = dayLog.some(l => l.supplement_id === s.id);
-          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid var(--border)">
-            <span style="font-size:13px;color:var(--text)">${s.name}</span>
-            <span style="font-size:12px;font-weight:500;color:${taken?'#a8c060':'var(--muted)'}">${taken?'✓ tomado':'—'}</span>
-          </div>`;
-        }).join('') + `</div>`;
     } else {
-      suppEntriesEl.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:4px 0">No hay suplementos configurados.</div>`;
+      items = keyEntries.map(e =>
+        e._type === 'food' ? makeSmartLogItem(e) : makeHydLogItem(e)
+      ).join('');
+    }
+
+    let itemsWrapped;
+    if (keyEntries.length === 0 && !isHyd) {
+      itemsWrapped = items; // empty slot — no card needed
+    } else {
+      const addBtn = !isHyd ? `<button class="meal-add-btn" onclick="openFoodForMeal('${key}')">＋ Agregar a ${key}</button>` : '';
+      itemsWrapped = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 12px;margin-bottom:4px">${items}${addBtn}</div>`;
+    }
+
+    return `<div class="meal-group">${header}${itemsWrapped}</div>`;
+  }).join('');
+
+  // Next meal suggestion banner (if today and next meal has templates)
+  if (dateStr === getTodayDate()) {
+    const nextMealIdx = MEAL_ORDER.indexOf(currentMeal) + 1;
+    if (nextMealIdx < MEAL_ORDER.length) {
+      const nextMeal = MEAL_ORDER[nextMealIdx];
+      const nextTemplates = templates.filter(t => t.meal_type === nextMeal);
+      if (nextTemplates.length && !groups[nextMeal]) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'margin-top:8px;background:rgba(108,144,60,0.07);border:1px solid rgba(108,144,60,0.2);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between';
+        const tmpl = nextTemplates[0];
+        banner.innerHTML = `
+          <div>
+            <div style="font-size:12px;color:var(--text);font-family:var(--font-display)">
+              ${MEAL_ICONS[nextMeal]} Próximo: ${nextMeal}
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">📋 ${tmpl.name}</div>
+          </div>
+          <button onclick="quickApplyTemplate(${tmpl.id});this.closest('div[style]').remove()"
+            style="padding:6px 12px;border-radius:8px;background:var(--accent);color:#0e110a;border:none;font-family:var(--font-display);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;margin-left:10px">
+            Aplicar
+          </button>`;
+        mealGroupsEl.appendChild(banner);
+      }
     }
   }
-}
-
-// Meal collapse state — collapsed by default
-let _mealCollapsed = { 'Desayuno':true,'Snack Mañana':true,'Almuerzo':true,'Snack Tarde':true,'Cena':true,'Extra':true };
-function toggleMealGroup(key) {
-  _mealCollapsed[key] = !_mealCollapsed[key];
-  const colId   = `mealCol-${key.replace(/\s/g,'')}`;
-  const chevId  = `mealChevron-${key.replace(/\s/g,'')}`;
-  const col     = document.getElementById(colId);
-  const chev    = document.getElementById(chevId);
-  if (col)  col.style.display  = _mealCollapsed[key] ? 'none' : 'block';
-  if (chev) chev.style.transform = _mealCollapsed[key] ? 'rotate(-90deg)' : '';
-}
-
-function openTemplatePickerForMeal(meal) {
-  // Pre-select meal then open template picker
-  selectedMeal = meal;
-  openTemplatePicker();
 }
 
 // Inline note save
@@ -3846,25 +3921,6 @@ async function saveBurnedCalsFromVisible(val) {
 function openFoodForMeal(mealType) {
   openBS('bsFood');
   setTimeout(() => selectMealByName(mealType), 100);
-}
-
-let _homeTab = 'nutr';
-function switchHomeTab(tab) {
-  _homeTab = tab;
-  const allTabs = ['nutr','hyd','supp'];
-  allTabs.forEach(t => {
-    const id    = 'homeTab' + t.charAt(0).toUpperCase() + t.slice(1);
-    const panId = 'homePanel' + t.charAt(0).toUpperCase() + t.slice(1);
-    const btn   = document.getElementById(id);
-    const panel = document.getElementById(panId);
-    const active = t === tab;
-    if (btn) {
-      btn.style.background = active ? 'var(--accent)' : 'var(--surface2)';
-      btn.style.color      = active ? '#0e110a' : 'var(--text2)';
-      btn.style.fontWeight = active ? '600' : '400';
-    }
-    if (panel) panel.style.display = active ? 'flex' : 'none';
-  });
 }
 
 // Open dish picker and pre-select meal
@@ -5309,28 +5365,24 @@ function openCtxMenu(triggerBtn, items) {
     menu.appendChild(btn);
   });
 
-  // Append to body so it escapes overflow:hidden containers
+  // Append to body — escapes overflow:hidden containers
   menu.style.position = 'fixed';
   document.body.appendChild(menu);
   _ctxMenu = menu;
 
-  // Measure menu height
   const menuH = items.filter(i => i !== 'divider').length * 44 +
                 items.filter(i => i === 'divider').length * 13 + 12;
   const menuW  = 200;
-
   const triggerRect = triggerBtn.getBoundingClientRect();
   const vp = window.innerHeight;
   const vw = window.innerWidth;
 
-  // Horizontal: align right edge of menu with right edge of trigger
   let left = triggerRect.right - menuW;
   if (left < 8) left = 8;
   if (left + menuW > vw - 8) left = vw - menuW - 8;
 
-  // Vertical: prefer below, fall back to above
-  let top;
   const spaceBelow = vp - triggerRect.bottom;
+  let top;
   if (spaceBelow >= menuH + 8) {
     top = triggerRect.bottom + 4;
   } else {
@@ -5341,7 +5393,6 @@ function openCtxMenu(triggerBtn, items) {
   menu.style.left = `${left}px`;
   menu.style.top  = `${top}px`;
 
-  // Close on outside click
   setTimeout(() => {
     _ctxCloseListener = (e) => {
       if (!menu.contains(e.target)) closeCtxMenu();
@@ -5453,7 +5504,6 @@ async function logHydration() {
   clearHydDate();
   showToast(`${selectedDrink.icon} Registrado`);
   buildCarouselDays();
-  
   closeBS('bsHyd');
   switchTab('home');
 }
@@ -6322,80 +6372,9 @@ const chartCrosshairPlugin = {
   }
 };
 
-let _statsTab = 'period'; // 'hoy' | 'period'
-
-function setStatsTab(tab) {
-  _statsTab = tab;
-  const hoyPanel    = document.getElementById('statsHoyPanel');
-  const skeleton    = document.getElementById('statsSkeleton');
-  const navRow      = document.getElementById('statsNavRow');
-  const customRange = document.getElementById('statsCustomRange');
-
-  // Tab button states — label the Hoy tab with the actual selected day
-  const hoyDateStr  = carouselDays[carouselIndex];
-  const hoyLabel    = hoyDateStr ? getCarouselTitle(hoyDateStr) : 'Hoy';
-  const hoyTabBtn   = document.getElementById('statsTabHoy');
-  if (hoyTabBtn) hoyTabBtn.textContent = hoyLabel;
-  hoyTabBtn.classList.toggle('active', tab === 'hoy');
-  document.getElementById('statsRange7').classList.toggle('active', tab === 'period' && statsRange === 7);
-  document.getElementById('statsRange30').classList.toggle('active', tab === 'period' && statsRange === 30);
-  document.getElementById('statsRangeCustom').classList.toggle('active', tab === 'period' && statsRange === 'custom');
-
-  // The Hoy panel card IDs — never hide these
-  const HOY_CARD_IDS = new Set(['statsDayCard','statsHydCardHoy','statsSuppCardHoy','statsGastoCardHoy']);
-
-  if (tab === 'hoy') {
-    // Show Hoy panel, hide period content
-    if (hoyPanel) hoyPanel.style.display = 'flex';
-    if (skeleton) skeleton.style.display = 'none';
-    if (navRow)   navRow.style.display   = 'none';
-    if (customRange) customRange.style.display = 'none';
-    // Hide only the period stats cards (not hoy cards)
-    document.querySelectorAll('#page-stats .card').forEach(c => {
-      if (!HOY_CARD_IDS.has(c.id) && !c.closest('#statsHoyPanel')) c.style.display = 'none';
-    });
-    // Hide PDF button on Hoy tab
-    const reportSec = document.getElementById('statsReportSection');
-    if (reportSec) reportSec.style.display = 'none';
-    // Render Hoy content
-    const dateStr    = carouselDays[carouselIndex];
-    const dayEntries = entries.filter(e => e.log_date === dateStr);
-    const dayHyd     = hydEntries.filter(e => e.date === dateStr);
-    const totCal  = dayEntries.reduce((s,e) => s+(e.calories||0), 0);
-    const totProt = dayEntries.reduce((s,e) => s+(e.protein_g||0), 0);
-    const totCarb = dayEntries.reduce((s,e) => s+(e.carbs_g||0), 0);
-    const totFat  = dayEntries.reduce((s,e) => s+(e.fat_g||0), 0);
-    const totFib  = dayEntries.reduce((s,e) => s+(e.fiber_g||0), 0);
-    const totSug  = dayEntries.reduce((s,e) => s+(e.sugar_g||0), 0);
-    const burned  = burnedCals[dateStr] || 0;
-    const takenSupps = (suppLog[dateStr]||[]).filter(l=>supplements.find(s=>s.id===l.supplement_id));
-    renderStatsHoy(dateStr, dayEntries, dayHyd, totCal, totProt, totCarb, totFat, totFib, totSug, burned, takenSupps);
-  } else {
-    // Hide Hoy panel, restore period content
-    if (hoyPanel) hoyPanel.style.display = 'none';
-    // Re-activate correct period tab
-    setStatsRange(statsRange);
-  }
-}
-
 function setStatsRange(days) {
-  _statsTab   = 'period';
   statsRange  = days;
   statsOffset = 0;
-  // Hoy tab inactive, hide its panel — but keep label updated
-  const hoyTabBtn2 = document.getElementById('statsTabHoy');
-  if (hoyTabBtn2) {
-    const hoyDateStr = carouselDays[carouselIndex];
-    hoyTabBtn2.textContent = hoyDateStr ? getCarouselTitle(hoyDateStr) : 'Hoy';
-    hoyTabBtn2.classList.remove('active');
-  }
-  const hoyPanel = document.getElementById('statsHoyPanel');
-  if (hoyPanel) hoyPanel.style.display = 'none';
-  // Show period stats cards again (not hoy-specific cards)
-  const HOY_CARD_IDS = new Set(['statsDayCard','statsHydCardHoy','statsSuppCardHoy','statsGastoCardHoy']);
-  document.querySelectorAll('#page-stats .card').forEach(c => {
-    if (!HOY_CARD_IDS.has(c.id) && !c.closest('#statsHoyPanel')) c.style.removeProperty('display');
-  });
   document.getElementById('statsRange7').classList.toggle('active', days === 7);
   document.getElementById('statsRange30').classList.toggle('active', days === 30);
   document.getElementById('statsRangeCustom').classList.toggle('active', days === 'custom');
@@ -6404,6 +6383,7 @@ function setStatsRange(days) {
   if (days === 'custom') {
     customPicker.style.display = 'block';
     navRow.style.display = 'none';
+    // Prefill dates: last 7 days
     const t = new Date(); const f = new Date(t);
     f.setDate(f.getDate() - 6);
     document.getElementById('statsCustomTo').value   = t.toISOString().split('T')[0];
@@ -7680,168 +7660,6 @@ function renderStatsSugarFiber(food) {
 }
 
 // ── Eating out chart ──
-// ══ ANÁLISIS · HOY ══
-function renderStatsHoy(dateStr, dayEntries, dayHyd, totCal, totProt, totCarb, totFat, totFib, totSug, burned, takenSupps) {
-  const todayGoals = getGoalsForDate(dateStr);
-  const calGoal    = todayGoals.cal;
-  const calPct     = calGoal ? Math.round((totCal / calGoal) * 100) : null;
-  const calColor   = calGoal ? heatmapColorCal(calPct) : 'var(--accent)';
-  const disp       = v => v>=1000?`${(v/1000).toFixed(1)}L`:`${Math.round(v)}ml`;
-
-  // ── Cal hero ──
-  const calEl    = document.getElementById('statsTodayCal');
-  const calSubEl = document.getElementById('statsTodayCalSub');
-  const calBadge = document.getElementById('statsTodayCalBadge');
-  const calPctEl = document.getElementById('statsTodayCalPct');
-  const calBarW  = document.getElementById('statsTodayCalBarWrap');
-  const calBarEl = document.getElementById('statsTodayCalBar');
-  if (calEl) { calEl.textContent = Math.round(totCal); calEl.style.color = calColor; }
-  if (calGoal) {
-    if (calSubEl) calSubEl.textContent = `de ${calGoal} kcal`;
-    if (calBadge) calBadge.style.display = 'block';
-    if (calPctEl) { calPctEl.textContent = calPct + '%'; calPctEl.style.color = calColor; }
-    if (calBarW)  calBarW.style.display = 'block';
-    if (calBarEl) { calBarEl.style.width = Math.min(calPct, 100) + '%'; calBarEl.style.background = calColor; }
-  } else {
-    if (calSubEl) calSubEl.textContent = 'kcal';
-    if (calBadge) calBadge.style.display = 'none';
-    if (calBarW)  calBarW.style.display = 'none';
-  }
-
-  // ── Bar row helper ──
-  const barRow = (label, val, goal, color, fmt) => {
-    const pct    = goal ? Math.round((val / goal) * 100) : 0;
-    const barPct = Math.min(pct, 100);
-    const pctColor = !goal ? color : pct > 100 ? '#378ADD' : pct >= 90 ? '#639922' : pct >= 60 ? color : '#EF9F27';
-    const valLabel = goal ? `${fmt(val)}/${fmt(goal)}` : fmt(val);
-    const pctLabel = goal ? `${pct}%` : '';
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:1px">
-      <span style="font-size:11px;color:var(--muted);width:52px;flex-shrink:0">${label}</span>
-      <span style="font-size:11px;font-weight:500;color:${color};width:60px;text-align:right;flex-shrink:0;white-space:nowrap">${valLabel}</span>
-      <div style="flex:1;height:4px;border-radius:3px;background:var(--border)">
-        <div style="width:${barPct}%;height:100%;border-radius:3px;background:${pctColor};transition:width .4s"></div>
-      </div>
-      <span style="font-size:11px;font-weight:500;color:${pctColor};width:30px;text-align:right;flex-shrink:0">${pctLabel}</span>
-    </div>`;
-  };
-
-  // ── Macros ──
-  const macroDefs = [
-    { label:'Proteína', val:totProt, goal:todayGoals.protein, color:'#4a90d9', fmt:v=>`${v.toFixed(0)}g` },
-    { label:'Carbos',   val:totCarb, goal:todayGoals.carbs,   color:'#d4a840', fmt:v=>`${v.toFixed(0)}g` },
-    { label:'Grasas',   val:totFat,  goal:todayGoals.fat,     color:'#e07840', fmt:v=>`${v.toFixed(0)}g` },
-  ];
-  const goalRows   = macroDefs.filter(m => m.goal);
-  const noGoalMacs = [...macroDefs.filter(m => !m.goal),
-    { label:'Fibra',  val:totFib, color:'#a8c060' },
-    { label:'Azúcar', val:totSug, color:'#EF9F27' },
-  ];
-  const mgEl = document.getElementById('statsMacroGoalRows');
-  if (mgEl) { mgEl.style.display = goalRows.length ? 'flex' : 'none'; mgEl.innerHTML = goalRows.map(m => barRow(m.label, m.val, m.goal, m.color, m.fmt)).join(''); }
-  const ngEl = document.getElementById('statsMacroNoGoalGrid');
-  if (ngEl) {
-    const hasNoGoal = noGoalMacs.some(m => m.val > 0);
-    ngEl.style.display = hasNoGoal ? 'grid' : 'none';
-    ngEl.innerHTML = noGoalMacs.map(m => `
-      <div style="background:var(--surface2);border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:baseline">
-        <span style="font-size:11px;color:var(--muted)">${m.label}</span>
-        <span style="font-family:var(--font-display);font-size:14px;color:var(--text)">${m.val.toFixed(1)}g</span>
-      </div>`).join('');
-  }
-
-  // ── Hydration ──
-  const waterAmt  = dayHyd.filter(e=>e.drinkId==='water').reduce((s,e)=>s+e.amount,0);
-  const hydAmt    = dayHyd.filter(e=>e.drinkId==='hidratante').reduce((s,e)=>s+e.amount,0);
-  const totalHyd  = waterAmt + hydAmt;
-  const totalGoal = (todayGoals.water||0) + (todayGoals.isotonic||0);
-  const hydCardEl = document.getElementById('statsHydCardHoy');
-  const hydSecEl  = document.getElementById('statsHydSectionHoy');
-  if (hydSecEl && hydCardEl) {
-    if (totalHyd > 0 || totalGoal > 0) {
-      hydCardEl.style.display = 'block';
-      const hydPct    = totalGoal ? Math.round((totalHyd/totalGoal)*100) : null;
-      const hydBarPct = hydPct !== null ? Math.min(hydPct, 100) : null;
-      const hydColor  = !hydPct ? '#4a90d9' : hydPct > 100 ? '#378ADD' : hydPct >= 100 ? '#639922' : hydPct >= 60 ? '#4a90d9' : '#EF9F27';
-      let hydHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
-        <div>
-          <div style="font-family:var(--font-display);font-size:30px;font-weight:300;color:${hydColor};line-height:1">${disp(totalHyd)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${totalGoal ? `de ${disp(totalGoal)}` : 'registrado'}</div>
-        </div>
-        ${hydPct !== null ? `<div style="font-family:var(--font-display);font-size:20px;font-weight:300;color:${hydColor}">${hydPct}%</div>` : ''}
-      </div>`;
-      if (totalGoal) hydHTML += `<div style="height:4px;border-radius:2px;background:var(--border);margin-bottom:10px"><div style="width:${hydBarPct}%;height:100%;border-radius:2px;background:${hydColor};transition:width .4s"></div></div>`;
-      else hydHTML += `<div style="margin-bottom:10px"></div>`;
-      if (waterAmt > 0 || todayGoals.water)    hydHTML += barRow('💧 Agua', waterAmt, todayGoals.water||0, '#4a90d9', disp);
-      if (hydAmt   > 0 || todayGoals.isotonic) hydHTML += `<div style="margin-top:5px">${barRow('🏋️ Hid.', hydAmt, todayGoals.isotonic||0, '#5bc0de', disp)}</div>`;
-      hydSecEl.innerHTML = hydHTML;
-    } else {
-      hydCardEl.style.display = 'none';
-    }
-  }
-
-  // ── Suplementos card ──
-  const totalSupps   = supplements.length;
-  const suppCardEl   = document.getElementById('statsSuppCardHoy');
-  const suppSecEl    = document.getElementById('statsSuppSectionHoy');
-  if (suppCardEl && suppSecEl) {
-    if (totalSupps > 0) {
-      suppCardEl.style.display = 'block';
-      const dayLog = suppLog[dateStr] || [];
-      suppSecEl.innerHTML = supplements.map(s => {
-        const taken     = takenSupps.some(l => l.supplement_id === s.id);
-        const suppColor = taken ? '#a8c060' : 'var(--muted)';
-        return `<div class="day-meta-row">
-          <span style="color:var(--text)">${s.name}</span>
-          <span style="color:${suppColor};font-weight:500">${taken ? '✓ tomado' : '—'}</span>
-        </div>`;
-      }).join('');
-    } else {
-      suppCardEl.style.display = 'none';
-    }
-  }
-
-  // ── Gasto calórico card ──
-  const gastoCardEl = document.getElementById('statsGastoCardHoy');
-  let metaHTML = `<div class="day-meta-row">
-    <span style="color:var(--muted)">🔥 Calorías quemadas</span>
-    <div style="display:flex;align-items:center;gap:4px">
-      <input type="number" id="burnedCalInputVisible" min="0" max="9999"
-        placeholder="—" value="${burned||''}"
-        onchange="saveBurnedCalsFromVisible(this.value)"
-        onclick="event.stopPropagation()"
-        style="width:60px;text-align:right;font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none;-moz-appearance:textfield">
-      <span style="font-size:11px;color:var(--muted)">kcal</span>
-    </div>
-  </div>`;
-  if (burned) {
-    const balance  = Math.round(totCal - burned);
-    const balColor = balance <= 0 ? '#a8c060' : '#e07840';
-    metaHTML += `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:10px;margin-top:6px;background:${balance<=0?'rgba(168,192,96,0.08)':'rgba(224,120,64,0.08)'};border:0.5px solid ${balance<=0?'rgba(168,192,96,0.25)':'rgba(224,120,64,0.25)'}">
-      <span style="font-size:11px;color:var(--muted)">Balance del día</span>
-      <span style="font-family:var(--font-display);font-size:16px;font-weight:500;color:${balColor}">${balance>0?'+':''}${balance} kcal</span>
-      <span style="font-size:10px;color:${balColor}">${balance<=0?'déficit':'superávit'}</span>
-    </div>`;
-  }
-  if (gastoCardEl) {
-    gastoCardEl.style.display = 'block';
-    const metaEl = document.getElementById('statsDayMeta');
-    if (metaEl) metaEl.innerHTML = metaHTML;
-  }
-
-  // ── Note ──
-  const noteEl = document.getElementById('statsDayNoteInline');
-  if (noteEl) noteEl.value = dayNotes[dateStr] || '';
-}
-
-async function saveDayNoteInlineStats() {
-  const dateStr = carouselDays[carouselIndex];
-  const noteEl  = document.getElementById('statsDayNoteInline');
-  if (!noteEl || !dateStr) return;
-  const val = noteEl.value.trim();
-  dayNotes[dateStr] = val;
-  await sb.from('day_notes').upsert({ user_id: currentUser.id, log_date: dateStr, note: val }, { onConflict: 'user_id,log_date' });
-}
-
 function renderStatsEatingOut(food) {
   const card = document.getElementById('statsEatingOutCard');
   const outsideEntries = food.filter(e => e.origin === 'Fuera');
@@ -9027,8 +8845,8 @@ function renderHydDonuts() {
 
 // ══ FAB ══
 function openRegisterSheet() {
-  // Direct to food registration — no hub step
-  openBS('bsFood');
+  renderRegisterHub();
+  openBS('bsRegister');
 }
 
 function getCurrentMealType() {
