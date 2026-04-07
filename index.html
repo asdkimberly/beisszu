@@ -4948,9 +4948,9 @@ async function saveDayNote() {
 let burnedCals = {}; // { 'YYYY-MM-DD': number }
 
 async function loadBurnedCals() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const cutoff = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth()+1).padStart(2,'0')}-${String(thirtyDaysAgo.getDate()).padStart(2,'0')}`;
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 90);
+  const cutoff = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth()+1).padStart(2,'0')}-${String(cutoffDate.getDate()).padStart(2,'0')}`;
   const { data } = await sb.from('daily_calories_burned')
     .select('log_date, calories_burned')
     .eq('user_id', currentUser.id)
@@ -5553,10 +5553,10 @@ async function logHydration() {
 }
 
 async function loadHydration() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 90);
   const { data } = await sb.from('hydration_log').select('*').eq('user_id', currentUser.id)
-    .gte('log_date', thirtyDaysAgo.toISOString().split('T')[0])
+    .gte('log_date', cutoffDate.toISOString().split('T')[0])
     .order('logged_at', { ascending: true });
   hydEntries = (data || []).map(e => ({
     ...e, date: e.log_date, drinkId: e.drink_id, drinkLabel: e.drink_label, drinkIcon: e.drink_icon,
@@ -6597,19 +6597,25 @@ async function renderStats() {
 // ── Refresh data for full 30d range ──
 async function refreshStatsData() {
   const { fromDate } = getStatsDates();
-  const [{ data: fData }, { data: hData }] = await Promise.all([
+  const [{ data: fData }, { data: hData }, { data: bData }] = await Promise.all([
     sb.from('food_log').select('*').eq('user_id', currentUser.id).gte('log_date', fromDate).order('logged_at'),
     sb.from('hydration_log').select('*').eq('user_id', currentUser.id).gte('log_date', fromDate).order('logged_at'),
+    sb.from('daily_calories_burned').select('log_date, calories_burned').eq('user_id', currentUser.id).gte('log_date', fromDate),
   ]);
   if (fData) {
     // Merge: keep entries newer than fromDate from Supabase, older from memory
     const fresh = new Set(fData.map(e => e.id));
     entries = [...fData, ...entries.filter(e => e.log_date < fromDate && !fresh.has(e.id))];
+    attachDishIngredients();
   }
   if (hData) hydEntries = hData.map(e => ({
     ...e, date: e.log_date, drinkId: e.drink_id,
     drinkLabel: e.drink_label, drinkIcon: e.drink_icon,
   }));
+  if (bData) {
+    // Merge burned cals — update/add entries in range, keep others from memory
+    bData.forEach(r => { burnedCals[r.log_date] = r.calories_burned; });
+  }
 }
 
 // ── ① Summary cards ──
