@@ -8254,26 +8254,43 @@ async function generatePDF() {
     y+=4;
   }
 
-  // Heatmap row — boolean style (accent=active, gray=inactive/no data)
+  // Heatmap row — boolean style, chunked to match heatmapRowGrad layout
   function heatmapRowBool(label, activeDates){
-    const sqW=statsRange===7?8:4.5;
-    const sqH=3; const sqGap=1;
-    checkSpace(sqH+8);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-    doc.text(label,margin,y+sqH-1);
-    let sx=margin+22;
+    const sqH=4; const sqGap=1;
+    const labelW=22;
+    const availW=CW-labelW-18;
     const today2=new Date(statsToDate+'T12:00:00');
+    const squares=[];
     for(let i=effRange-1;i>=0;i--){
       const d=new Date(today2); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      const active=activeDates.has(ds);
-      // active=accent blue, inactive=light gray
-      if(active) doc.setFillColor(91,192,222);
-      else        doc.setFillColor(210,212,205);
-      doc.roundedRect(sx,y,sqW,sqH,0.8,0.8,'F');
-      sx+=sqW+sqGap;
+      squares.push({ds, active:activeDates.has(ds)});
     }
-    y+=sqH+3;
+    let rows;
+    if(effRange<=7)        rows=[squares];
+    else if(effRange<=30){ const mid=Math.ceil(squares.length/2); rows=[squares.slice(0,mid),squares.slice(mid)]; }
+    else { rows=[]; for(let i=0;i<squares.length;i+=15) rows.push(squares.slice(i,i+15)); }
+
+    // Fixed sqW based on largest row so all rows have same square size
+    const maxLen = Math.max(...rows.map(r=>r.length));
+    const sqW = availW/maxLen - sqGap;
+
+    const totalH=rows.length*(sqH+2)+4;
+    checkSpace(totalH+8);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.dark);
+    doc.text(label, margin, y+sqH-0.5);
+
+    let ry=y;
+    rows.forEach(rowSqs=>{
+      let sx=margin+labelW;
+      rowSqs.forEach(({active})=>{
+        doc.setFillColor(active ? 91 : 210, active ? 192 : 212, active ? 222 : 205);
+        doc.roundedRect(sx,ry,sqW,sqH,0.6,0.6,'F');
+        sx+=sqW+sqGap;
+      });
+      ry+=sqH+2;
+    });
+    y=ry+2;
   }
 
   // Heatmap colors — 5 discrete states matching app's consistencyColor()
@@ -8313,6 +8330,10 @@ async function generatePDF() {
       for(let i=0;i<squares.length;i+=15) rows.push(squares.slice(i,i+15));
     }
 
+    // Fixed sqW based on largest row — all rows same square size, no stretching
+    const maxLen = Math.max(...rows.map(r=>r.length));
+    const sqW = availW/maxLen - sqGap;
+
     const rowCount=rows.length;
     const totalH=rowCount*(sqH+2)+4;
     checkSpace(totalH+6);
@@ -8324,7 +8345,6 @@ async function generatePDF() {
     // Draw rows of squares
     let ry=y;
     rows.forEach((rowSqs, ri)=>{
-      const sqW=availW/rowSqs.length - sqGap;
       let sx=margin+labelW;
       rowSqs.forEach(({pct})=>{
         const [r,g,b]=pctRGB(pct);
@@ -8390,9 +8410,11 @@ async function generatePDF() {
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.dark);
     doc.text(label, margin, y+sqH-0.5);
 
+    const maxLenS = Math.max(...rows.map(r=>r.length));
+    const sqW = availW/maxLenS - sqGap;
+
     let ry=y;
     rows.forEach(rowSqs=>{
-      const sqW=availW/rowSqs.length - sqGap;
       let sx=margin+labelW;
       rowSqs.forEach(({hasFood,taken})=>{
         if(!hasFood)   doc.setFillColor(210,212,205);
@@ -8719,20 +8741,34 @@ async function generatePDF() {
     sectionSpace(30); sectionTitle('7. Dias de consumo de alcohol');
     row('Dias con consumo',`${alcDays} de ${effRange}  (${Math.round((alcDays/effRange)*100)}%)`);
     y+=4;
-    // FIX 2: accent orange for alcohol days, gray for others
-    const sqW=statsRange===7?8:4.5; const sqH=3; const sqGap=1;
-    checkSpace(sqH+8);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
-    doc.text('Con alcohol',margin,y+sqH-1);
-    let sx=margin+22; const today3=new Date();
+    // Use chunked boolean heatmap with orange color for alcohol
+    const alcLabelW=22; const alcAvailW=CW-alcLabelW-18;
+    const alcSqs=[]; const today3=new Date(statsToDate+'T12:00:00');
     for(let i=effRange-1;i>=0;i--){
       const d=new Date(today3); d.setDate(d.getDate()-i);
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      if(datesAlc.has(ds)) doc.setFillColor(224,120,64);
-      else                  doc.setFillColor(210,212,205);
-      doc.roundedRect(sx,y,sqW,sqH,0.8,0.8,'F'); sx+=sqW+sqGap;
+      alcSqs.push({ds, active:datesAlc.has(ds)});
     }
-    y+=sqH+3;
+    let alcRows;
+    if(effRange<=7)        alcRows=[alcSqs];
+    else if(effRange<=30){ const mid=Math.ceil(alcSqs.length/2); alcRows=[alcSqs.slice(0,mid),alcSqs.slice(mid)]; }
+    else { alcRows=[]; for(let i=0;i<alcSqs.length;i+=15) alcRows.push(alcSqs.slice(i,i+15)); }
+    const alcMaxLen=Math.max(...alcRows.map(r=>r.length));
+    const alcSqW=alcAvailW/alcMaxLen-1; const alcSqH=4;
+    const alcTotalH=alcRows.length*(alcSqH+2)+4;
+    checkSpace(alcTotalH+8);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.dark);
+    doc.text('Con alcohol',margin,y+alcSqH-0.5);
+    let alcRy=y;
+    alcRows.forEach(rowSqs=>{
+      let sx=margin+alcLabelW;
+      rowSqs.forEach(({active})=>{
+        doc.setFillColor(active?224:210, active?120:212, active?64:205);
+        doc.roundedRect(sx,alcRy,alcSqW,alcSqH,0.6,0.6,'F'); sx+=alcSqW+1;
+      });
+      alcRy+=alcSqH+2;
+    });
+    y=alcRy+2;
     // Legend
     checkSpace(8); y+=2;
     doc.setFillColor(224,120,64); doc.roundedRect(margin,y,4,4,0.5,0.5,'F');
