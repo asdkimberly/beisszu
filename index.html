@@ -8454,7 +8454,7 @@ async function generatePDF() {
   doc.setTextColor(...C.dark); doc.setFont('helvetica','bold'); doc.setFontSize(10);
   doc.text(currentUser.user_metadata?.full_name||currentUser.email,margin,y); y+=6;
   doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...C.muted);
-  doc.text(`Periodo: ultimos ${statsRange} dias`,margin,y); y+=10;
+  doc.text(`Periodo: ${effRange} dias${statsRange === "custom" ? " (rango personalizado)" : ""}`,margin,y); y+=10;
   const notesVal=document.getElementById('reportNotes')?.value.trim();
   if(notesVal){
     checkSpace(20);
@@ -8508,7 +8508,7 @@ async function generatePDF() {
 
   // ── ① Promedios diarios ──
   sectionSpace(70); sectionTitle('1. Promedios diarios de nutricion');
-  row('Dias con registro',`${n} de ${statsRange}  (promedio sobre dias con datos)`);
+  row('Dias con registro',`${n} de ${effRange}  (promedio sobre dias con datos)`);
   row('Calorias',`${Math.round(avg('cal'))} kcal${pdfGoalCal?'  (meta prom: '+pdfGoalCal+')':''}`,true);
   row('Proteina',`${avg('p').toFixed(1)} g${pdfGoalProt?'  (meta prom: '+pdfGoalProt+'g)':''}` );
   row('Carbohidratos',`${avg('c').toFixed(1)} g${pdfGoalCarb?'  (meta prom: '+pdfGoalCarb+'g)':''}`,true);
@@ -8694,7 +8694,7 @@ async function generatePDF() {
     const datesOut=new Set(outsideE.map(e=>e.log_date));
     // Estimate section height to avoid mid-section page break
     sectionSpace(30); sectionTitle('6. Dias comiendo fuera');
-    row('Dias comiendo fuera',`${outDays} de ${statsRange}  (${Math.round((outDays/statsRange)*100)}%)`);
+    row('Dias comiendo fuera',`${outDays} de ${effRange}  (${Math.round((outDays/effRange)*100)}%)`);
     y+=4;
     // FIX 2: heatmap — accent=active, gray=inactive (no red)
     heatmapRowBool('Fuera de casa', datesOut);
@@ -8717,7 +8717,7 @@ async function generatePDF() {
     const alcDays=Object.keys(alcByDate).length;
     const datesAlc=new Set(alcE.map(e=>e.log_date));
     sectionSpace(30); sectionTitle('7. Dias de consumo de alcohol');
-    row('Dias con consumo',`${alcDays} de ${statsRange}  (${Math.round((alcDays/statsRange)*100)}%)`);
+    row('Dias con consumo',`${alcDays} de ${effRange}  (${Math.round((alcDays/effRange)*100)}%)`);
     y+=4;
     // FIX 2: accent orange for alcohol days, gray for others
     const sqW=statsRange===7?8:4.5; const sqH=3; const sqGap=1;
@@ -8751,7 +8751,7 @@ async function generatePDF() {
     bevE.forEach(e => { if(!bevByDate[e.log_date]) bevByDate[e.log_date]=[]; bevByDate[e.log_date].push(e); });
     const bevDays = Object.keys(bevByDate).length;
     sectionSpace(30); sectionTitle('8. Bebidas registradas como alimento');
-    row('Dias con bebidas registradas', `${bevDays} de ${statsRange}`);
+    row('Dias con bebidas registradas', `${bevDays} de ${effRange}`);
     row('Total entradas de bebida', `${bevE.length} entradas`, true);
     y += 4;
   }
@@ -8769,7 +8769,7 @@ async function generatePDF() {
     const totalConsumed = Object.values(byDate).reduce((s,d) => s + d.cal, 0);
     const balance       = Math.round(totalConsumed - totalBurned);
     const daysWithBurn  = burnedDates.length;
-    row('Dias con gasto calórico registrado', `${daysWithBurn} de ${statsRange}`);
+    row('Dias con gasto calórico registrado', `${daysWithBurn} de ${effRange}`);
     row('Total consumido (periodo)',           `${Math.round(totalConsumed)} kcal`, true);
     row('Total quemado (periodo)',             `${Math.round(totalBurned)} kcal`);
     row('Balance del periodo',                `${balance > 0 ? '+' : ''}${balance} kcal · ${balance <= 0 ? 'deficit' : 'superavit'}`, true);
