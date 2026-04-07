@@ -8744,6 +8744,61 @@ async function generatePDF() {
     detailList(alcByDate,'Total calorias alcoholicas');
   }
 
+  // ── Bebidas registradas ──
+  const bevE = food.filter(e => e.is_beverage && !e.is_alcoholic);
+  if (bevE.length) {
+    const bevByDate = {};
+    bevE.forEach(e => { if(!bevByDate[e.log_date]) bevByDate[e.log_date]=[]; bevByDate[e.log_date].push(e); });
+    const bevDays = Object.keys(bevByDate).length;
+    sectionSpace(30); sectionTitle('8. Bebidas registradas como alimento');
+    row('Dias con bebidas registradas', `${bevDays} de ${statsRange}`);
+    row('Total entradas de bebida', `${bevE.length} entradas`, true);
+    y += 4;
+  }
+
+  // ── ⑧ Gasto calórico y balance ──
+  const burnedDates = Object.keys(burnedCals).filter(ds => {
+    const d = new Date(ds+'T12:00:00');
+    const from = new Date(statsToDate+'T12:00:00');
+    from.setDate(from.getDate() - (effRange-1));
+    return d >= from && burnedCals[ds] > 0;
+  });
+  if (burnedDates.length) {
+    sectionSpace(40); sectionTitle('9. Gasto calorico y balance');
+    const totalBurned   = burnedDates.reduce((s,ds) => s + (burnedCals[ds]||0), 0);
+    const totalConsumed = Object.values(byDate).reduce((s,d) => s + d.cal, 0);
+    const balance       = Math.round(totalConsumed - totalBurned);
+    const daysWithBurn  = burnedDates.length;
+    row('Dias con gasto calórico registrado', `${daysWithBurn} de ${statsRange}`);
+    row('Total consumido (periodo)',           `${Math.round(totalConsumed)} kcal`, true);
+    row('Total quemado (periodo)',             `${Math.round(totalBurned)} kcal`);
+    row('Balance del periodo',                `${balance > 0 ? '+' : ''}${balance} kcal · ${balance <= 0 ? 'deficit' : 'superavit'}`, true);
+    row('Promedio quemado/dia (dias con datos)', `${Math.round(totalBurned/daysWithBurn)} kcal`);
+    y += 6;
+
+    // Consumo vs gasto trend chart
+    const burnCanvas = document.getElementById('chartBurn');
+    if (burnCanvas && burnCanvas.style.display !== 'none') {
+      checkSpace(70);
+      const imgB = burnCanvas.toDataURL('image/png', 1.0);
+      const ratioB = burnCanvas.width / burnCanvas.height;
+      const imgBW = CW; const imgBH = Math.min(imgBW / ratioB, 65);
+      doc.addImage(imgB, 'PNG', margin, y, imgBW, imgBH);
+      y += imgBH + 4;
+    }
+
+    // Balance chart
+    const balCanvas = document.getElementById('chartBurnBalance');
+    if (balCanvas && balCanvas.style.display !== 'none') {
+      checkSpace(55);
+      const imgBal = balCanvas.toDataURL('image/png', 1.0);
+      const ratioBal = balCanvas.width / balCanvas.height;
+      const imgBalW = CW; const imgBalH = Math.min(imgBalW / ratioBal, 50);
+      doc.addImage(imgBal, 'PNG', margin, y, imgBalW, imgBalH);
+      y += imgBalH + 4;
+    }
+  }
+
   // ── Footer ──
   const pages=doc.getNumberOfPages();
   for(let i=1;i<=pages;i++){
