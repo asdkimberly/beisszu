@@ -6121,7 +6121,9 @@ function onIngDishSelect(id) {
   const totProt = ings.reduce((s, i) => s + (i.protein_g || 0), 0);
   const totCarb = ings.reduce((s, i) => s + (i.carbs_g   || 0), 0);
   const totFat  = ings.reduce((s, i) => s + (i.fat_g     || 0), 0);
-  currentIngDishBase = { id: dish.id, name: dish.name, cal: totCal, p: totProt, c: totCarb, f: totFat, qty: 1, unit: 'porciones' };
+  const totFib  = ings.reduce((s, i) => s + (i.fiber_g   || 0), 0);
+  const totSug  = ings.reduce((s, i) => s + (i.sugar_g   || 0), 0);
+  currentIngDishBase = { id: dish.id, name: dish.name, cal: totCal, p: totProt, c: totCarb, f: totFat, fib: totFib, sug: totSug, qty: 1, unit: 'porciones' };
   currentIngFoodBase = null;
   document.getElementById('ingQtyRow').style.display = 'grid';
   document.getElementById('ingQty').value = 1;
@@ -6169,13 +6171,12 @@ function recalcIngMacros() {
   const qty = parseFraction(document.getElementById('ingQty').value) || 0;
   if (!qty) { document.getElementById('ingMacroPreview').style.display = 'none'; return; }
 
-  let cal, p, c, f;
+  let cal, p, c, f, fib = 0, sug = 0;
 
   if (currentIngDishBase) {
-    // Sub-dish: qty = number of portions
     cal = base.cal * qty; p = base.p * qty; c = base.c * qty; f = base.f * qty;
+    fib = (base.fib || 0) * qty; sug = (base.sug || 0) * qty;
   } else {
-    // Food ingredient
     const unit = document.getElementById('ingUnit').value;
     const isGramBased = ['gramos','ml','oz'].includes(unit);
     let ratio;
@@ -6184,10 +6185,11 @@ function recalcIngMacros() {
     } else if (base._servingGrams) {
       ratio = (qty * base._servingGrams) / base.qty;
     } else {
-      // No conversion entry — direct ratio (unidades, rebanadas, piezas, etc.)
       ratio = qty / base.qty;
     }
     cal = base.cal * ratio; p = base.p * ratio; c = base.c * ratio; f = base.f * ratio;
+    fib = (base.fib || 0) * ratio;
+    sug = (base.sug || base.sugar_g || 0) * ratio;
   }
 
   document.getElementById('ipCal').textContent  = Math.round(cal);
@@ -6205,9 +6207,10 @@ function addIngredientToDish() {
   if (!qty) { showToast('Ingresá una cantidad', true); return; }
   const unit = document.getElementById('ingUnit').value;
 
-  let cal, p, c, f, fib = 0;
+  let cal, p, c, f, fib = 0, sug = 0;
   if (currentIngDishBase) {
     cal = base.cal * qty; p = base.p * qty; c = base.c * qty; f = base.f * qty;
+    fib = (base.fib || 0) * qty; sug = (base.sug || 0) * qty;
   } else {
     const isGramBased = ['gramos','ml','oz'].includes(unit);
     let ratio;
@@ -6220,6 +6223,7 @@ function addIngredientToDish() {
     }
     cal = base.cal * ratio; p = base.p * ratio; c = base.c * ratio; f = base.f * ratio;
     fib = (base.fib || 0) * ratio;
+    sug = (base.sug || base.sugar_g || 0) * ratio;
   }
 
   const ing = {
@@ -6229,10 +6233,11 @@ function addIngredientToDish() {
     sub_dish_name: currentIngDishBase ? base.name : null,
     quantity: qty, unit,
     calories: Math.round(cal * 10) / 10,
-    protein_g: Math.round(p * 10) / 10,
-    carbs_g: Math.round(c * 10) / 10,
-    fat_g: Math.round(f * 10) / 10,
-    fiber_g: Math.round(fib * 10) / 10,
+    protein_g: Math.round(p   * 10) / 10,
+    carbs_g:   Math.round(c   * 10) / 10,
+    fat_g:     Math.round(f   * 10) / 10,
+    fiber_g:   Math.round(fib * 10) / 10,
+    sugar_g:   Math.round(sug * 10) / 10,
     _displayName: currentIngDishBase ? `🍽️ ${base.name}` : base.name,
   };
 
