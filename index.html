@@ -3074,12 +3074,60 @@ function onFoodInput(val) {
   const q = norm(val);
   const allDb = [...customFoods, ...foodsDb];
   const dishItems = dishes.map(d => {
-    const ings = d.dish_ingredients || [];
-    const cal  = ings.reduce((s,i) => s+(i.calories||0), 0);
-    const p    = ings.reduce((s,i) => s+(i.protein_g||0), 0);
-    const c    = ings.reduce((s,i) => s+(i.carbs_g||0), 0);
-    const f    = ings.reduce((s,i) => s+(i.fat_g||0), 0);
-    return { name: d.name, displayName: `🍽️ ${d.name}`, qty: 1, unit: 'porción', cal: Math.round(cal), p: Math.round(p*10)/10, c: Math.round(c*10)/10, f: Math.round(f*10)/10, fib: 0, _isDish: true, _dishId: d.id, _dishIngs: ings };
+    const ings    = d.dish_ingredients || [];
+    const totCal  = ings.reduce((s,i) => s+(i.calories||0), 0);
+    const totProt = ings.reduce((s,i) => s+(i.protein_g||0), 0);
+    const totCarb = ings.reduce((s,i) => s+(i.carbs_g||0), 0);
+    const totFat  = ings.reduce((s,i) => s+(i.fat_g||0), 0);
+    const totFib  = ings.reduce((s,i) => s+(i.fiber_g||0), 0);
+    const totSug  = ings.reduce((s,i) => s+(i.sugar_g||0), 0);
+
+    // If dish has total_qty, use it as gram base so gram-based scaling works correctly.
+    // If it has serving_qty, default the entry to 1 porción = serving_qty grams of nutrients.
+    const hasTotalQty   = d.total_qty > 0;
+    const hasServingQty = d.serving_qty > 0;
+
+    let qty, unit, cal, p, c, f, fib, sug;
+    if (hasTotalQty && hasServingQty) {
+      // Scale macros down to one serving
+      const ratio = d.serving_qty / d.total_qty;
+      qty  = d.serving_qty;
+      unit = d.total_unit || 'gramos';
+      cal  = Math.round(totCal  * ratio);
+      p    = Math.round(totProt * ratio * 10) / 10;
+      c    = Math.round(totCarb * ratio * 10) / 10;
+      f    = Math.round(totFat  * ratio * 10) / 10;
+      fib  = Math.round(totFib  * ratio * 10) / 10;
+      sug  = Math.round(totSug  * ratio * 10) / 10;
+    } else if (hasTotalQty) {
+      // No serving defined — base is total weight, user can scale by grams
+      qty  = d.total_qty;
+      unit = d.total_unit || 'gramos';
+      cal  = Math.round(totCal);
+      p    = Math.round(totProt * 10) / 10;
+      c    = Math.round(totCarb * 10) / 10;
+      f    = Math.round(totFat  * 10) / 10;
+      fib  = Math.round(totFib  * 10) / 10;
+      sug  = Math.round(totSug  * 10) / 10;
+    } else {
+      // No weight info — register as 1 porción (full dish, non-scalable)
+      qty  = 1; unit = 'porción';
+      cal  = Math.round(totCal);
+      p    = Math.round(totProt * 10) / 10;
+      c    = Math.round(totCarb * 10) / 10;
+      f    = Math.round(totFat  * 10) / 10;
+      fib  = Math.round(totFib  * 10) / 10;
+      sug  = Math.round(totSug  * 10) / 10;
+    }
+
+    return {
+      name: d.name, displayName: `🍽️ ${d.name}`,
+      qty, unit, cal, p, c, f, fib, sug,
+      _isDish: true, _dishId: d.id, _dishIngs: ings,
+      // Store total for ratio calculations in recalcByQty
+      _dishTotalQty: hasTotalQty ? d.total_qty : null,
+      _dishTotalUnit: d.total_unit || 'gramos',
+    };
   });
   const dbMatches = [...allDb, ...dishItems].filter(f => norm(f.name).includes(q)).slice(0, 6);
   const pastNames = [...new Set(entries.map(e => e.food_name))];
@@ -3132,6 +3180,8 @@ function selectFood(food) {
     _isDish: food._isDish || false,
     _dishId: food._dishId || null,
     _dishIngs: food._dishIngs || null,
+    _dishTotalQty: food._dishTotalQty || null,
+    _dishTotalUnit: food._dishTotalUnit || null,
   };
   document.getElementById('quantity').value = food.qty;
   document.getElementById('unit').value = food.unit;
@@ -3200,38 +3250,33 @@ function recalcByQty() {
   const servings    = foodServings[selectedFoodBase.name] || [];
   let ratio;
 
-  if (unit === selectedFoodBase.unit) {
+  // Special case: dish with known total_qty — gram input scales relative to total
+  if (selectedFoodBase._isDish && selectedFoodBase._dishTotalQty && isGramBased) {
+    ratio = newQty / selectedFoodBase._dishTotalQty;
+  } else if (unit === selectedFoodBase.unit) {
     // Same unit as base — simple ratio
     ratio = newQty / selectedFoodBase.qty;
   } else if (isGramBased && !baseIsGram) {
     // Converting TO grams FROM a non-gram base (e.g. cdas → gramos)
-    // Need to know how many grams = 1 base unit
     const baseServing = servings.find(s => s.serving_name === selectedFoodBase.unit);
     const gramsPerBaseUnit = baseServing ? baseServing.grams : null;
     if (gramsPerBaseUnit) {
-      // newQty grams / (qty base_units × grams_per_base_unit)
       ratio = newQty / (selectedFoodBase.qty * gramsPerBaseUnit);
     } else {
-      // No conversion available — treat as direct ratio
       ratio = newQty / selectedFoodBase.qty;
     }
   } else if (isGramBased && baseIsGram) {
-    // Both gram-based — direct ratio
     ratio = newQty / selectedFoodBase.qty;
   } else if (selectedFoodBase._servingGrams) {
-    // Non-gram unit with a known grams-per-unit from foodServings
     if (baseIsGram) {
-      // Base is grams: newQty units × grams/unit / base_qty_grams
       ratio = (newQty * selectedFoodBase._servingGrams) / selectedFoodBase.qty;
     } else {
-      // Base is also non-gram: convert both to grams
       const baseServing = servings.find(s => s.serving_name === selectedFoodBase.unit);
       const gramsPerBaseUnit = baseServing ? baseServing.grams : 1;
       const baseQtyInGrams = selectedFoodBase.qty * gramsPerBaseUnit;
       ratio = (newQty * selectedFoodBase._servingGrams) / baseQtyInGrams;
     }
   } else {
-    // No conversion found — direct ratio
     ratio = newQty / selectedFoodBase.qty;
   }
 
@@ -9253,19 +9298,37 @@ async function quickApplyTemplate(templateId) {
 async function quickRegisterDish(dishId) {
   const dish = dishes.find(d => d.id === dishId);
   if (!dish) return;
-  const ings = dish.dish_ingredients || [];
-  const cal  = Math.round(ings.reduce((s,i)=>s+(i.calories||0),0));
-  const p    = Math.round(ings.reduce((s,i)=>s+(i.protein_g||0),0)*10)/10;
-  const c    = Math.round(ings.reduce((s,i)=>s+(i.carbs_g||0),0)*10)/10;
-  const f    = Math.round(ings.reduce((s,i)=>s+(i.fat_g||0),0)*10)/10;
-  const mealType = getCurrentMealType();
+  const ings    = dish.dish_ingredients || [];
+  const totCal  = Math.round(ings.reduce((s,i)=>s+(i.calories||0),0));
+  const totProt = Math.round(ings.reduce((s,i)=>s+(i.protein_g||0),0)*10)/10;
+  const totCarb = Math.round(ings.reduce((s,i)=>s+(i.carbs_g||0),0)*10)/10;
+  const totFat  = Math.round(ings.reduce((s,i)=>s+(i.fat_g||0),0)*10)/10;
+  const totFib  = Math.round(ings.reduce((s,i)=>s+(i.fiber_g||0),0)*10)/10;
+  const totSug  = Math.round(ings.reduce((s,i)=>s+(i.sugar_g||0),0)*10)/10;
+
+  // Scale to one serving if defined
+  let cal = totCal, p = totProt, c = totCarb, f = totFat, fib = totFib, sug = totSug;
+  let qty = 1, unit = 'porción';
+  if (dish.total_qty > 0 && dish.serving_qty > 0) {
+    const ratio = dish.serving_qty / dish.total_qty;
+    cal = Math.round(totCal * ratio);
+    p   = Math.round(totProt * ratio * 10) / 10;
+    c   = Math.round(totCarb * ratio * 10) / 10;
+    f   = Math.round(totFat  * ratio * 10) / 10;
+    fib = Math.round(totFib  * ratio * 10) / 10;
+    sug = Math.round(totSug  * ratio * 10) / 10;
+    qty  = dish.serving_qty;
+    unit = dish.total_unit || 'gramos';
+  }
+
+  const mealType   = getCurrentMealType();
   const targetDate = carouselDays[carouselIndex] || getTodayDate();
   const entry = {
     user_id: currentUser.id, log_date: targetDate,
     meal_type: mealType, food_name: dish.name,
-    quantity: 1, unit: 'porción',
+    quantity: qty, unit,
     calories: cal, protein_g: p, carbs_g: c, fat_g: f,
-    fiber_g: 0, sugar_g: 0, origin: 'Casa',
+    fiber_g: fib, sugar_g: sug, origin: 'Casa',
   };
   const { data, error } = await queuedInsert('food_log', entry);
   if (error) { showToast('Error al registrar platillo', true); return; }
