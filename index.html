@@ -1260,12 +1260,36 @@ select { cursor: pointer; }
 
         <div class="card" id="dishTotalsCard" style="display:none">
           <div class="section-label" style="margin-bottom:4px">Total del platillo</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:6px">
             <div><div style="font-size:18px;font-weight:300;color:var(--accent);font-family:var(--font-display)" id="dtCal">0</div><div style="font-size:10px;color:var(--muted)">kcal</div></div>
             <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtProt">0</div><div style="font-size:10px;color:var(--muted)">prot g</div></div>
             <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtCarb">0</div><div style="font-size:10px;color:var(--muted)">carb g</div></div>
-            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtFat">0</div><div style="font-size:10px;color:var(--muted)">gras g</div></div>
           </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtFat">0</div><div style="font-size:10px;color:var(--muted)">gras g</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtFib">0</div><div style="font-size:10px;color:var(--muted)">fibra g</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtSug">0</div><div style="font-size:10px;color:var(--muted)">azúcar g</div></div>
+          </div>
+          <!-- Porción y total -->
+          <div style="border-top:0.5px solid var(--border);margin-top:10px;padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="field" style="margin:0">
+              <label>Cantidad total del platillo</label>
+              <input type="number" id="dishTotalQty" placeholder="Ej: 800" inputmode="decimal"
+                style="font-size:13px" oninput="updateDishServingPreview()">
+            </div>
+            <div class="field" style="margin:0">
+              <label>Unidad</label>
+              <select id="dishTotalUnit" onchange="updateDishServingPreview()">
+                <option>gramos</option><option>ml</option><option>tazas</option><option>unidades</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-top:8px;margin-bottom:0">
+            <label>Una porción equivale a</label>
+            <input type="number" id="dishServingQty" placeholder="Ej: 200" inputmode="decimal"
+              style="font-size:13px" oninput="updateDishServingPreview()">
+          </div>
+          <div id="dishServingPreview" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(168,192,96,0.07);border-radius:8px;font-size:12px;color:var(--muted)"></div>
         </div>
 
         <div class="card" style="margin-top:2px">
@@ -5655,35 +5679,77 @@ function renderDishesList() {
     return;
   }
   list.innerHTML = dishes.map(d => {
-    const ings = d.dish_ingredients || [];
+    const ings    = d.dish_ingredients || [];
     const totCal  = ings.reduce((s, i) => s + (i.calories  || 0), 0);
     const totProt = ings.reduce((s, i) => s + (i.protein_g || 0), 0);
     const totCarb = ings.reduce((s, i) => s + (i.carbs_g   || 0), 0);
     const totFat  = ings.reduce((s, i) => s + (i.fat_g     || 0), 0);
+    const totFib  = ings.reduce((s, i) => s + (i.fiber_g   || 0), 0);
+    const totSug  = ings.reduce((s, i) => s + (i.sugar_g   || 0), 0);
 
+    // Serving info
+    const servingQty = d.serving_qty;
+    const totalQty   = d.total_qty;
+    const totalUnit  = d.total_unit || 'gramos';
+    let servingLine  = '';
+    if (servingQty && totalQty && totCal > 0) {
+      const ratio    = servingQty / totalQty;
+      const servCal  = Math.round(totCal  * ratio);
+      const servProt = (totProt * ratio).toFixed(1);
+      const servCarb = (totCarb * ratio).toFixed(1);
+      const servFat  = (totFat  * ratio).toFixed(1);
+      const portions = (totalQty / servingQty).toFixed(1);
+      servingLine = `
+        <div style="margin-top:8px;padding:8px 10px;background:rgba(168,192,96,0.07);border-radius:8px">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:4px">Por porción (${servingQty} ${totalUnit})</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-family:var(--font-display);font-size:15px;color:var(--accent)">${servCal} kcal</span>
+            <span style="font-size:11px;color:var(--muted)">P:${servProt}g · C:${servCarb}g · G:${servFat}g</span>
+            <span style="font-size:11px;color:var(--muted)">${portions} porciones</span>
+          </div>
+        </div>`;
+    } else if (servingQty) {
+      servingLine = `<div style="margin-top:6px;font-size:11px;color:var(--muted)">Porción: ${servingQty} ${totalUnit}</div>`;
+    }
+
+    // Total weight line
+    const totalLine = totalQty
+      ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">Total: ${totalQty} ${totalUnit}</div>`
+      : '';
+
+    // Ingredient rows — show quantity + macros + fiber/sugar
     const ingRows = ings.map(i => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:0.5px solid var(--border)">
+        <div style="flex:1;min-width:0">
           <div style="font-size:13px;color:var(--text)">${i.food_name || i.sub_dish_name || '—'}</div>
-          <div style="font-size:11px;color:var(--muted)">${i.quantity} ${i.unit} · P:${i.protein_g}g C:${i.carbs_g}g G:${i.fat_g}g</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px">${i.quantity} ${i.unit}</div>
+          <div style="font-size:11px;color:var(--muted)">P:${(i.protein_g||0).toFixed(1)}g · C:${(i.carbs_g||0).toFixed(1)}g · G:${(i.fat_g||0).toFixed(1)}g${i.fiber_g?` · Fib:${(i.fiber_g).toFixed(1)}g`:''}${i.sugar_g?` · Az:${(i.sugar_g).toFixed(1)}g`:''}</div>
         </div>
-        <div style="font-size:13px;color:var(--accent);font-weight:500;white-space:nowrap;margin-left:12px">${Math.round(i.calories)} kcal</div>
+        <div style="font-size:13px;color:var(--accent);font-weight:500;white-space:nowrap;margin-left:12px;flex-shrink:0">${Math.round(i.calories||0)} kcal</div>
       </div>`).join('');
 
+    // Totals grid — 3+3 layout
     const totalsRow = `
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-        <div><div style="font-size:16px;font-weight:300;color:var(--accent);font-family:var(--font-display)">${Math.round(totCal)}</div><div style="font-size:10px;color:var(--muted)">kcal</div></div>
-        <div><div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totProt.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">prot g</div></div>
-        <div><div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totCarb.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">carb g</div></div>
-        <div><div style="font-size:16px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totFat.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">gras g</div></div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;margin-bottom:4px">
+          <div><div style="font-size:15px;font-weight:300;color:var(--accent);font-family:var(--font-display)">${Math.round(totCal)}</div><div style="font-size:10px;color:var(--muted)">kcal</div></div>
+          <div><div style="font-size:15px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totProt.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">prot g</div></div>
+          <div><div style="font-size:15px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totCarb.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">carb g</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center">
+          <div><div style="font-size:15px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totFat.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">gras g</div></div>
+          <div><div style="font-size:15px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totFib.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">fibra g</div></div>
+          <div><div style="font-size:15px;font-weight:300;color:var(--text);font-family:var(--font-display)">${totSug.toFixed(1)}</div><div style="font-size:10px;color:var(--muted)">azúcar g</div></div>
+        </div>
+        ${servingLine}
       </div>`;
 
     return `<div class="food-list-item" id="dish-item-${d.id}">
       <div class="food-list-row" onclick="toggleDishExpand(${d.id})" style="cursor:pointer">
         <div style="flex:1;min-width:0">
           <div class="food-list-name">🍽️ ${d.name}</div>
-          <div class="food-list-meta">${ings.length} ingrediente${ings.length !== 1 ? 's' : ''}</div>
-          <div class="food-list-meta" style="margin-top:2px">P:${totProt.toFixed(1)}g · C:${totCarb.toFixed(1)}g · G:${totFat.toFixed(1)}g</div>
+          <div class="food-list-meta">${ings.length} ingrediente${ings.length !== 1 ? 's' : ''}${totalLine ? ' · ' + totalQty + ' ' + totalUnit : ''}</div>
+          <div class="food-list-meta" style="margin-top:2px">P:${totProt.toFixed(1)}g · C:${totCarb.toFixed(1)}g · G:${totFat.toFixed(1)}g · Fib:${totFib.toFixed(1)}g · Az:${totSug.toFixed(1)}g</div>
         </div>
         <div class="food-list-cal">${Math.round(totCal)} kcal</div>
         <button class="ctx-trigger" onclick="event.stopPropagation();openDishCtx(this,${d.id})"
@@ -6121,11 +6187,34 @@ function updateDishTotals() {
   const totProt = currentDishIngredients.reduce((s, i) => s + (i.protein_g || 0), 0);
   const totCarb = currentDishIngredients.reduce((s, i) => s + (i.carbs_g   || 0), 0);
   const totFat  = currentDishIngredients.reduce((s, i) => s + (i.fat_g     || 0), 0);
+  const totFib  = currentDishIngredients.reduce((s, i) => s + (i.fiber_g   || 0), 0);
+  const totSug  = currentDishIngredients.reduce((s, i) => s + (i.sugar_g   || 0), 0);
   document.getElementById('dtCal').textContent  = Math.round(totCal);
   document.getElementById('dtProt').textContent = totProt.toFixed(1);
   document.getElementById('dtCarb').textContent = totCarb.toFixed(1);
   document.getElementById('dtFat').textContent  = totFat.toFixed(1);
+  document.getElementById('dtFib').textContent  = totFib.toFixed(1);
+  document.getElementById('dtSug').textContent  = totSug.toFixed(1);
   document.getElementById('dishTotalsCard').style.display = currentDishIngredients.length ? 'flex' : 'none';
+  updateDishServingPreview();
+}
+
+function updateDishServingPreview() {
+  const totCal  = currentDishIngredients.reduce((s, i) => s + (i.calories  || 0), 0);
+  const totalQty   = parseFloat(document.getElementById('dishTotalQty')?.value) || 0;
+  const servingQty = parseFloat(document.getElementById('dishServingQty')?.value) || 0;
+  const unit       = document.getElementById('dishTotalUnit')?.value || 'gramos';
+  const preview    = document.getElementById('dishServingPreview');
+  if (!preview) return;
+  if (totalQty > 0 && servingQty > 0 && totCal > 0) {
+    const ratio     = servingQty / totalQty;
+    const servCal   = Math.round(totCal * ratio);
+    const portions  = (totalQty / servingQty).toFixed(1);
+    preview.style.display = 'block';
+    preview.textContent   = `1 porción (${servingQty} ${unit}) = ${servCal} kcal · ${portions} porciones en total`;
+  } else {
+    preview.style.display = 'none';
+  }
 }
 
 function resetIngForm() {
@@ -6145,9 +6234,13 @@ async function saveDish() {
   if (!name) { showToast('Poné un nombre al platillo', true); return; }
   if (!currentDishIngredients.length) { showToast('Agregá al menos un ingrediente', true); return; }
 
+  const totalQty   = parseFloat(document.getElementById('dishTotalQty')?.value)   || null;
+  const totalUnit  = document.getElementById('dishTotalUnit')?.value || 'gramos';
+  const servingQty = parseFloat(document.getElementById('dishServingQty')?.value) || null;
+
   // Insert dish
   const { data: dish, error: dishErr } = await sb.from('dishes')
-    .insert({ user_id: currentUser.id, name, notes })
+    .insert({ user_id: currentUser.id, name, notes, total_qty: totalQty, total_unit: totalUnit, serving_qty: servingQty })
     .select().single();
   if (dishErr) { showToast('Error al guardar', true); return; }
 
