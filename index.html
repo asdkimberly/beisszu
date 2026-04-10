@@ -1245,7 +1245,7 @@ select { cursor: pointer; }
 
       <div id="dishBuilder" style="display:none">
         <div class="card">
-          <div class="section-label" style="margin-bottom:0">Nuevo platillo</div>
+          <div class="section-label" style="margin-bottom:0" id="dishBuilderTitle">Nuevo platillo</div>
           <div class="field">
             <label>Nombre del platillo</label>
             <input type="text" id="dishName" placeholder="Ej: Casado, Ensalada verde…">
@@ -5946,7 +5946,8 @@ async function saveEditTemplate() {
 
 function openDishCtx(btn, dishId) {
   openCtxMenu(btn, [
-    { icon: '🗑', label: 'Eliminar', action: () => deleteDish(dishId), danger: true },
+    { icon: '✏️', label: 'Editar platillo', action: () => openEditDish(dishId) },
+    { icon: '🗑', label: 'Eliminar',         action: () => deleteDish(dishId), danger: true },
   ]);
 }
 
@@ -5960,20 +5961,54 @@ function toggleDishExpand(id) {
 }
 
 // ── Show / hide builder ──
+let _editingDishId = null;
+
 function showDishBuilder() {
+  _editingDishId = null;
   currentDishIngredients = [];
-  document.getElementById('dishName').value = '';
-  document.getElementById('dishNotes').value = '';
+  document.getElementById('dishBuilderTitle').textContent = 'Nuevo platillo';
+  document.getElementById('dishName').value    = '';
+  document.getElementById('dishNotes').value   = '';
+  document.getElementById('dishTotalQty').value   = '';
+  document.getElementById('dishTotalUnit').value  = 'gramos';
+  document.getElementById('dishServingQty').value = '';
+  document.getElementById('dishServingPreview').style.display = 'none';
   document.getElementById('dishIngredientsList').innerHTML = '';
-  document.getElementById('dishTotalsCard').style.display = 'none';
+  document.getElementById('dishTotalsCard').style.display  = 'none';
+  document.getElementById('dishBuilder').style.display     = 'block';
+  document.getElementById('dishesList').style.display      = 'none';
+  document.querySelector('#fsec-platillos .card').style.display = 'none';
+  resetIngForm();
+  populateDishSelect();
+}
+
+function openEditDish(dishId) {
+  const d = dishes.find(d => d.id === dishId);
+  if (!d) return;
+  _editingDishId = dishId;
+
+  // Populate basic fields
+  document.getElementById('dishBuilderTitle').textContent = 'Editar platillo';
+  document.getElementById('dishName').value    = d.name   || '';
+  document.getElementById('dishNotes').value   = d.notes  || '';
+  document.getElementById('dishTotalQty').value   = d.total_qty   || '';
+  document.getElementById('dishTotalUnit').value  = d.total_unit  || 'gramos';
+  document.getElementById('dishServingQty').value = d.serving_qty || '';
+
+  // Load existing ingredients into currentDishIngredients
+  currentDishIngredients = (d.dish_ingredients || []).map(i => ({ ...i }));
+  renderDishIngredientsList();
+  updateDishTotals();
+
   document.getElementById('dishBuilder').style.display = 'block';
-  document.getElementById('dishesList').style.display = 'none';
+  document.getElementById('dishesList').style.display  = 'none';
   document.querySelector('#fsec-platillos .card').style.display = 'none';
   resetIngForm();
   populateDishSelect();
 }
 
 function cancelDishBuilder() {
+  _editingDishId = null;
   document.getElementById('dishBuilder').style.display = 'none';
   document.getElementById('dishesList').style.display = 'block';
   document.querySelector('#fsec-platillos .card').style.display = 'flex';
@@ -6169,17 +6204,21 @@ function removeIngredient(idx) {
   updateDishTotals();
 }
 
-function renderDishIngredients() {
+function renderDishIngredients() { renderDishIngredientsList(); }
+function renderDishIngredientsList() {
   const list = document.getElementById('dishIngredientsList');
   if (!currentDishIngredients.length) { list.innerHTML = ''; return; }
-  list.innerHTML = currentDishIngredients.map((ing, i) => `
+  list.innerHTML = currentDishIngredients.map((ing, i) => {
+    const displayName = ing._displayName || ing.food_name || ing.sub_dish_name || '—';
+    return `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px">
       <div style="flex:1;min-width:0">
-        <div style="font-family:var(--font-display);font-size:14px;color:var(--text)">${ing._displayName}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${ing.quantity} ${ing.unit} · ${Math.round(ing.calories)} kcal · P:${ing.protein_g}g C:${ing.carbs_g}g G:${ing.fat_g}g</div>
+        <div style="font-family:var(--font-display);font-size:14px;color:var(--text)">${displayName}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${ing.quantity} ${ing.unit} · ${Math.round(ing.calories||0)} kcal · P:${(ing.protein_g||0).toFixed(1)}g C:${(ing.carbs_g||0).toFixed(1)}g G:${(ing.fat_g||0).toFixed(1)}g</div>
       </div>
       <button onclick="removeIngredient(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;opacity:0.7">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function updateDishTotals() {
@@ -6227,7 +6266,7 @@ function resetIngForm() {
   document.getElementById('ingDishSelect').value = '';
 }
 
-// ── Save dish ──
+// ── Save dish (create or edit) ──
 async function saveDish() {
   const name = document.getElementById('dishName').value.trim();
   const notes = document.getElementById('dishNotes').value.trim();
@@ -6238,15 +6277,32 @@ async function saveDish() {
   const totalUnit  = document.getElementById('dishTotalUnit')?.value || 'gramos';
   const servingQty = parseFloat(document.getElementById('dishServingQty')?.value) || null;
 
-  // Insert dish
-  const { data: dish, error: dishErr } = await sb.from('dishes')
-    .insert({ user_id: currentUser.id, name, notes, total_qty: totalQty, total_unit: totalUnit, serving_qty: servingQty })
-    .select().single();
-  if (dishErr) { showToast('Error al guardar', true); return; }
+  const dishPayload = { name, notes, total_qty: totalQty, total_unit: totalUnit, serving_qty: servingQty };
+
+  let dishId;
+
+  if (_editingDishId) {
+    // ── UPDATE existing dish ──
+    const { error: updErr } = await sb.from('dishes')
+      .update(dishPayload)
+      .eq('id', _editingDishId)
+      .eq('user_id', currentUser.id);
+    if (updErr) { showToast('Error al guardar', true); return; }
+    // Delete old ingredients and re-insert
+    await sb.from('dish_ingredients').delete().eq('dish_id', _editingDishId);
+    dishId = _editingDishId;
+  } else {
+    // ── INSERT new dish ──
+    const { data: dish, error: dishErr } = await sb.from('dishes')
+      .insert({ user_id: currentUser.id, ...dishPayload })
+      .select().single();
+    if (dishErr) { showToast('Error al guardar', true); return; }
+    dishId = dish.id;
+  }
 
   // Insert ingredients
   const ings = currentDishIngredients.map((ing, i) => ({
-    dish_id: dish.id, user_id: currentUser.id,
+    dish_id: dishId, user_id: currentUser.id,
     ingredient_type: ing.ingredient_type,
     food_name: ing.food_name,
     sub_dish_id: ing.sub_dish_id,
@@ -6260,7 +6316,7 @@ async function saveDish() {
   const { error: ingErr } = await sb.from('dish_ingredients').insert(ings);
   if (ingErr) { showToast('Error al guardar ingredientes', true); return; }
 
-  showToast(`✓ "${name}" guardado`);
+  showToast(`✓ "${name}" ${_editingDishId ? 'actualizado' : 'guardado'}`);
   await loadDishes();
   renderDishesList();
   cancelDishBuilder();
