@@ -6359,7 +6359,8 @@ async function saveDish() {
     sub_dish_name: ing.sub_dish_name,
     quantity: ing.quantity, unit: ing.unit,
     calories: ing.calories, protein_g: ing.protein_g,
-    carbs_g: ing.carbs_g, fat_g: ing.fat_g, fiber_g: ing.fiber_g,
+    carbs_g: ing.carbs_g, fat_g: ing.fat_g,
+    fiber_g: ing.fiber_g || 0, sugar_g: ing.sugar_g || 0,
     sort_order: i,
   }));
 
