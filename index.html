@@ -3460,17 +3460,28 @@ async function loadEntries() {
 
 // Lazy-load entries for a specific date if not already in memory
 async function ensureEntriesForDate(dateStr) {
-  const already = entries.some(e => e.log_date === dateStr);
-  if (already) return;
+  // Always fetch from Supabase — memory may be incomplete (other sessions, late inserts)
   const { data } = await sb.from('food_log').select('*')
     .eq('user_id', currentUser.id)
     .eq('log_date', dateStr)
     .order('logged_at', { ascending: true });
-  if (data && data.length) {
-    entries.push(...data);
+
+  if (!data || !data.length) return;
+
+  // Merge: add entries not already in memory (by id)
+  const existingIds = new Set(entries.map(e => e.id));
+  const newEntries  = data.filter(e => !existingIds.has(e.id));
+  if (newEntries.length) {
+    entries.push(...newEntries);
     entries.sort((a, b) => (a.logged_at || '').localeCompare(b.logged_at || ''));
     attachDishIngredients();
   }
+
+  // Also update any existing entries for this date in case they were edited elsewhere
+  data.forEach(fresh => {
+    const idx = entries.findIndex(e => e.id === fresh.id);
+    if (idx !== -1) entries[idx] = { ...entries[idx], ...fresh };
+  });
 }
 
 // Attach dish ingredients to entries — called after both entries and dishes are loaded
