@@ -3425,7 +3425,7 @@ async function confirmAndSaveEntry() {
   const statsPage = document.getElementById('page-stats');
   if (statsPage && statsPage.style.display !== 'none') {
     await refreshStatsData();
-    renderStatsAll();
+    renderStats();
   }
 
   // Suggest saving as custom food if not in any DB
