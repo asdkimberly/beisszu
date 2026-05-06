@@ -4012,8 +4012,20 @@ async function saveBurnedCalsFromVisible(val) {
 
 // Open food sheet pre-selecting a meal type
 function openFoodForMeal(mealType) {
+  // Pre-set date to the carousel day the user is viewing
+  const carouselDate = carouselDays[carouselIndex];
+  const today        = getTodayDate();
+  selectedFoodDate   = carouselDate && carouselDate !== today ? carouselDate : null;
+
   openBS('bsFood');
-  setTimeout(() => selectMealByName(mealType), 100);
+
+  // Update the date button to reflect the pre-set date
+  requestAnimationFrame(() => {
+    const input = document.getElementById('foodDateInput');
+    if (input && selectedFoodDate) input.value = selectedFoodDate;
+    onFoodDateChange(selectedFoodDate);
+    selectMealByName(mealType);
+  });
 }
 
 // Open dish picker and pre-select meal
@@ -9213,8 +9225,17 @@ function renderHydDonuts() {
 
 // ══ FAB ══
 function openRegisterSheet() {
+  // Pre-set date to the carousel day being viewed
+  const carouselDate = carouselDays[carouselIndex];
+  const today        = getTodayDate();
+  selectedFoodDate   = carouselDate && carouselDate !== today ? carouselDate : null;
   renderRegisterHub();
   openBS('bsRegister');
+  requestAnimationFrame(() => {
+    const input = document.getElementById('foodDateInput');
+    if (input) input.value = selectedFoodDate || '';
+    onFoodDateChange(selectedFoodDate);
+  });
 }
 
 function getCurrentMealType() {
