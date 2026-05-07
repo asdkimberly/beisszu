@@ -1,3 +1,3 @@
 # beisszu
 
-Beisszu se encuentra temporalmente fuera de servicio
+Beisszu se encuentra temporalmente fuera de servicio. Agradecemos su paciencia.
