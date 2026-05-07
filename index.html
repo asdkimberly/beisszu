@@ -1,1337 +1,2229 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#412402">
-<title>Bananísimo · Gestión</title>
-<link rel="manifest" href="manifest.json">
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0e110a" id="themeColorMeta">
+  <title>Beiß zu · Registro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-:root{
-  --cacao:#412402;--dorado:#BA7517;--banano:#EF9F27;
-  --crema:#FAEEDA;--crema-dark:#f0e0c0;--hoja:#3B6D11;--rojo:#c0392b;--amarillo:#d4a017;
-  --bg:#f5f0e8;--white:#fff;--text:#2C2C2A;--text-muted:#888780;
-  --border:rgba(44,44,42,0.12);--border-strong:rgba(44,44,42,0.22);
-  --radius:14px;--radius-sm:9px;
+/* ══════════════════════════════════════════
+   DARK MODE (default)
+══════════════════════════════════════════ */
+:root {
+  --bg:       #0e110a;
+  --surface:  #161a10;
+  --surface2: #1e2416;
+  --border:   #2c3420;
+  --accent:   #a8c060;
+  --accent2:  #d4a840;
+  --warn:     #e07840;
+  --text:     #e8e8d0;
+  --text2:    #b8c0a0;
+  --muted:    #7a8460;
+  --font-display: 'Outfit', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+  --r: 14px;
+  --nav-h: 68px;
 }
-body{font-family:'Quicksand',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;max-width:430px;margin:0 auto;padding-bottom:80px;}
-.topbar{background:var(--cacao);padding:14px 18px 12px;position:sticky;top:0;z-index:100;}
-.topbar-row{display:flex;align-items:center;justify-content:space-between;}
-.logo{font-size:20px;font-weight:700;color:var(--banano);}
-.logo span{color:var(--crema);}
-.cycle-pill{background:rgba(239,159,39,0.18);border:0.5px solid rgba(239,159,39,0.35);color:var(--banano);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:0.06em;text-transform:uppercase;}
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--white);border-top:0.5px solid var(--border-strong);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom);}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;background:none;border:none;cursor:pointer;color:var(--text-muted);font-family:'Quicksand',sans-serif;font-size:9px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;transition:color 0.15s;position:relative;}
-.nav-btn.active{color:var(--dorado);}
-.nav-btn svg{width:20px;height:20px;}
-.nav-badge{position:absolute;top:6px;right:calc(50% - 16px);background:var(--rojo);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;}
-.screen{display:none;padding:16px;}.screen.active{display:block;}
-.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px;transition:opacity 0.3s;}
-.loading-overlay.hidden{opacity:0;pointer-events:none;}
-.loading-logo{font-size:28px;font-weight:700;color:var(--cacao);}
-.loading-logo span{color:var(--dorado);}
-.loading-sub{font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;}
-.spinner{width:28px;height:28px;border:3px solid var(--crema-dark);border-top-color:var(--dorado);border-radius:50%;animation:spin 0.8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.error-banner{background:#fff3cd;border:0.5px solid #ffc107;border-radius:var(--radius-sm);padding:12px 14px;margin:0 0 12px;font-size:13px;color:#664d03;font-weight:600;display:none;line-height:1.5;}
-.error-banner.show{display:block;}
-/* CONFIG */
-.config-card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius);padding:20px;margin:16px;}
-.config-title{font-size:18px;font-weight:700;color:var(--cacao);margin-bottom:6px;}
-.config-sub{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:18px;}
-.config-label{display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
-.config-input{width:100%;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:11px 13px;font-family:'Quicksand',sans-serif;font-size:13px;font-weight:600;color:var(--text);background:var(--white);outline:none;margin-bottom:14px;transition:border-color 0.15s;}
-.config-input:focus{border-color:var(--dorado);}
-.config-note{background:var(--crema);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--cacao);line-height:1.65;margin-bottom:16px;}
-/* CARDS */
-.card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;}
-.sec-label{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:block;}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-.stat-card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;}
-.stat-val{font-size:24px;font-weight:700;color:var(--cacao);line-height:1;margin-bottom:3px;}
-.stat-label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;}
-.stat-sub{font-size:11px;color:var(--dorado);font-weight:600;margin-top:2px;}
-/* WEEK HEADER */
-.week-header{background:var(--cacao);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;}
-.wh-label{font-size:11px;color:var(--banano);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px;}
-.wh-title{font-size:16px;font-weight:700;color:var(--crema);}
-.nav-arrow{background:rgba(255,255,255,0.14);border:0.5px solid rgba(255,255,255,0.25);color:var(--crema);border-radius:8px;width:34px;height:34px;font-size:18px;cursor:pointer;font-family:monospace;}
-.nav-arrow:disabled{opacity:0.25;cursor:default;}
-/* CAPACITY */
-.capacity-bar-wrap{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;}
-.cap-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-.cap-label{font-size:13px;font-weight:700;color:var(--cacao);}
-.cap-count{font-size:22px;font-weight:700;color:var(--cacao);}
-.cap-count span{font-size:13px;color:var(--text-muted);font-weight:500;}
-.bar-track{background:#F1EFE8;border-radius:20px;height:10px;overflow:hidden;}
-.bar-fill{height:100%;border-radius:20px;background:var(--dorado);transition:width 0.5s;}
-.bar-fill.warn{background:var(--rojo);}
-.bar-slots{display:flex;gap:6px;margin-top:10px;}
-.slot{flex:1;height:6px;border-radius:3px;background:#F1EFE8;}
-.slot.used{background:var(--dorado);}
-.slot.used.warn{background:var(--rojo);}
-/* STAGE PIPELINE */
-.stage-track{display:flex;align-items:center;gap:0;margin-bottom:14px;overflow-x:auto;padding:2px 0;}
-.stage-track::-webkit-scrollbar{display:none;}
-.stage-step{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
-.stage-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border-strong);background:var(--white);display:flex;align-items:center;justify-content:center;font-size:12px;position:relative;z-index:1;}
-.stage-dot.done{background:var(--hoja);border-color:var(--hoja);color:#fff;}
-.stage-dot.current{background:var(--dorado);border-color:var(--dorado);color:#fff;}
-.stage-dot.cancelled{background:var(--rojo);border-color:var(--rojo);color:#fff;}
-.stage-name{font-size:9px;font-weight:700;color:var(--text-muted);margin-top:4px;text-align:center;max-width:44px;letter-spacing:0.03em;}
-.stage-name.done{color:var(--hoja);}
-.stage-name.current{color:var(--dorado);}
-.stage-name.cancelled{color:var(--rojo);}
-.stage-line{flex:1;height:2px;background:#F1EFE8;min-width:12px;}
-.stage-line.done{background:var(--hoja);}
-/* ORDER CARDS */
-.order-card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;}
-.order-card:active{background:var(--crema);}
-.order-card-top{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;}
-.order-avatar{width:38px;height:38px;border-radius:50%;background:var(--crema);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--cacao);flex-shrink:0;border:0.5px solid var(--border);}
-.order-body{flex:1;min-width:0;}
-.order-name{font-size:14px;font-weight:700;color:var(--cacao);margin-bottom:2px;}
-.order-detail{font-size:12px;color:var(--text-muted);margin-bottom:5px;}
-.order-tags{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
-.order-price{font-size:15px;font-weight:700;color:var(--cacao);flex-shrink:0;padding-top:2px;}
-.tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:0.05em;}
-.tag-recibido{background:#e8f4fd;color:#1a5276;}
-.tag-horneado{background:#fef9e7;color:#7d6608;}
-.tag-enfriado{background:#eaf2ff;color:#1a3a6b;}
-.tag-empacado{background:#f0e6ff;color:#6c3483;}
-.tag-entregado{background:#d5f5e3;color:#1e8449;}
-.tag-cancelado{background:#fde8e8;color:#922b21;}
-.tag-pagado{background:#d5f5e3;color:#1e8449;}
-.tag-parcial{background:#fef9e7;color:#7d6608;}
-.tag-sinpago{background:#fde8e8;color:#922b21;}
-.tag-prod{background:var(--crema);color:var(--cacao);}
-.order-cycle-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--cacao);color:var(--banano);margin-left:4px;}
-/* MINI STAGE IN CARD */
-.mini-stage{display:flex;align-items:center;gap:3px;}
-.mini-dot{width:8px;height:8px;border-radius:50%;background:#F1EFE8;flex-shrink:0;}
-.mini-dot.done{background:var(--hoja);}
-.mini-dot.current{background:var(--dorado);}
-.mini-dot.cancelled{background:var(--rojo);}
-.mini-line{flex:1;height:1.5px;background:#F1EFE8;min-width:6px;}
-.mini-line.done{background:var(--hoja);}
-/* FORM */
-.form-card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;}
-.form-title{font-size:17px;font-weight:700;color:var(--cacao);margin-bottom:16px;}
-.form-group{margin-bottom:14px;}
-.form-label{display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
-.form-input{width:100%;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:11px 13px;font-family:'Quicksand',sans-serif;font-size:14px;font-weight:600;color:var(--text);background:var(--white);outline:none;transition:border-color 0.15s;-webkit-appearance:none;}
-.form-input:focus{border-color:var(--dorado);}
-select.form-input{cursor:pointer;}
-.qty-row{display:flex;align-items:center;gap:12px;}
-.qty-btn{width:40px;height:40px;border-radius:50%;background:var(--crema);border:0.5px solid var(--border-strong);font-size:22px;font-weight:700;color:var(--cacao);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.qty-btn:active{background:var(--crema-dark);}
-.qty-display{font-size:24px;font-weight:700;color:var(--cacao);min-width:32px;text-align:center;}
-.btn-primary{width:100%;background:var(--cacao);color:var(--banano);border:none;border-radius:var(--radius-sm);padding:14px;font-family:'Quicksand',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:opacity 0.15s;display:flex;align-items:center;justify-content:center;gap:8px;}
-.btn-primary:disabled{opacity:0.6;cursor:not-allowed;}
-/* FILTERS */
-.filter-row{display:flex;gap:7px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;}
-.filter-row::-webkit-scrollbar{display:none;}
-.filter-chip{flex-shrink:0;font-family:'Quicksand',sans-serif;font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;border:0.5px solid var(--border-strong);background:var(--white);color:var(--text-muted);cursor:pointer;text-transform:uppercase;letter-spacing:0.05em;}
-.filter-chip.active{background:var(--cacao);color:var(--banano);border-color:var(--cacao);}
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(65,36,2,0.55);z-index:200;display:none;align-items:flex-end;justify-content:center;}
-.modal-overlay.open{display:flex;}
-.modal-sheet{background:var(--white);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-width:430px;max-height:92dvh;overflow-y:auto;}
-.modal-handle{width:40px;height:4px;background:#D3D1C7;border-radius:2px;margin:0 auto 18px;}
-.modal-title{font-size:20px;font-weight:700;color:var(--cacao);margin-bottom:4px;}
-.modal-sub{font-size:13px;color:var(--text-muted);margin-bottom:18px;}
-.modal-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid #F1EFE8;}
-.modal-row:last-of-type{border-bottom:none;}
-.modal-row-label{font-size:13px;color:var(--text-muted);font-weight:600;}
-.modal-row-val{font-size:13px;font-weight:700;color:var(--cacao);text-align:right;max-width:60%;}
-.modal-actions{display:flex;flex-direction:column;gap:8px;margin-top:18px;}
-.btn-status{width:100%;padding:13px;border-radius:var(--radius-sm);font-family:'Quicksand',sans-serif;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:opacity 0.15s;}
-.btn-status:active{opacity:0.8;}
-.btn-status:disabled{opacity:0.5;cursor:not-allowed;}
-.btn-next{background:var(--cacao);color:var(--banano);}
-.btn-edit{background:var(--crema);color:var(--cacao);border:0.5px solid var(--border-strong)!important;}
-.btn-cancel-stage{background:#fde8e8;color:#922b21;}
-.btn-danger{background:transparent;color:#999;border:0.5px solid #ddd;font-size:12px;padding:10px;}
-.btn-close-modal{background:transparent;color:var(--text-muted);border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:12px;font-family:'Quicksand',sans-serif;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-top:4px;}
-/* STAGE SELECTOR en modal */
-.stage-selector{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;}
-.stage-opt{padding:9px 4px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--white);font-family:'Quicksand',sans-serif;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;text-align:center;text-transform:uppercase;letter-spacing:0.04em;transition:all 0.15s;}
-.stage-opt.active{border-width:1.5px;}
-/* TOAST */
-.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--cacao);color:var(--crema);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:300;white-space:nowrap;opacity:0;transition:opacity 0.2s;pointer-events:none;}
-.toast.show{opacity:1;}
-/* EMPTY */
-.empty-state{text-align:center;padding:40px 20px;color:var(--text-muted);}
-.empty-state .e-icon{font-size:40px;margin-bottom:12px;}
-.empty-state .e-title{font-size:16px;font-weight:700;color:var(--cacao);margin-bottom:6px;}
-.empty-state .e-text{font-size:13px;line-height:1.6;}
-/* STOCK */
-.ing-card{background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;}
-.ing-card:active{background:var(--crema);}
-.ing-card.status-critico{border-left:3px solid var(--rojo);}
-.ing-card.status-alerta{border-left:3px solid var(--amarillo);}
-.ing-card.status-ok{border-left:3px solid var(--hoja);}
-.ing-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
-.ing-name{font-size:14px;font-weight:700;color:var(--cacao);}
-.ing-meta{font-size:11px;color:var(--text-muted);margin-top:1px;}
-.ing-stock-val{font-size:16px;font-weight:700;text-align:right;}
-.ing-stock-val.critico{color:var(--rojo);}
-.ing-stock-val.alerta{color:var(--amarillo);}
-.ing-stock-val.ok{color:var(--hoja);}
-.ing-bar-track{background:#F1EFE8;border-radius:20px;height:6px;overflow:hidden;margin-bottom:5px;}
-.ing-bar-fill{height:100%;border-radius:20px;transition:width 0.4s;}
-.ing-bar-fill.critico{background:var(--rojo);}
-.ing-bar-fill.alerta{background:var(--amarillo);}
-.ing-bar-fill.ok{background:var(--hoja);}
-.ing-bottom{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);font-weight:600;}
-.alert-banner{background:#fdecea;border:0.5px solid #f5c6cb;border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:12px;cursor:pointer;}
-.alert-banner-title{font-size:13px;font-weight:700;color:var(--rojo);margin-bottom:4px;}
-.alert-banner-text{font-size:12px;color:#721c24;line-height:1.5;}
-/* PAGOS */
-.pago-progress{background:#F1EFE8;border-radius:20px;height:8px;overflow:hidden;margin:10px 0 4px;}
-.pago-fill{height:100%;border-radius:20px;background:var(--hoja);transition:width 0.4s;}
-.payment-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid #F1EFE8;}
-.payment-row:last-child{border-bottom:none;}
-.payment-method{font-size:12px;font-weight:700;color:var(--cacao);}
-.payment-amount{font-size:14px;font-weight:700;color:var(--hoja);}
-.payment-date{font-size:11px;color:var(--text-muted);}
-.method-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-.method-pill{flex:1;min-width:80px;padding:9px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--white);font-family:'Quicksand',sans-serif;font-size:13px;font-weight:700;color:var(--text-muted);cursor:pointer;text-align:center;}
-.method-pill.active{background:var(--cacao);color:var(--banano);border-color:var(--cacao);}
-/* FINANCE */
-.finance-header{background:linear-gradient(135deg,#2c1a08,var(--cacao));border-radius:var(--radius);padding:18px;margin-bottom:14px;}
-.finance-main-val{font-size:32px;font-weight:700;color:var(--banano);line-height:1;}
-.finance-main-label{font-size:11px;color:rgba(250,238,218,0.7);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;}
-.finance-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid #F1EFE8;}
-.finance-row:last-child{border-bottom:none;}
-.finance-row-label{font-size:13px;color:var(--text-muted);font-weight:600;}
-.finance-row-val{font-size:14px;font-weight:700;}
-.finance-row-val.green{color:var(--hoja);}
-.finance-row-val.red{color:var(--rojo);}
-.order-finance-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;cursor:pointer;}
-.order-finance-row:active{background:var(--crema);}
-.ofr-name{font-size:13px;font-weight:700;color:var(--cacao);}
-.ofr-detail{font-size:11px;color:var(--text-muted);margin-top:2px;}
-.ofr-right{text-align:right;}
-.ofr-ganancia{font-size:14px;font-weight:700;}
-.ofr-ganancia.pos{color:var(--hoja);}
-.ofr-ganancia.neg{color:var(--rojo);}
-.progress-bar-wrap{background:#F1EFE8;border-radius:20px;height:8px;overflow:hidden;margin:6px 0;}
-.progress-bar-fill{height:100%;border-radius:20px;transition:width 0.4s;}
-/* VIEW TABS */
-.view-tabs{display:flex;gap:6px;margin-bottom:14px;}
-.view-tab{flex:1;padding:8px 4px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--white);font-family:'Quicksand',sans-serif;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;text-align:center;text-transform:uppercase;letter-spacing:0.05em;}
-.view-tab.active{background:var(--cacao);color:var(--banano);border-color:var(--cacao);}
+
+/* ══════════════════════════════════════════
+   LIGHT MODE
+══════════════════════════════════════════ */
+[data-theme="light"] {
+  --bg:       #f4f6f0;
+  --surface:  #ffffff;
+  --surface2: #eef0ea;
+  --border:   #d4d8c8;
+  --accent:   #6a9020;
+  --accent2:  #b08010;
+  --warn:     #c05820;
+  --text:     #1e2414;
+  --text2:    #4a5430;
+  --muted:    #7a8460;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  font-size: 15px;
+  transition: background 0.25s, color 0.25s;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(168,192,96,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168,192,96,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+[data-theme="light"] body::before { opacity: 0.4; }
+
+/* ══ APP SHELL ══ */
+.app {
+  position: relative; z-index: 1;
+  max-width: 480px; margin: 0 auto;
+  min-height: 100dvh;
+  display: flex; flex-direction: column;
+}
+
+/* ══ HEADER ══ */
+.header {
+  padding: 16px 20px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg);
+  position: sticky; top: 0; z-index: 10;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo { display: flex; align-items: center; gap: 10px; }
+
+.logo-dot {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+
+.logo-text {
+  font-family: var(--font-display);
+  font-weight: 300; font-size: 20px;
+  letter-spacing: 0.5px; color: var(--text);
+}
+.logo-text span { color: var(--accent); }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.time-badge {
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 20px;
+}
+
+.theme-toggle {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px;
+  transition: all 0.2s;
+}
+.theme-toggle:active { transform: scale(0.92); }
+
+/* ══ PAGES ══ */
+.page {
+  display: none; flex: 1;
+  padding: 16px 20px calc(var(--nav-h) + 20px);
+  flex-direction: column; gap: 14px;
+  overflow-y: auto;
+}
+.page.active { display: flex; }
+#page-home {
+  gap: 0;
+  padding-top: 8px;
+}
+
+/* ══ BOTTOM NAV ══ */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  height: var(--nav-h);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  z-index: 20;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-btn {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer;
+  background: none; border: none;
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 10px; font-weight: 400;
+  letter-spacing: 0.3px;
+  transition: color 0.18s;
+  padding: 8px 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-btn .nav-icon {
+  font-size: 22px; line-height: 1;
+  transition: transform 0.18s;
+}
+
+.nav-btn.active { color: var(--accent); }
+.nav-btn.active .nav-icon { transform: scale(1.1); }
+
+/* ══ SECTION LABEL ══ */
+.section-label {
+  font-size: 11px; letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted); margin-bottom: 6px;
+}
+
+/* ══ CARD ══ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* ══ OFFLINE BANNER ══ */
+.offline-banner {
+  display: none; background: rgba(224,120,64,0.12);
+  border: 1px solid rgba(224,120,64,0.3);
+  border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; color: var(--warn);
+  align-items: center; gap: 8px;
+}
+.offline-banner.show { display: flex; }
+
+/* ══ MEAL GRID ══ */
+.meal-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+
+.meal-btn {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px 4px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 5px;
+  cursor: pointer; transition: all 0.18s;
+  color: var(--text2);
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 400;
+  min-height: 64px;
+}
+.meal-btn .emoji { font-size: 22px; }
+.meal-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(168,192,96,0.08);
+}
+
+/* ══ ORIGIN TOGGLE ══ */
+.origin-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.origin-btn {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px 8px;
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 400;
+  color: var(--text2); cursor: pointer;
+  transition: all 0.18s; text-align: center;
+}
+.origin-btn.active {
+  border-color: var(--accent2); color: var(--accent2);
+  background: rgba(212,168,64,0.08);
+}
+
+/* ══ FIELDS ══ */
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+label {
+  font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted);
+}
+
+input, select, textarea {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+  color: var(--text);
+  font-family: var(--font-mono); font-size: 15px;
+  width: 100%; outline: none;
+  transition: border-color 0.18s;
+  -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+}
+input::placeholder { color: var(--muted); }
+select { cursor: pointer; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+/* ══ MACRO INPUT ══ */
+.macro-input {
+  display: flex; flex-direction: column; gap: 4px;
+  position: relative;
+}
+.macro-input label { font-size: 10px; }
+.macro-unit {
+  position: absolute; right: 10px; bottom: 12px;
+  font-size: 11px; color: var(--muted);
+}
+.macro-input input { padding-right: 28px; }
+
+/* ══ FOOD SEARCH ══ */
+.food-search-wrap { position: relative; }
+
+.food-dropdown {
+  display: none; position: absolute;
+  top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface2);
+  border: 1.5px solid var(--accent);
+  border-radius: 12px; z-index: 100;
+  max-height: 240px; overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.food-dropdown.show { display: block; }
+
+.food-option {
+  padding: 12px 14px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.food-option:last-child { border-bottom: none; }
+.food-option:active { background: rgba(168,192,96,0.1); }
+
+.food-option-name {
+  font-family: var(--font-display); font-size: 14px;
+  font-weight: 400; color: var(--text);
+}
+.food-option-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.food-option-cal { font-size: 12px; color: var(--accent); font-weight: 500; }
+
+/* ══ AUTOFILL BADGE ══ */
+.autofill-badge {
+  background: rgba(168,192,96,0.08);
+  border: 1px solid rgba(168,192,96,0.25);
+  border-radius: 8px; padding: 10px 12px;
+  font-size: 12px; color: var(--accent);
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+.autofill-badge button {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 14px; padding: 0 4px;
+}
+
+/* ══ BUTTONS ══ */
+.btn-primary {
+  background: var(--accent); color: #0e110a;
+  border: none; border-radius: var(--r);
+  padding: 15px 20px;
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; width: 100%;
+  transition: opacity 0.18s;
+  letter-spacing: 0.3px;
+}
+.btn-primary:active { opacity: 0.85; }
+
+.save-settings-btn {
+  background: var(--accent); color: #0e110a;
+  border: none; border-radius: var(--r);
+  padding: 14px; font-family: var(--font-display);
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; width: 100%;
+}
+
+/* ══ CAL DISPLAY ══ */
+.cal-display {
+  text-align: center; padding: 10px;
+  background: rgba(168,192,96,0.06);
+  border-radius: 10px;
+  font-family: var(--font-display);
+}
+.cal-number { font-size: 28px; font-weight: 300; color: var(--accent); }
+.cal-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+
+/* ══ SUMMARY CARDS ══ */
+/* ══ HOME — DAY SUMMARY CARD ══ */
+.day-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 8px;
+}
+.day-card-hero {
+  display: flex; align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.day-hero-cal {
+  font-family: var(--font-display);
+  font-size: 42px; font-weight: 300;
+  color: var(--text); line-height: 1;
+}
+.day-hero-sub {
+  font-size: 11px; color: var(--muted); margin-top: 3px;
+}
+.day-cal-bar {
+  height: 4px; border-radius: 2px;
+  background: var(--border); margin-bottom: 12px;
+}
+.day-cal-fill {
+  height: 100%; border-radius: 2px;
+  transition: width 0.4s ease;
+}
+/* Macro rings row */
+.macro-rings {
+  display: flex; justify-content: space-between;
+  gap: 4px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.macro-ring {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 3px; flex: 1;
+}
+.macro-ring-val {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 500; color: var(--text);
+}
+.macro-ring-lbl {
+  font-size: 9px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+/* Day meta row (burn, supp) */
+.day-meta-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  font-size: 11px; color: var(--muted);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+.day-meta-row:last-child { border-bottom: none; }
+/* Inline note */
+.day-note-inline {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0 0;
+  font-size: 13px; color: var(--text2);
+  cursor: text;
+}
+.day-note-inline input {
+  flex: 1; background: transparent; border: none;
+  outline: none; font-family: var(--font-display);
+  font-size: 13px; color: var(--text2);
+}
+.day-note-inline input::placeholder { color: var(--muted); }
+
+/* ══ HOME — MEAL GROUP REDESIGN ══ */
+.meal-group-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 6px;
+}
+.meal-group-title {
+  font-size: 11px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  font-family: var(--font-display);
+}
+.meal-group-total {
+  font-size: 11px; color: var(--muted);
+}
+/* Empty meal slot */
+.meal-empty-slot {
+  border: 1.5px dashed var(--border);
+  border-radius: 12px; padding: 10px 14px;
+  margin-bottom: 8px;
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+.meal-empty-actions {
+  display: flex; gap: 6px;
+}
+.meal-quick-btn {
+  padding: 5px 10px; border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  font-family: var(--font-display);
+  font-size: 11px; color: var(--text2);
+  cursor: pointer; white-space: nowrap;
+}
+.meal-quick-btn:active { background: var(--accent); color: #0e110a; border-color: var(--accent); }
+/* Add-to-meal button */
+.meal-add-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 6px;
+  border: none; background: none;
+  font-size: 11px; color: var(--muted);
+  cursor: pointer; border-radius: 8px;
+  font-family: var(--font-display);
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+.meal-add-btn:active { background: var(--surface2); }
+/* Template badge on log items */
+.tmpl-badge {
+  font-size: 9px; padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(155,89,182,0.15);
+  color: #9b59b6;
+  font-family: var(--font-display);
+  vertical-align: middle;
+  margin-left: 4px;
+}
+/* Compact log item (for simple foods) */
+.log-item-compact {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.log-item-compact:last-of-type { border-bottom: none; }
+
+.summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.summary-card-label {
+  font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+}
+.summary-card-value {
+  font-size: 22px; font-weight: 300;
+  color: var(--text); font-family: var(--font-display);
+}
+.summary-card-unit { font-size: 11px; color: var(--muted); }
+
+/* ══ PROGRESS BARS ══ */
+.progress-item { display: flex; flex-direction: column; gap: 6px; }
+.progress-header { display: flex; justify-content: space-between; align-items: baseline; }
+.progress-label { font-size: 12px; color: var(--text2); }
+.progress-value { font-size: 11px; color: var(--muted); }
+.progress-bar {
+  height: 6px; background: var(--surface2);
+  border-radius: 3px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+  max-width: 100%;
+}
+.progress-fill.over { background: var(--warn); }
+
+/* ══ LOG ITEMS ══ */
+.log-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+  animation: slideIn 0.2s ease;
+}
+.log-item-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.log-item-name {
+  font-family: var(--font-display); font-size: 15px;
+  font-weight: 400; color: var(--text); flex: 1;
+}
+.log-item-cal {
+  font-family: var(--font-display); font-size: 14px;
+  font-weight: 500; color: var(--accent);
+}
+.log-item-meta { font-size: 12px; color: var(--muted); }
+.log-item-delete {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 16px; padding: 0 0 0 8px;
+  opacity: 0.6; transition: opacity 0.18s;
+}
+.log-item-delete:active { opacity: 1; color: var(--warn); }
+
+/* ── Context menu ── */
+.ctx-menu {
+  position: fixed;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  padding: 6px;
+  z-index: 9999;
+  min-width: 190px;
+  animation: fadeIn 0.12s ease;
+}
+.ctx-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s;
+}
+.ctx-menu-item:hover, .ctx-menu-item:active { background: var(--surface3, var(--border)); }
+.ctx-menu-item.danger { color: var(--warn); }
+.ctx-menu-divider {
+  height: 1px; background: var(--border);
+  margin: 4px 6px;
+}
+.ctx-btn {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 18px; padding: 2px 6px;
+  opacity: 0.6; transition: opacity 0.15s;
+  line-height: 1; border-radius: 6px;
+  flex-shrink: 0;
+}
+.ctx-btn:active { opacity: 1; background: var(--border); }
+
+.hyd-log-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 16px;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  animation: slideIn 0.2s ease;
+}
+
+/* ══ HISTORY ══ */
+.history-date {
+  font-size: 11px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  padding: 4px 0; border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.history-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+
+/* ══ FOOD LIST ══ */
+.food-list-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+  margin-bottom: 8px;
+  animation: slideIn 0.2s ease;
+  transition: border-color 0.18s;
+}
+.food-list-item.editing { border-color: var(--accent); }
+.food-list-row { display: flex; align-items: center; gap: 10px; }
+.food-list-name { font-family: var(--font-display); font-size: 14px; color: var(--text); }
+.food-list-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.food-list-cal { font-size: 13px; color: var(--accent); font-weight: 500; white-space: nowrap; }
+.food-list-actions { display: flex; gap: 6px; }
+.food-edit-btn, .food-delete-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; padding: 4px; opacity: 0.7;
+  transition: opacity 0.18s;
+}
+.food-edit-btn:active, .food-delete-btn:active { opacity: 1; }
+.food-edit-form { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.food-edit-actions { display: flex; gap: 8px; }
+.btn-cancel-edit {
+  flex: 1; padding: 10px; border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted);
+  font-family: var(--font-mono); font-size: 13px; cursor: pointer;
+}
+.btn-save-edit {
+  flex: 1; padding: 10px; border-radius: 10px;
+  border: none; background: var(--accent);
+  color: #0e110a; font-family: var(--font-mono);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+}
+
+/* ══ DRINK TYPES ══ */
+.drink-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.drink-type-btn {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px 6px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 5px;
+  cursor: pointer; transition: all 0.18s;
+  color: var(--text2);
+  font-family: var(--font-display);
+  font-size: 12px; min-height: 64px;
+}
+.drink-type-btn .d-icon { font-size: 22px; }
+.drink-type-btn.active {
+  border-color: #4a90d9; color: #4a90d9;
+  background: rgba(74,144,217,0.08);
+}
+
+.quick-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.quick-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 12px;
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--text2); cursor: pointer;
+  transition: all 0.15s;
+}
+.quick-btn:active { border-color: var(--accent); color: var(--accent); }
+
+.count-control {
+  display: flex; align-items: center; gap: 16px;
+}
+.count-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  font-size: 20px; color: var(--text2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.count-btn:active { border-color: var(--accent); color: var(--accent); }
+.count-display {
+  font-family: var(--font-display); font-size: 24px;
+  font-weight: 300; color: var(--text); min-width: 40px;
+  text-align: center;
+}
+
+/* ══ SETTINGS ══ */
+.settings-row {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.settings-label { font-size: 14px; color: var(--text); }
+.settings-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.settings-input {
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 10px 14px;
+  color: var(--text); font-family: var(--font-mono);
+  font-size: 14px; outline: none;
+  transition: border-color 0.18s; width: 90px;
+  text-align: right;
+}
+.settings-input:focus { border-color: var(--accent); }
+
+/* ══ TOAST ══ */
+.toast {
+  position: fixed; bottom: calc(var(--nav-h) + 16px);
+  left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 10px 20px;
+  font-size: 13px; color: var(--text);
+  opacity: 0; transition: all 0.3s;
+  white-space: nowrap; z-index: 200;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: var(--warn); color: var(--warn); }
+
+/* ══ MODAL / DIALOG ══ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 300; display: none;
+  align-items: center; justify-content: center;
+  padding: 24px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px; padding: 24px;
+  width: 100%; max-width: 320px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.modal-title {
+  font-family: var(--font-display); font-size: 18px;
+  font-weight: 500; color: var(--text);
+}
+.modal-body { font-size: 14px; color: var(--text2); line-height: 1.6; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-cancel {
+  flex: 1; padding: 13px; border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text2);
+  font-family: var(--font-display); font-size: 14px; cursor: pointer;
+}
+.modal-confirm {
+  flex: 1; padding: 13px; border-radius: 12px;
+  border: none; background: var(--warn);
+  color: #fff; font-family: var(--font-display);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+}
+
+/* ══ EMPTY STATE ══ */
+.empty {
+  text-align: center; padding: 40px 20px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 10px;
+}
+.empty-icon { font-size: 40px; }
+.empty-text { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+/* ══ ANIMATIONS ══ */
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.5; transform:scale(1.3); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══ SUB-TABS ══ */
+.sub-tabs {
+  display: flex; gap: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 4px;
+}
+.sub-tab {
+  flex: 1; padding: 9px 8px;
+  border-radius: 9px; border: none;
+  background: transparent; color: var(--muted);
+  font-family: var(--font-display); font-size: 13px;
+  cursor: pointer; transition: all 0.18s; text-align: center;
+}
+.sub-tab.active {
+  background: var(--accent); color: #0e110a; font-weight: 600;
+}
+
+/* ══ HYDRATION SUMMARY CARDS ══ */
+.hyd-summary {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.hyd-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; min-width: 120px;
+}
+.hyd-card-icon { font-size: 18px; }
+.hyd-card-info { display: flex; flex-direction: column; }
+.hyd-card-val { font-size: 16px; font-weight: 400; font-family: var(--font-display); color: var(--text); }
+.hyd-card-label { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+
+/* ══ Nav register button ══ */
+.nav-btn-register {
+  background: none; border: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 0; padding: 0;
+  position: relative; flex: 1;
+}
+.nav-register-circle {
+  width: 50px; height: 50px; border-radius: 50%;
+  background: var(--accent); color: #0e110a;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 300; line-height: 1;
+  position: absolute;
+  top: -18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  transition: transform 0.2s, background 0.2s;
+}
+.nav-btn-register:active .nav-register-circle {
+  transform: scale(0.93);
+}
+.nav-register-label {
+  font-size: 10px; color: var(--text2);
+  margin-top: 36px; font-family: var(--font-display);
+}
+
+/* ══ BOTTOM SHEET ══ */
+.bottom-sheet-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0); z-index: 100;
+  display: none; align-items: flex-end;
+  transition: background 0.3s;
+}
+.bottom-sheet-overlay.show {
+  display: flex; background: rgba(0,0,0,0.5);
+}
+.bottom-sheet {
+  width: 100%; max-width: 480px; margin: 0 auto;
+  background: var(--bg);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--border);
+  max-height: 92dvh;
+  display: flex; flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.32,0.72,0,1);
+}
+.bottom-sheet-overlay.show .bottom-sheet {
+  transform: translateY(0);
+}
+.bs-handle {
+  width: 40px; height: 4px;
+  background: var(--border); border-radius: 2px;
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+.bs-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 8px;
+  flex-shrink: 0;
+}
+.bs-title {
+  font-family: var(--font-display); font-size: 17px;
+  font-weight: 500; color: var(--text);
+}
+.bs-close {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 50%; width: 30px; height: 30px;
+  color: var(--muted); cursor: pointer;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+}
+.bs-body {
+  overflow-y: auto; padding: 8px 20px;
+  flex: 1;
+}
+
+/* ══ HYD CAROUSEL ══ */
+
+
+/* ══ CAROUSEL HEADER ══ */
+/* ══ DATE CAROUSEL STRIP ══ */
+.date-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 2px 0;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  align-items: flex-start;
+  height: 68px;
+}
+.date-strip::-webkit-scrollbar { display: none; }
+
+.date-circle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  min-width: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+.date-circle-dow {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  line-height: 1;
+}
+.date-circle {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  background: var(--surface2);
+  border: 1.5px solid transparent;
+  transition: all 0.18s;
+  position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.date-circle-num {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text2);
+  line-height: 1;
+}
+.date-circle-mon {
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1;
+  margin-top: 1px;
+}
+.date-circle-wrap.active .date-circle {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.date-circle-wrap.active .date-circle-num { color: #0e110a; font-weight: 600; }
+.date-circle-wrap.active .date-circle-mon { color: #0e110a; opacity: 0.7; }
+.date-circle-wrap.active .date-circle-dow { color: var(--accent); }
+.date-circle-wrap.today:not(.active) .date-circle {
+  border-color: var(--accent);
+}
+.date-circle-wrap.today:not(.active) .date-circle-num { color: var(--accent); }
+.date-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.7;
+}
+.date-dot.empty { background: transparent; }
+
+
+/* ══ SECTION HEADER ROW ══ */
+.section-header-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.section-edit-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 14px; color: var(--muted); padding: 4px;
+  opacity: 0.7; transition: opacity 0.18s;
+}
+.section-edit-btn:active { opacity: 1; }
+
+/* ══ MEAL GROUP ══ */
+.meal-group { margin-bottom: 4px; }
+.meal-group-label {
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); padding: 8px 0 6px;
+  border-bottom: 1px solid var(--border); margin-bottom: 8px;
+}
+
+/* ══ PROFILE QUICK BTNS ══ */
+.profile-quick-btn {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 16px 8px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 6px;
+  cursor: pointer; transition: all 0.18s;
+  color: var(--text2);
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 400;
+}
+.profile-quick-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(168,192,96,0.08);
+}
+.profile-quick-btn:active { transform: scale(0.96); }
+
+
+.profile-header {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  padding: 20px 0 10px;
+}
+.profile-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%; background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+}
+.profile-name {
+  font-family: var(--font-display); font-size: 20px;
+  font-weight: 400; color: var(--text);
+}
+.profile-email { font-size: 13px; color: var(--muted); }
+
+.profile-section { display: flex; flex-direction: column; gap: 8px; }
+
+.logout-btn {
+  background: rgba(224,120,64,0.1);
+  border: 1px solid rgba(224,120,64,0.3);
+  color: var(--warn); border-radius: var(--r);
+  padding: 14px; font-family: var(--font-display);
+  font-size: 15px; cursor: pointer; width: 100%;
+  transition: background 0.18s;
+}
+.logout-btn:active { background: rgba(224,120,64,0.2); }
 </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-logo">Banan<span>í</span>simo</div>
-  <div class="loading-sub">Cargando...</div>
-  <div class="spinner"></div>
+<!-- ══ AUTH SCREEN ══ -->
+<div id="authScreen" style="display:flex;position:fixed;inset:0;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:20px;z-index:1000;background:var(--bg)">
+  <div style="text-align:center;margin-bottom:8px">
+    <div style="font-family:var(--font-display);font-size:32px;font-weight:300;color:var(--accent)">Beiß zu</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:6px">registro de nutrición e hidratación</div>
+  </div>
+
+  <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px;gap:4px;width:100%;max-width:340px">
+    <button id="tabLogin" onclick="showAuthTab('login')" style="flex:1;padding:10px;border-radius:9px;border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:14px;font-weight:600;cursor:pointer">Iniciar sesión</button>
+    <button id="tabRegister" onclick="showAuthTab('register')" style="flex:1;padding:10px;border-radius:9px;border:none;background:transparent;color:var(--muted);font-family:var(--font-display);font-size:14px;cursor:pointer">Registrarse</button>
+  </div>
+
+  <div style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px">
+    <div id="registerName" style="display:none">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Nombre</div>
+      <input id="authName" type="text" placeholder="Tu nombre" style="width:100%;padding:14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:var(--font-mono);font-size:15px;outline:none">
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Email</div>
+      <input id="authEmail" type="email" placeholder="tu@email.com" style="width:100%;padding:14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:var(--font-mono);font-size:15px;outline:none">
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Contraseña</div>
+      <div style="position:relative">
+        <input id="authPassword" type="password" placeholder="••••••••" style="width:100%;padding:14px;padding-right:46px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:var(--font-mono);font-size:15px;outline:none">
+        <button type="button" onclick="togglePwd('authPassword',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted)">👁</button>
+      </div>
+    </div>
+    <div id="registerConfirm" style="display:none">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Repetir contraseña</div>
+      <div style="position:relative">
+        <input id="authPasswordConfirm" type="password" placeholder="••••••••" style="width:100%;padding:14px;padding-right:46px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:var(--font-mono);font-size:15px;outline:none">
+        <button type="button" onclick="togglePwd('authPasswordConfirm',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted)">👁</button>
+      </div>
+    </div>
+    <div id="authError" style="display:none;font-size:13px;color:var(--warn);text-align:center;padding:4px 0"></div>
+    <button id="authBtn" onclick="handleAuth()" style="width:100%;padding:16px;background:var(--accent);color:#0e110a;border:none;border-radius:12px;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">Iniciar sesión</button>
+  </div>
 </div>
 
-<div id="configScreen" style="display:none;">
-  <div style="background:var(--cacao);padding:14px 18px 12px;">
-    <div class="logo">Banan<span>í</span>simo</div>
-  </div>
-  <div class="config-card">
-    <div class="config-title">Conectar con Supabase</div>
-    <div class="config-sub">Ingresá las credenciales de tu proyecto. Solo se guardan en este dispositivo.</div>
-    <div class="config-note"><strong>¿Dónde?</strong> Supabase → Settings → API Keys → Project URL + Publishable key</div>
-    <label class="config-label">Project URL</label>
-    <input class="config-input" id="cfgUrl" type="url" placeholder="https://xxxx.supabase.co">
-    <label class="config-label">Publishable Key (anon)</label>
-    <input class="config-input" id="cfgKey" type="text" placeholder="sb_publishable_...">
-    <button class="btn-primary" onclick="saveConfig()">Conectar →</button>
-  </div>
-</div>
+<!-- ══ APP ══ -->
+<div class="app" id="appScreen" style="display:none">
 
-<div id="mainApp" style="display:none;">
-  <div class="topbar">
-    <div class="topbar-row">
-      <div class="logo">Banan<span>í</span>simo</div>
-      <div class="cycle-pill" id="cyclePill">...</div>
+  <!-- Offline indicator -->
+  <div id="offlineIndicator" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:rgba(224,120,64,0.95);color:#fff;padding:8px 16px;font-family:var(--font-display);font-size:13px;align-items:center;justify-content:center;gap:8px">
+    <span>📡 Sin conexión — los cambios se guardarán al reconectar</span>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-dot">🥗</div>
+      <div class="logo-text">Beiß<span> zu</span></div>
+    </div>
+    <div class="header-right">
+      <button onclick="openSearch()" title="Buscar"
+        style="background:none;border:none;cursor:pointer;font-size:17px;padding:2px 6px;color:var(--text2);line-height:1;opacity:0.8">🔍</button>
+      <div class="time-badge" id="timeBadge">--:--</div>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Cambiar tema">🌙</button>
     </div>
   </div>
-  <div class="error-banner" id="errorBanner" style="margin:0 16px 0;"></div>
 
-  <div class="screen active" id="screen-dashboard"></div>
-  <div class="screen" id="screen-orders"></div>
-  <div class="screen" id="screen-new"></div>
-  <div class="screen" id="screen-stock"></div>
-  <div class="screen" id="screen-config"></div>
+  <!-- OFFLINE BANNER -->
+  <div class="offline-banner" id="offlineBanner" style="margin:8px 20px 0">
+    <span>⚡</span> Sin conexión
+  </div>
 
-  <nav class="bottom-nav">
-    <button class="nav-btn active" onclick="showScreen('dashboard',this)" id="nav-dashboard">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-      Inicio
-    </button>
-    <button class="nav-btn" onclick="showScreen('orders',this)" id="nav-orders">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-      Pedidos
-    </button>
-    <button class="nav-btn" onclick="showScreen('new',this)" id="nav-new">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      Nuevo
-    </button>
-    <button class="nav-btn" onclick="showScreen('stock',this)" id="nav-stock">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-      Stock
-      <span class="nav-badge" id="stockAlertBadge" style="display:none">0</span>
-    </button>
+  <!-- ══ PAGE: INICIO ══ -->
+  <div class="page active" id="page-home">
 
-    <button class="nav-btn" onclick="showScreen('config',this)" id="nav-config">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Config
-    </button>
-  </nav>
-</div>
-
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-  <div class="modal-sheet"><div class="modal-handle"></div><div id="modalContent"></div></div>
-</div>
-<div class="toast" id="toast"></div>
-
-<script>
-// ── CONSTANTES ────────────────────────────────────────────────
-const MAX_SEMANA=8, MAX_DIA=4;
-const CYCLES=[{id:'mar',label:'Martes',entrega:'Miércoles'},{id:'jue',label:'Jueves',entrega:'Viernes'}];
-const METODOS={sinpe:'SINPE',efectivo:'Efectivo',transferencia:'Transferencia'};
-const STAGES=['recibido','horneado','enfriado','empacado','entregado'];
-const STAGE_LABEL={recibido:'Recibido',horneado:'Horneado',enfriado:'Enfriado',empacado:'Empacado',entregado:'Entregado',cancelado:'Cancelado'};
-const STAGE_ICON={recibido:'📋',horneado:'🔥',enfriado:'❄️',empacado:'📦',entregado:'✅',cancelado:'✗'};
-const STAGE_COLOR={
-  recibido:{bg:'#e8f4fd',color:'#1a5276'},horneado:{bg:'#fef9e7',color:'#7d6608'},
-  enfriado:{bg:'#eaf2ff',color:'#1a3a6b'},empacado:{bg:'#f0e6ff',color:'#6c3483'},
-  entregado:{bg:'#d5f5e3',color:'#1e8449'},cancelado:{bg:'#fde8e8',color:'#922b21'}
-};
-
-// ── ESTADO ────────────────────────────────────────────────────
-let sb=null, products=[], allOrders=[], ingredients=[], allPayments=[], productMaterials=[];
-let currentFilter='recibido', newQty=1, currentOrderId=null, currentIngId=null;
-let currentScreen='dashboard', paymentMethod='sinpe', ingMoveType='compra';
-let dashboardView='week', dashboardWeekOffset=0, dashboardMonthOffset=0, customFrom='', customTo='';
-let shoppingList=[]; // {id, name, unit, stock, min_stock, warn_stock, status}
-let shoppingListOpen=false;
-let stockTab='ingrediente'; // 'ingrediente' | 'material'
-
-// ── CONFIG ────────────────────────────────────────────────────
-function loadConfig(){return{url:localStorage.getItem('sb_url')||'',key:localStorage.getItem('sb_key')||''};}
-function saveConfig(){
-  const url=document.getElementById('cfgUrl').value.trim();
-  const key=document.getElementById('cfgKey').value.trim();
-  if(!url||!key){showToast('⚠️ Completá los dos campos');return;}
-  localStorage.setItem('sb_url',url);localStorage.setItem('sb_key',key);initApp();
-}
-
-async function initApp(){
-  const{url,key}=loadConfig();
-  if(!url||!key){hideEl('loadingOverlay');showEl('configScreen');return;}
-  try{
-    sb=supabase.createClient(url,key);
-    const[r1,r2,r3,r4,r5]=await Promise.all([
-      sb.from('products').select('*').eq('active',true).order('price'),
-      sb.from('orders').select('*').order('created_at',{ascending:false}).limit(500),
-      sb.from('ingredients').select('*').order('name'),
-      sb.from('payments').select('*').order('created_at',{ascending:false}),
-      sb.from('product_materials').select('*'),
-    ]);
-    if(r1.error)throw r1.error;
-    if(r2.error)throw r2.error;
-    products=r1.data||[];allOrders=r2.data||[];
-    ingredients=r3.data||[];allPayments=r4.data||[];
-    productMaterials=r5.data||[];
-    hideEl('loadingOverlay');showEl('mainApp');
-    updateCyclePill();updateStockBadge();
-    // Inicializar lista de compras con ingredientes ya en alerta
-    checkShoppingList();
-    renderDashboard();
-    // Realtime
-    sb.channel('rt')
-      .on('postgres_changes',{event:'*',schema:'public',table:'orders'},p=>{
-        if(p.eventType==='INSERT')allOrders.unshift(p.new);
-        else if(p.eventType==='UPDATE'){const i=allOrders.findIndex(o=>o.id===p.new.id);if(i>=0)allOrders[i]=p.new;else allOrders.unshift(p.new);}
-        else allOrders=allOrders.filter(o=>o.id!==p.old.id);
-        rerenderCurrent();
-      })
-      .on('postgres_changes',{event:'*',schema:'public',table:'payments'},p=>{
-        if(p.eventType==='INSERT')allPayments.unshift(p.new);
-        else if(p.eventType==='UPDATE'){const i=allPayments.findIndex(x=>x.id===p.new.id);if(i>=0)allPayments[i]=p.new;else allPayments.unshift(p.new);}
-        else allPayments=allPayments.filter(x=>x.id!==p.old.id);
-        rerenderCurrent();
-      })
-      .on('postgres_changes',{event:'*',schema:'public',table:'ingredients'},p=>{
-        if(p.eventType==='INSERT')ingredients.push(p.new);
-        else if(p.eventType==='UPDATE'){const i=ingredients.findIndex(x=>x.id===p.new.id);if(i>=0)ingredients[i]=p.new;}
-        else ingredients=ingredients.filter(x=>x.id!==p.old.id);
-        updateStockBadge();rerenderCurrent();
-      })
-      .subscribe();
-  }catch(e){console.error(e);hideEl('loadingOverlay');showEl('configScreen');showToast('❌ Error de conexión');}
-}
-
-// ── HELPERS ───────────────────────────────────────────────────
-function showEl(id){const el=document.getElementById(id);if(el){el.style.display='block';el.classList.remove('hidden');}}
-function hideEl(id){const el=document.getElementById(id);if(el){el.classList.add('hidden');setTimeout(()=>{if(el.classList.contains('hidden'))el.style.display='none';},350);}}
-function getWeekKey(d){
-  // Convertir a fecha local evitando desfase UTC
-  let x;
-  if(!d){x=new Date();}
-  else if(typeof d==='string'){x=new Date(d.length===10?d+'T12:00:00':d);}
-  else{x=new Date(d);}
-  // Usar fecha local
-  const localY=x.getFullYear(),localM=x.getMonth(),localD=x.getDate();
-  const tmp=new Date(localY,localM,localD);
-  const day=tmp.getDay();
-  const diff=day===0?-6:1-day;
-  tmp.setDate(tmp.getDate()+diff);
-  return tmp.getFullYear()+'-'+String(tmp.getMonth()+1).padStart(2,'0')+'-'+String(tmp.getDate()).padStart(2,'0');
-}
-function getOffsetWeekKey(offset){
-  const d=new Date();
-  d.setDate(d.getDate()+offset*7);
-  const y=d.getFullYear(),m=d.getMonth(),day=d.getDate();
-  return getWeekKey(y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'));
-}
-function getMonthRange(offset){
-  const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+offset);
-  const y=d.getFullYear(),m=d.getMonth();
-  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  return{from:new Date(y,m,1).toISOString().slice(0,10),to:new Date(y,m+1,0).toISOString().slice(0,10),label:months[m]+' '+y};
-}
-function ordersInRange(from,to){
-  return allOrders.filter(o=>{
-    const d=(o.order_date||o.week_key||o.created_at).slice(0,10);
-    return d>=from&&d<=to;
-  });
-}
-function weekOrders(wk){
-  return allOrders.filter(o=>{
-    const d=o.order_date||o.week_key||o.created_at.slice(0,10);
-    return getWeekKey(d.slice(0,10))===wk;
-  });
-}
-// Pedidos para dashboard: semana actual + pendientes de semanas anteriores
-function dashboardOrders(wk){
-  const thisWeek=allOrders.filter(o=>{
-    const d=o.order_date||o.week_key||o.created_at.slice(0,10);
-    return getWeekKey(d.slice(0,10))===wk;
-  });
-  // Agregar pedidos activos (no cancelados, no entregados) de semanas anteriores
-  const pending=allOrders.filter(o=>{
-    const d=o.order_date||o.week_key||o.created_at.slice(0,10);
-    if(getWeekKey(d.slice(0,10))===wk)return false; // ya incluido
-    return o.stage!=='cancelado'&&o.stage!=='entregado';
-  });
-  // Combinar sin duplicar
-  const ids=new Set(thisWeek.map(o=>o.id));
-  return [...thisWeek,...pending.filter(o=>!ids.has(o.id))];
-}
-function activeOrders(orders){return orders.filter(o=>o.stage!=='cancelado');}
-function orderPayments(id){return allPayments.filter(p=>p.order_id===id);}
-function orderPaidAmount(id){return orderPayments(id).reduce((s,p)=>s+p.amount,0);}
-function ingStatus(i){if(i.stock<=i.min_stock)return'critico';if(i.stock<=i.warn_stock)return'alerta';return'ok';}
-function formatPrice(n){return'₡'+Number(n||0).toLocaleString('es-CR');}
-function getInitials(n){return(n||'?').trim().split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
-function navWeek(delta){dashboardWeekOffset+=delta;if(dashboardWeekOffset>0)dashboardWeekOffset=0;renderScreen(currentScreen);}
-function navMonth(delta){dashboardMonthOffset+=delta;if(dashboardMonthOffset>0)dashboardMonthOffset=0;renderScreen(currentScreen);}
-function showToast(msg,d=2400){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
-function showError(msg){const b=document.getElementById('errorBanner');if(!b)return;b.textContent=msg;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),5000);}
-function updateCyclePill(){const day=new Date().getDay();const map={1:'Pedidos abiertos',2:'Hornear · Mar',3:'Entregas + pedidos',4:'Hornear · Jue',5:'Entregas hoy'};document.getElementById('cyclePill').textContent=map[day]||'Fin de semana';}
-function updateStockBadge(){const total=ingredients.filter(i=>ingStatus(i)!=='ok').length;const b=document.getElementById('stockAlertBadge');if(!b)return;if(total>0){b.textContent=total;b.style.display='flex';}else b.style.display='none';}
-function showScreen(name,btn){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('screen-'+name).classList.add('active');
-  (btn||document.getElementById('nav-'+name)).classList.add('active');
-  currentScreen=name;renderScreen(name);
-}
-function renderScreen(name){const map={dashboard:renderDashboard,orders:renderOrders,new:renderNew,stock:renderStock,config:renderConfig};if(map[name])map[name]();}
-function rerenderCurrent(){setTimeout(()=>renderScreen(currentScreen),50);}
-
-
-// ── DASHBOARD SCREEN ──────────────────────────────────────────
-function renderDashboard(){
-  const el=document.getElementById('screen-dashboard');
-  // calcular órdenes según vista
-  let viewOrders, viewLabel, canNext=false;
-  if(dashboardView==='week'){
-    const wk=getOffsetWeekKey(dashboardWeekOffset);
-    // Semana actual: incluir también pedidos activos de semanas anteriores
-    viewOrders=dashboardWeekOffset===0?dashboardOrders(wk):weekOrders(wk);
-    viewLabel=dashboardWeekOffset===0?'Esta semana':dashboardWeekOffset===-1?'Semana pasada':'Hace '+Math.abs(dashboardWeekOffset)+' semanas';
-    canNext=dashboardWeekOffset<0;
-  } else if(dashboardView==='month'){
-    const{from,to,label}=getMonthRange(dashboardMonthOffset);
-    viewOrders=ordersInRange(from,to);
-    viewLabel=label;
-    canNext=dashboardMonthOffset<0;
-  } else {
-    viewOrders=(customFrom&&customTo)?ordersInRange(customFrom,customTo):[];
-    viewLabel=customFrom&&customTo?customFrom+' → '+customTo:'Seleccioná rango';
-  }
-
-  const active=activeOrders(viewOrders);
-  const totalPanes=active.reduce((s,o)=>s+o.qty,0);
-  const pct=Math.min(100,Math.round((totalPanes/MAX_SEMANA)*100));
-  const slots=Array.from({length:MAX_SEMANA},(_,i)=>i<totalPanes);
-  const cobrado=active.reduce((s,o)=>s+orderPaidAmount(o.id),0);
-  const porCobrar=active.reduce((s,o)=>s+Math.max(0,o.qty*o.price-orderPaidAmount(o.id)),0);
-  const alertas=ingredients.filter(i=>ingStatus(i)!=='ok');
-  const isNow=dashboardView==='week'&&dashboardWeekOffset===0;
-
-  // contar por stage
-  const stageCounts={};
-  STAGES.forEach(s=>stageCounts[s]=active.filter(o=>(o.stage||'recibido')===s).length);
-
-  const navBtnStyle='background:rgba(255,255,255,0.14);border:0.5px solid rgba(255,255,255,0.25);color:var(--crema);border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer;';
-  const navBtnOff='opacity:0.25;background:transparent;border:0.5px solid rgba(255,255,255,0.1);color:var(--crema);border-radius:8px;width:34px;height:34px;font-size:16px;cursor:default;';
-
-  const customFields=dashboardView==='custom'?`
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <input type="date" id="dash_from" value="${customFrom}" onchange="customFrom=this.value;renderDashboard()"
-        style="flex:1;background:rgba(255,255,255,0.12);border:0.5px solid rgba(255,255,255,0.25);color:var(--crema);border-radius:8px;padding:6px 10px;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:600;outline:none;">
-      <span style="color:var(--banano);line-height:32px;">→</span>
-      <input type="date" id="dash_to" value="${customTo}" onchange="customTo=this.value;renderDashboard()"
-        style="flex:1;background:rgba(255,255,255,0.12);border:0.5px solid rgba(255,255,255,0.25);color:var(--crema);border-radius:8px;padding:6px 10px;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:600;outline:none;">
-    </div>`:'';
-
-  el.innerHTML=`
-    <div class="week-header">
-      <div style="display:flex;gap:6px;margin-bottom:10px;">
-        ${['week','month','custom'].map(v=>`<button onclick="dashboardView='${v}';dashboardWeekOffset=0;dashboardMonthOffset=0;renderDashboard()"
-          style="flex:1;padding:5px 4px;border-radius:8px;border:0.5px solid rgba(255,255,255,${dashboardView===v?'0.5':'0.2'});background:${dashboardView===v?'rgba(239,159,39,0.25)':'transparent'};color:${dashboardView===v?'var(--banano)':'rgba(250,238,218,0.6)'};font-family:'Quicksand',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;">
-          ${v==='week'?'Semana':v==='month'?'Mes':'Rango'}
-        </button>`).join('')}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <p class="wh-title">${viewLabel}</p>
-        ${dashboardView!=='custom'?`<div style="display:flex;gap:6px;">
-          <button onclick="${dashboardView==='week'?'navWeek(-1)':'navMonth(-1)'}" style="${navBtnStyle}">←</button>
-          <button onclick="${dashboardView==='week'?'navWeek(1)':'navMonth(1)'}" ${!canNext?'disabled':''} style="${canNext?navBtnStyle:navBtnOff}">→</button>
-        </div>`:''}
-      </div>
-      ${customFields}
-    </div>
-
-    ${shoppingList.length>0?`
-    <div style="background:var(--white);border:0.5px solid var(--border);border-radius:var(--radius-sm);margin-bottom:14px;overflow:hidden;">
-      <button id="shopToggleBtn" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:none;border:none;cursor:pointer;font-family:'Quicksand',sans-serif;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:13px;font-weight:700;color:var(--cacao);">🛒 Lista de compras</span>
-          <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:${shoppingList.some(i=>i.status==='critico')?'var(--rojo)':'var(--amarillo)'};color:#fff;">${shoppingList.length}</span>
+    <!-- Date strip + calendar + label — zero implicit spacing -->
+    <div style="margin-bottom:12px">
+      <div style="display:flex;align-items:flex-start;gap:4px;overflow:hidden">
+        <div id="dateStrip" class="date-strip" style="flex:1;height:68px"></div>
+        <div style="flex-shrink:0;margin-top:16px">
+          <button onclick="openCalendarPicker()" title="Calendario"
+            style="width:40px;height:40px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text2);-webkit-tap-highlight-color:transparent">📅</button>
         </div>
-        <span id="shopChevron" style="font-size:13px;color:var(--text-muted);transition:transform 0.2s;">${shoppingListOpen?'▲':'▼'}</span>
-      </button>
-      ${shoppingListOpen?`<div style="border-top:0.5px solid #F1EFE8;padding:0 14px;">
-        ${[...shoppingList].sort((a,b)=>a.status==='critico'?-1:b.status==='critico'?1:0).map(i=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid #F1EFE8;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${i.status==='critico'?'var(--rojo)':'var(--amarillo)'}"></div>
-              <div>
-                <div style="font-size:13px;font-weight:600;color:var(--cacao);">${i.name}</div>
-                <div style="font-size:11px;color:var(--text-muted);">Stock: ${i.stock} ${i.unit}${i.projStock!==undefined&&i.projStock!==i.stock?' → '+Math.max(0,i.projStock).toFixed(1)+' proy.':''} · Mín: ${i.min_stock} ${i.unit}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <span id="carouselTitle" style="font-family:var(--font-display);font-size:15px;font-weight:400;color:var(--text)">Hoy</span>
+        <button id="duplicateDayBtn" onclick="duplicateDay()" title="Copiar este día a hoy"
+          style="display:none;background:none;border:none;cursor:pointer;font-size:15px;padding:0;opacity:0.7;line-height:1">📋</button>
+      </div>
+    </div>
+
+    <!-- Card: Nutrición + Gasto calórico -->
+    <div class="day-card" id="homeDayCard">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:10px">Nutrición</div>
+
+      <!-- Cal hero -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:36px;font-weight:300;color:var(--text);line-height:1" id="todayCal">0</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px" id="todayCalSub">kcal</div>
+        </div>
+        <div id="todayCalBadge" style="display:none;text-align:right">
+          <div id="todayCalPct" style="font-family:var(--font-display);font-size:20px;font-weight:300"></div>
+          <div style="font-size:10px;color:var(--muted)">de meta</div>
+        </div>
+      </div>
+      <div id="todayCalBarWrap" style="display:none;height:4px;border-radius:2px;background:var(--border);margin-bottom:10px">
+        <div id="todayCalBar" style="height:100%;border-radius:2px;transition:width .4s"></div>
+      </div>
+
+      <!-- Macros -->
+      <div id="homeMacroGoalRows" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
+      <div id="homeMacroNoGoalGrid" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:4px"></div>
+
+      <!-- Gasto calórico + balance -->
+      <div id="homeDayMeta" style="margin-top:4px;border-top:0.5px solid var(--border)"></div>
+
+    </div>
+
+    <!-- Card: Hidratación -->
+    <div id="homeHydSection" style="display:none">
+      <div class="day-card">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:10px">Hidratación</div>
+        <div id="homeHydContent"></div>
+      </div>
+    </div>
+
+    <!-- Card: Suplementos -->
+    <div id="homeSuppSection" style="display:none">
+      <div class="day-card">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:10px">Suplementos</div>
+        <div id="homeSuppContent"></div>
+      </div>
+    </div>
+
+    <!-- Card: Nota del día -->
+    <div class="day-card" id="homeNoteCard" style="padding:10px 16px">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-family:var(--font-display);margin-bottom:6px">Nota</div>
+      <input type="text" id="dayNoteInline" placeholder="Nota del día…"
+        onblur="saveDayNoteInline()" onkeydown="if(event.key==='Enter')this.blur()"
+        style="width:100%;background:transparent;border:none;outline:none;font-size:13px;color:var(--text);font-family:var(--font-display);padding:0;line-height:1.3">
+    </div>
+
+    <!-- Hidden legacy inputs for compatibility -->
+    <div style="display:none">
+      <input id="burnedCalInput" type="number" onchange="saveBurnedCals()">
+      <div id="todayProt"></div><div id="todayCarbs"></div>
+      <div id="todayFat"></div><div id="todayFib"></div><div id="todaySug"></div>
+    </div>
+
+    <!-- Entries grouped by meal type -->
+    <div id="homeMealGroups" style="display:flex;flex-direction:column;gap:14px"></div>
+
+  </div>
+
+
+
+
+
+
+  <!-- ══ PAGE: ALIMENTOS ══ -->
+  <div class="page" id="page-foods">
+
+    <!-- Sub-tabs -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" id="subTabAlimentos" onclick="switchFoodsTab('alimentos')">🥦 Alimentos</button>
+      <button class="sub-tab" id="subTabPlatillos" onclick="switchFoodsTab('platillos')">🍽️ Platillos</button>
+      <button class="sub-tab" id="subTabPlantillas" onclick="switchFoodsTab('plantillas')">📋 Plantillas</button>
+    </div>
+
+    <!-- ── Sub: ALIMENTOS ── -->
+    <div id="fsec-alimentos">
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Mis alimentos</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Alimentos con info nutricional personalizada</div>
+        </div>
+        <button onclick="openNewFoodModal()"
+          style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:9px 14px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
+          + Nuevo
+        </button>
+      </div>
+      <div id="foodsList"></div>
+    </div>
+
+    <!-- ── Sub: PLATILLOS ── -->
+    <div id="fsec-platillos" style="display:none">
+
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Mis platillos</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Combinaciones de alimentos que usás seguido</div>
+        </div>
+        <button onclick="showDishBuilder()"
+          style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:9px 14px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
+          + Nuevo
+        </button>
+      </div>
+
+      <div id="dishesList"></div>
+
+      <div id="dishBuilder" style="display:none">
+        <div class="card">
+          <div class="section-label" style="margin-bottom:0" id="dishBuilderTitle">Nuevo platillo</div>
+          <div class="field">
+            <label>Nombre del platillo</label>
+            <input type="text" id="dishName" placeholder="Ej: Casado, Ensalada verde…">
+          </div>
+          <div class="field">
+            <label>Notas (opcional)</label>
+            <input type="text" id="dishNotes" placeholder="Ej: sin sal, versión light…">
+          </div>
+        </div>
+
+        <div id="dishIngredientsList" style="display:flex;flex-direction:column;gap:8px;margin-top:2px"></div>
+
+        <div class="card" id="dishTotalsCard" style="display:none">
+          <div class="section-label" style="margin-bottom:4px">Total del platillo</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:6px">
+            <div><div style="font-size:18px;font-weight:300;color:var(--accent);font-family:var(--font-display)" id="dtCal">0</div><div style="font-size:10px;color:var(--muted)">kcal</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtProt">0</div><div style="font-size:10px;color:var(--muted)">prot g</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtCarb">0</div><div style="font-size:10px;color:var(--muted)">carb g</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtFat">0</div><div style="font-size:10px;color:var(--muted)">gras g</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtFib">0</div><div style="font-size:10px;color:var(--muted)">fibra g</div></div>
+            <div><div style="font-size:18px;font-weight:300;color:var(--text);font-family:var(--font-display)" id="dtSug">0</div><div style="font-size:10px;color:var(--muted)">azúcar g</div></div>
+          </div>
+          <!-- Porción y total -->
+          <div style="border-top:0.5px solid var(--border);margin-top:10px;padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="field" style="margin:0">
+              <label>Cantidad total del platillo</label>
+              <input type="number" id="dishTotalQty" placeholder="Ej: 800" inputmode="decimal"
+                style="font-size:13px" oninput="updateDishServingPreview()">
+            </div>
+            <div class="field" style="margin:0">
+              <label>Unidad</label>
+              <select id="dishTotalUnit" onchange="updateDishServingPreview()">
+                <option>gramos</option><option>ml</option><option>tazas</option><option>unidades</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-top:8px;margin-bottom:0">
+            <label>Una porción equivale a</label>
+            <input type="number" id="dishServingQty" placeholder="Ej: 200" inputmode="decimal"
+              style="font-size:13px" oninput="updateDishServingPreview()">
+          </div>
+          <div id="dishServingPreview" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(168,192,96,0.07);border-radius:8px;font-size:12px;color:var(--muted)"></div>
+        </div>
+
+        <div class="card" style="margin-top:2px">
+          <div class="section-label" style="margin-bottom:0">Agregar ingrediente</div>
+          <div class="sub-tabs" style="margin-top:4px">
+            <button class="sub-tab active" id="ingTabFood" onclick="switchIngTab('food')">🥦 Alimento</button>
+            <button class="sub-tab" id="ingTabDish" onclick="switchIngTab('dish')">🍽️ Platillo</button>
+          </div>
+          <div id="ingFoodSearch">
+            <div class="field">
+              <label>Buscar alimento</label>
+              <div style="position:relative">
+                <input type="text" id="ingFoodName" placeholder="Buscar en base de datos…" autocomplete="off" oninput="onIngFoodInput(this.value)" onfocus="onIngFoodInput(this.value)" onblur="hideIngDropdown()">
+                <div class="food-dropdown" id="ingFoodDropdown"></div>
               </div>
             </div>
-            <button data-remove-id="${i.id}" style="font-size:18px;background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0 2px;flex-shrink:0;">×</button>
-          </div>`).join('')}
-        <div style="display:flex;gap:8px;padding:10px 0;">
-          <button onclick="showScreen('stock',document.getElementById('nav-stock'))" style="flex:1;background:var(--crema);color:var(--cacao);border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:8px;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Ver stock →</button>
-          <button onclick="clearShoppingList()" style="background:none;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:8px 12px;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:700;cursor:pointer;color:var(--text-muted);">Limpiar</button>
-        </div>
-      </div>`:''}
-    </div>`:''}
-
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-val">${totalPanes}<span style="font-size:13px;color:var(--text-muted);">/${dashboardView==='week'?MAX_SEMANA:'∞'}</span></div><div class="stat-label">Panes</div><div class="stat-sub">${active.length} pedidos</div></div>
-      <div class="stat-card"><div class="stat-val">${viewOrders.filter(o=>o.stage==='entregado').length}</div><div class="stat-label">Entregados</div><div class="stat-sub">${viewOrders.filter(o=>o.stage==='cancelado').length} cancelados</div></div>
-      <div class="stat-card"><div class="stat-val" style="font-size:19px;color:var(--hoja);">${formatPrice(cobrado)}</div><div class="stat-label">Cobrado</div><div class="stat-sub">Todos los stages</div></div>
-      <div class="stat-card"><div class="stat-val" style="font-size:19px;color:var(--rojo);">${formatPrice(porCobrar)}</div><div class="stat-label">Por cobrar</div><div class="stat-sub">Pendiente</div></div>
-    </div>
-
-    ${dashboardView==='week'?`<div class="capacity-bar-wrap">
-      <div class="cap-row"><p class="cap-label">Capacidad semanal</p><p class="cap-count">${totalPanes}<span>/${MAX_SEMANA} panes</span></p></div>
-      <div class="bar-track"><div class="bar-fill ${totalPanes>=MAX_SEMANA?'warn':''}" style="width:${pct}%"></div></div>
-      <div class="bar-slots">${slots.map(u=>`<div class="slot ${u?(totalPanes>=MAX_SEMANA?'used warn':'used'):''}"></div>`).join('')}</div>
-    </div>`:''}
-
-    <span class="sec-label">Pipeline de órdenes</span>
-    <div class="card" style="padding:12px 14px;">
-      ${STAGES.map(s=>{
-        const sc=STAGE_COLOR[s];
-        const count=stageCounts[s]||0;
-        const pctStage=active.length>0?Math.round(count/active.length*100):0;
-        return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:${s===STAGES[STAGES.length-1]?0:10}px;">
-          <span style="font-size:14px;width:20px;text-align:center;">${STAGE_ICON[s]}</span>
-          <div style="flex:1;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-              <span style="font-size:12px;font-weight:700;color:var(--cacao);">${STAGE_LABEL[s]}</span>
-              <span style="font-size:12px;font-weight:700;color:${sc.color};">${count}</span>
-            </div>
-            <div style="background:#F1EFE8;border-radius:20px;height:5px;overflow:hidden;">
-              <div style="width:${pctStage}%;height:100%;border-radius:20px;background:${sc.color};transition:width 0.4s;"></div>
+          </div>
+          <div id="ingDishSearch" style="display:none">
+            <div class="field">
+              <label>Seleccionar platillo</label>
+              <select id="ingDishSelect" onchange="onIngDishSelect(this.value)">
+                <option value="">— elegí un platillo —</option>
+              </select>
             </div>
           </div>
-        </div>`;
-      }).join('')}
-    </div>
-
-
-    <span class="sec-label" style="margin-top:14px;">Pedidos del período</span>
-    ${active.length===0
-      ?`<div class="empty-state"><div class="e-icon">📋</div><div class="e-title">Sin pedidos</div><div class="e-text">Usá el botón + para agregar.</div></div>`
-      :active.map(o=>orderCardHTML(o)).join('')}
-  `;
-  el.querySelectorAll('.order-card').forEach(card=>card.addEventListener('click',()=>openOrderModal(card.dataset.id)));
-  const shopBtn=el.querySelector('#shopToggleBtn');
-  if(shopBtn)shopBtn.addEventListener('click',()=>{shoppingListOpen=!shoppingListOpen;renderDashboard();});
-  el.querySelectorAll('[data-remove-id]').forEach(btn=>btn.addEventListener('click',e=>{
-    e.stopPropagation();removeFromShoppingList(btn.dataset.removeId);
-  }));
-}
-
-
-// ── ORDERS SCREEN ─────────────────────────────────────────────
-function renderOrders(){
-  const STAGE_ORDER={recibido:0,horneado:1,enfriado:2,empacado:3,entregado:4,cancelado:5};
-  const base=currentFilter==='all'?allOrders:allOrders.filter(o=>(o.stage||'recibido')===currentFilter);
-  const sorted=[...base].sort((a,b)=>(STAGE_ORDER[a.stage||'recibido']??9)-(STAGE_ORDER[b.stage||'recibido']??9));
-  const el=document.getElementById('screen-orders');
-  const filters=['recibido','horneado','enfriado','empacado','entregado','cancelado','all'];
-  el.innerHTML=`
-    <div class="filter-row">
-      ${filters.map(f=>`<button class="filter-chip ${currentFilter===f?'active':''}" onclick="setFilter('${f}')">${f==='all'?'Todos':STAGE_LABEL[f]}</button>`).join('')}
-    </div>
-    ${sorted.length===0
-      ?`<div class="empty-state"><div class="e-icon">📋</div><div class="e-title">Sin pedidos</div><div class="e-text">Usá el botón + para agregar.</div></div>`
-      :sorted.map(o=>orderCardHTML(o)).join('')}
-  `;
-  el.querySelectorAll('.order-card').forEach(card=>card.addEventListener('click',()=>openOrderModal(card.dataset.id)));
-}
-function setFilter(f){currentFilter=f;renderOrders();}
-
-function orderCardHTML(o){
-  const prod=products.find(p=>p.id===o.product_id);
-  const cycle=CYCLES.find(c=>c.id===o.cycle_id);
-  const total=o.qty*o.price;
-  const paid=orderPaidAmount(o.id);
-  const stage=o.stage||'recibido';
-  const sc=STAGE_COLOR[stage]||STAGE_COLOR.recibido;
-  const isCancelled=stage==='cancelado';
-  // mini pipeline
-  const miniDots=STAGES.map((s,i)=>{
-    const stageIdx=STAGES.indexOf(stage);
-    const cls=isCancelled?'':i<stageIdx?'done':i===stageIdx?'current':'';
-    const lineClass=isCancelled?'':i<stageIdx?'done':'';
-    return(i>0?`<div class="mini-line ${lineClass}"></div>`:'')
-      +`<div class="mini-dot ${isCancelled&&i===0?'cancelled':cls}"></div>`;
-  }).join('');
-
-  let payTag='';
-  if(paid>=total)payTag=`<span class="tag tag-pagado">pagado</span>`;
-  else if(paid>0)payTag=`<span class="tag tag-parcial">parcial</span>`;
-  else payTag=`<span class="tag tag-sinpago">sin pago</span>`;
-
-  return`<div class="order-card" data-id="${o.id}">
-    <div class="order-card-top">
-      <div class="order-avatar">${getInitials(o.client_name)}</div>
-      <div class="order-body">
-        <div class="order-name">${o.client_name}</div>
-        <div class="order-detail">${prod?prod.name:''} × ${o.qty}<span class="order-cycle-badge">${cycle?cycle.label:o.cycle_id}</span></div>
-        <div class="order-tags">
-          <span class="tag" style="background:${sc.bg};color:${sc.color};">${STAGE_ICON[stage]} ${STAGE_LABEL[stage]}</span>
-          ${payTag}${o.notes?'<span class="tag tag-prod">nota</span>':''}
-        </div>
-      </div>
-      <div class="order-price">${formatPrice(total)}</div>
-    </div>
-    ${!isCancelled?`<div class="mini-stage">${miniDots}</div>`:''}
-  </div>`;
-}
-
-// ── NEW ORDER ─────────────────────────────────────────────────
-function renderNew(){
-  const today=new Date().toISOString().slice(0,10);
-  const selDate=document.getElementById('fn_date')?document.getElementById('fn_date').value:today;
-  const dateVal=selDate||today;
-  const wk=getWeekKey(new Date(dateVal+'T12:00:00'));
-  const totalPanes=activeOrders(weekOrders(wk)).reduce((s,o)=>s+o.qty,0);
-  const available=MAX_SEMANA-totalPanes;
-  const el=document.getElementById('screen-new');
-  newQty=Math.min(newQty,Math.max(1,available));
-  el.innerHTML=`<div class="form-card">
-    <p class="form-title">Nuevo pedido</p>
-    <div style="background:var(--crema);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:16px;font-size:12px;font-weight:700;color:var(--cacao);">
-      🍞 Semana ${wk} · <span style="color:${available<=0?'var(--rojo)':'var(--dorado)'};">${available<=0?'Sin disponibilidad':available+' de '+MAX_SEMANA+' disponibles'}</span>
-    </div>
-    <div class="form-group"><label class="form-label">Fecha del pedido</label>
-      <input class="form-input" id="fn_date" type="date" value="${dateVal}" max="${today}" onchange="renderNew()">
-    </div>
-    <div class="form-group"><label class="form-label">Nombre del cliente</label>
-      <input class="form-input" id="fn_name" type="text" placeholder="Ej: María Rodríguez" autocomplete="off">
-    </div>
-    <div class="form-group"><label class="form-label">WhatsApp (opcional)</label>
-      <input class="form-input" id="fn_phone" type="tel" placeholder="8888-8888">
-    </div>
-    <div class="form-group"><label class="form-label">Producto</label>
-      <select class="form-input" id="fn_product" onchange="updateTotal()">${products.map(p=>`<option value="${p.id}" data-price="${p.price}">${p.name} — ${formatPrice(p.price)}</option>`).join('')}</select>
-    </div>
-    <div class="form-group"><label class="form-label">Cantidad</label>
-      <div class="qty-row">
-        <button class="qty-btn" onclick="changeQty(-1)">−</button>
-        <div class="qty-display" id="fn_qty">${newQty}</div>
-        <button class="qty-btn" onclick="changeQty(1)">+</button>
-        <span style="font-size:12px;color:var(--text-muted);font-weight:600;">loaf${newQty>1?'s':''}</span>
-      </div>
-    </div>
-    <div class="form-group"><label class="form-label">Ciclo de entrega</label>
-      <select class="form-input" id="fn_cycle">${CYCLES.map(c=>`<option value="${c.id}">Entrega ${c.entrega} (hornea ${c.label})</option>`).join('')}</select>
-    </div>
-    <div class="form-group"><label class="form-label">Notas (opcional)</label>
-      <input class="form-input" id="fn_notes" type="text" placeholder="Ej: sin maní, dirección especial...">
-    </div>
-    <div id="fn_total" style="font-size:15px;font-weight:700;color:var(--cacao);text-align:right;margin-bottom:12px;"></div>
-    <button class="btn-primary" id="btnSaveOrder" onclick="saveOrder()">Guardar pedido</button>
-  </div>`;
-  updateTotal();
-}
-function changeQty(delta){
-  const avail=MAX_SEMANA-activeOrders(weekOrders(getWeekKey())).reduce((s,o)=>s+o.qty,0);
-  newQty=Math.max(1,Math.min(avail,newQty+delta));
-  document.getElementById('fn_qty').textContent=newQty;updateTotal();
-}
-function updateTotal(){
-  const sel=document.getElementById('fn_product');if(!sel)return;
-  const price=parseInt(sel.selectedOptions[0]?.dataset.price||0);
-  const t=document.getElementById('fn_total');
-  if(t)t.textContent=price?`Total: ${formatPrice(price*newQty)}`:'';
-}
-// ── STOCK — LISTA DE COMPRAS PROYECTADA ──────────────────────
-function checkShoppingList(){
-  // Sumar consumo proyectado de pedidos que aún no están horneados
-  const pendientes=allOrders.filter(o=>['recibido'].includes(o.stage||'recibido'));
-  // Calcular stock disponible proyectado por ingrediente
-  const proyStock={};
-  ingredients.forEach(i=>{proyStock[i.id]=i.stock;});
-  pendientes.forEach(o=>{
-    const recipe=productMaterials.filter(pm=>pm.product_id===o.product_id);
-    recipe.forEach(pm=>{
-      if(proyStock[pm.ingredient_id]!==undefined){
-        proyStock[pm.ingredient_id]-=pm.qty_per_unit*o.qty;
-      }
-    });
-  });
-  // Detectar alertas según stock proyectado
-  ingredients.forEach(i=>{
-    const proj=proyStock[i.id]??i.stock;
-    let status=null;
-    if(proj<=i.min_stock) status='critico';
-    else if(proj<=i.warn_stock) status='alerta';
-    if(status){
-      const existing=shoppingList.findIndex(x=>x.id===i.id);
-      const item={id:i.id,name:i.name,unit:i.unit,stock:i.stock,projStock:Math.max(0,proj),min_stock:i.min_stock,warn_stock:i.warn_stock,status};
-      if(existing>=0) shoppingList[existing]=item;
-      else shoppingList.push(item);
-    } else {
-      // Si ya no hay alerta proyectada, quitar de la lista
-      shoppingList=shoppingList.filter(x=>x.id!==i.id);
-    }
-  });
-}
-
-// ── STOCK — REBAJO AUTOMÁTICO ─────────────────────────────────
-async function rebajarStock(productId, qty){
-  // Obtener receta del producto
-  const recipe=productMaterials.filter(pm=>pm.product_id===productId);
-  if(recipe.length===0)return; // sin receta configurada
-  const alertas=[];
-  for(const pm of recipe){
-    const ing=ingredients.findIndex(x=>x.id===pm.ingredient_id);
-    if(ing<0)continue;
-    const consumo=pm.qty_per_unit*qty;
-    const newStock=Math.max(0,ingredients[ing].stock-consumo);
-    // Actualizar en Supabase
-    await sb.from('ingredients').update({stock:newStock}).eq('id',pm.ingredient_id);
-    // Registrar movimiento
-    await sb.from('stock_movements').insert({ingredient_id:pm.ingredient_id,type:'uso',qty:-consumo});
-    // Actualizar local
-    ingredients[ing]={...ingredients[ing],stock:newStock};
-    // Verificar alerta
-    const st=ingStatus(ingredients[ing]);
-    if(st!=='ok')alertas.push({name:ingredients[ing].name,status:st,stock:newStock,unit:ingredients[ing].unit});
-  }
-  updateStockBadge();
-  // Recalcular lista de compras con nuevo stock
-  checkShoppingList();
-  return alertas;
-}
-
-async function saveOrder(){
-  const name=document.getElementById('fn_name').value.trim();
-  const phone=document.getElementById('fn_phone').value.trim();
-  const productId=document.getElementById('fn_product').value;
-  const cycleId=document.getElementById('fn_cycle').value;
-  const notes=document.getElementById('fn_notes').value.trim();
-  if(!name){showToast('⚠️ Ingresá el nombre del cliente');return;}
-  const prod=products.find(p=>p.id===productId);
-  const btn=document.getElementById('btnSaveOrder');
-  btn.disabled=true;btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;border-color:var(--banano);border-top-color:transparent;"></div> Guardando...';
-  try{
-    const dateEl=document.getElementById('fn_date');
-    const orderDate=dateEl?dateEl.value:new Date().toISOString().slice(0,10);
-    const weekKey=getWeekKey(new Date(orderDate+'T12:00:00'));
-    const{data:newOrder,error}=await sb.from('orders').insert({
-      client_name:name,client_phone:phone||null,product_id:productId,
-      qty:newQty,price:prod.price,cycle_id:cycleId,notes:notes||null,
-      stage:'recibido',week_key:weekKey,order_date:orderDate
-    }).select().single();
-    if(error)throw error;
-    if(newOrder)allOrders.unshift(newOrder);
-    // Verificar stock proyectado para pedidos pendientes → lista de compras
-    checkShoppingList();
-    showToast('✓ Pedido guardado');
-    newQty=1;
-    // Navegar al dashboard mostrando la semana del pedido recién creado
-    const newOrderWeek=getWeekKey(new Date(orderDate+'T12:00:00'));
-    const thisWeek=getWeekKey();
-    const diffMs=new Date(thisWeek)-new Date(newOrderWeek);
-    dashboardWeekOffset=-Math.round(diffMs/(7*24*60*60*1000));
-    dashboardView='week';
-    showScreen('dashboard',document.getElementById('nav-dashboard'));
-    renderDashboard(); // forzar re-render inmediato con datos actualizados
-  }catch(e){showError('Error: '+e.message);btn.disabled=false;btn.innerHTML='Guardar pedido';}
-}
-
-// ── ORDER MODAL ───────────────────────────────────────────────
-function openOrderModal(orderId){
-  currentOrderId=orderId;
-  const o=allOrders.find(x=>x.id===orderId);if(!o)return;
-  const prod=products.find(p=>p.id===o.product_id);
-  const cycle=CYCLES.find(c=>c.id===o.cycle_id);
-  const stage=o.stage||'recibido';
-  const total=o.qty*o.price,paid=orderPaidAmount(orderId),pendPago=total-paid;
-  const dateStr=new Date((o.order_date||o.created_at.slice(0,10))+'T12:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'short',year:'numeric'});
-  const pagos=orderPayments(orderId);
-  const stageIdx=STAGES.indexOf(stage);
-  const nextStage=stageIdx>=0&&stageIdx<STAGES.length-1?STAGES[stageIdx+1]:null;
-  const isCancelled=stage==='cancelado';
-
-  // Stage pipeline visual
-  const pipelineHTML=STAGES.map((s,i)=>{
-    const done=!isCancelled&&i<stageIdx;
-    const current=!isCancelled&&i===stageIdx;
-    const dotClass=isCancelled?'':done?'done':current?'current':'';
-    const nameClass=dotClass;
-    const lineClass=done?'done':'';
-    return(i>0?`<div class="stage-line ${lineClass}"></div>`:'')
-      +`<div class="stage-step">
-        <div class="stage-dot ${dotClass}">${done?'✓':current?STAGE_ICON[s]:i+1}</div>
-        <div class="stage-name ${nameClass}">${STAGE_LABEL[s]}</div>
-      </div>`;
-  }).join('');
-
-  document.getElementById('modalContent').innerHTML=`
-    <p class="modal-title">${o.client_name}</p>
-    <p class="modal-sub">${o.client_phone?'📱 '+o.client_phone:'Sin número'} · ${dateStr}</p>
-
-    <div style="display:flex;align-items:center;margin-bottom:16px;">${pipelineHTML}${isCancelled?`<div class="stage-step"><div class="stage-dot cancelled">✗</div><div class="stage-name cancelled">Cancelado</div></div>`:''}</div>
-
-    <div class="modal-row"><span class="modal-row-label">Producto</span><span class="modal-row-val">${prod?.name||''}</span></div>
-    <div class="modal-row"><span class="modal-row-label">Cantidad</span><span class="modal-row-val">${o.qty} loaf${o.qty>1?'s':''}</span></div>
-    <div class="modal-row"><span class="modal-row-label">Total</span><span class="modal-row-val">${formatPrice(total)}</span></div>
-    <div class="modal-row"><span class="modal-row-label">Entrega</span><span class="modal-row-val">${cycle?cycle.entrega:o.cycle_id}</span></div>
-    ${o.notes?`<div class="modal-row"><span class="modal-row-label">Notas</span><span class="modal-row-val">${o.notes}</span></div>`:''}
-
-    <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid #F1EFE8;">
-      <p style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">💰 Pagos</p>
-      <div class="pago-progress"><div class="pago-fill" style="width:${Math.min(100,Math.round(paid/total*100))}%"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:10px;">
-        <span>Cobrado: <strong style="color:var(--hoja);">${formatPrice(paid)}</strong></span>
-        <span>Pendiente: <strong style="color:${pendPago>0?'var(--rojo)':'var(--hoja)'};">${formatPrice(pendPago)}</strong></span>
-      </div>
-      ${pagos.length>0?`<div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;">
-        ${pagos.map(p=>`<div class="payment-row">
-          <div><div class="payment-method">${METODOS[p.method]||p.method}</div>
-          <div class="payment-date">${new Date((p.payment_date||p.created_at.slice(0,10))+'T12:00:00').toLocaleDateString('es-CR',{day:'numeric',month:'short'})}</div></div>
-          <div class="payment-amount">+${formatPrice(p.amount)}</div>
-        </div>`).join('')}
-      </div>`:''}
-      ${pendPago>0?`<div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:4px;">
-        <p style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Registrar pago</p>
-        <div class="method-pills">
-          <button class="method-pill ${paymentMethod==='sinpe'?'active':''}" onclick="setPayMethod('sinpe',this)">SINPE</button>
-          <button class="method-pill ${paymentMethod==='efectivo'?'active':''}" onclick="setPayMethod('efectivo',this)">Efectivo</button>
-          <button class="method-pill ${paymentMethod==='transferencia'?'active':''}" onclick="setPayMethod('transferencia',this)">Transfer</button>
-        </div>
-        <input class="form-input" id="payAmount" type="number" placeholder="Monto en colones" value="${pendPago}" style="margin-bottom:8px;">
-        <button class="btn-status btn-next" onclick="registrarPago()">✓ Registrar pago</button>
-      </div>`:''}
-    </div>
-
-    <div class="modal-actions">
-      ${!isCancelled&&nextStage?`<button class="btn-status btn-next" onclick="avanzarStage()">→ Marcar como ${STAGE_LABEL[nextStage]}</button>`:''}
-      ${o.client_phone?`<button class="btn-status" style="background:#d4edda;color:#155724;" onclick="openWhatsApp()">💬 WhatsApp</button>`:''}
-      <button class="btn-status btn-edit" onclick="openEditPanel()">✏️ Editar pedido</button>
-      ${!isCancelled?`<button class="btn-status btn-cancel-stage" onclick="cancelarPedido()">✗ Cancelar pedido</button>`:''}
-      <button class="btn-status btn-danger" onclick="eliminarPedido()">🗑 Eliminar permanentemente</button>
-      <button class="btn-close-modal" onclick="closeModal()">Cerrar</button>
-    </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
-}
-
-async function avanzarStage(){
-  const o=allOrders.find(x=>x.id===currentOrderId);if(!o)return;
-  const stage=o.stage||'recibido';
-  const idx=STAGES.indexOf(stage);
-  if(idx<0||idx>=STAGES.length-1)return;
-  const next=STAGES[idx+1];
-  const btn=event.target;btn.disabled=true;btn.textContent='Actualizando...';
-  try{
-    const{error}=await sb.from('orders').update({stage:next}).eq('id',currentOrderId);
-    if(error)throw error;
-    const oi=allOrders.findIndex(x=>x.id===currentOrderId);
-    if(oi>=0)allOrders[oi]={...allOrders[oi],stage:next};
-    // Rebajar stock al hornear
-    if(next==='horneado'){
-      await rebajarStock(o.product_id,o.qty);
-    }
-    closeModal();showToast(`✓ ${STAGE_LABEL[next]}`);rerenderCurrent();
-  }catch(e){showError('Error: '+e.message);btn.disabled=false;btn.textContent='→ Marcar como '+STAGE_LABEL[next];}
-}
-
-function setPayMethod(m,btn){paymentMethod=m;document.querySelectorAll('.method-pill').forEach(p=>p.classList.remove('active'));btn.classList.add('active');}
-
-async function registrarPago(){
-  const amount=parseInt(document.getElementById('payAmount').value);
-  if(!amount||amount<=0){showToast('⚠️ Ingresá un monto válido');return;}
-  const btn=event.target;btn.disabled=true;btn.textContent='Guardando...';
-  try{
-    const{error}=await sb.from('payments').insert({order_id:currentOrderId,amount,method:paymentMethod});
-    if(error)throw error;
-    allPayments.unshift({id:crypto.randomUUID(),order_id:currentOrderId,amount,method:paymentMethod,payment_date:new Date().toISOString().slice(0,10),created_at:new Date().toISOString()});
-    closeModal();showToast('✓ Pago registrado');rerenderCurrent();
-  }catch(e){showError('Error: '+e.message);btn.disabled=false;btn.textContent='✓ Registrar pago';}
-}
-
-async function cancelarPedido(){
-  if(!confirm('¿Cancelar este pedido?'))return;
-  try{
-    const{error}=await sb.from('orders').update({stage:'cancelado'}).eq('id',currentOrderId);
-    if(error)throw error;
-    const oi=allOrders.findIndex(x=>x.id===currentOrderId);
-    if(oi>=0)allOrders[oi]={...allOrders[oi],stage:'cancelado'};
-    closeModal();showToast('Pedido cancelado');rerenderCurrent();
-  }catch(e){showError('Error: '+e.message);}
-}
-
-async function eliminarPedido(){
-  const o=allOrders.find(x=>x.id===currentOrderId);if(!o)return;
-  if(!confirm(`¿Eliminar el pedido de ${o.client_name} permanentemente?\nEsta acción no se puede deshacer.`))return;
-  try{
-    // Devolver stock según receta
-    const recipe=productMaterials.filter(pm=>pm.product_id===o.product_id);
-    for(const pm of recipe){
-      const idx=ingredients.findIndex(x=>x.id===pm.ingredient_id);
-      if(idx<0)continue;
-      const devolucion=pm.qty_per_unit*o.qty;
-      const newStock=ingredients[idx].stock+devolucion;
-      await sb.from('ingredients').update({stock:newStock}).eq('id',pm.ingredient_id);
-      await sb.from('stock_movements').insert({ingredient_id:pm.ingredient_id,type:'ajuste',qty:devolucion});
-      ingredients[idx]={...ingredients[idx],stock:newStock};
-    }
-    await sb.from('payments').delete().eq('order_id',currentOrderId);
-    const{error}=await sb.from('orders').delete().eq('id',currentOrderId);
-    if(error)throw error;
-    allOrders=allOrders.filter(x=>x.id!==currentOrderId);
-    allPayments=allPayments.filter(x=>x.order_id!==currentOrderId);
-    updateStockBadge();
-    closeModal();showToast('🗑 Pedido eliminado — stock devuelto');rerenderCurrent();
-  }catch(e){showError('Error al eliminar: '+e.message);}
-}
-
-function openWhatsApp(){
-  const o=allOrders.find(x=>x.id===currentOrderId);if(!o||!o.client_phone)return;
-  const prod=products.find(p=>p.id===o.product_id);
-  const cycle=CYCLES.find(c=>c.id===o.cycle_id);
-  const clean=o.client_phone.replace(/\D/g,'');
-  const firstName=o.client_name.trim().split(' ')[0];
-  const notaLinea=o.notes?`\n📝 ${o.notes}`:'';
-  const msg=encodeURIComponent(`Hola ${firstName}, Confirmamos la entrega de tu pedido de Bananísimo 🍌:\n📦 ${prod?.name||''} × ${o.qty}\n💰 Total: ${formatPrice(o.qty*o.price)}\n📅 Entrega: ${cycle?cycle.entrega:'coordinamos'}${notaLinea}\nCompartinos tu ubicación para recibir tu orden📍 ¡Que estés muy bien! 🤎`);
-  window.open(`https://wa.me/506${clean}?text=${msg}`,'_blank');
-}
-
-function closeModal(e){
-  if(e&&e.target!==document.getElementById('modalOverlay'))return;
-  document.getElementById('modalOverlay').classList.remove('open');
-}
-
-// ── EDIT PANEL ────────────────────────────────────────────────
-function openEditPanel(){
-  const o=allOrders.find(x=>x.id===currentOrderId);if(!o)return;
-  const pagos=orderPayments(currentOrderId);
-  const orderDate=o.order_date||o.created_at.slice(0,10);
-  const today=new Date().toISOString().slice(0,10);
-  const stage=o.stage||'recibido';
-
-  document.getElementById('modalContent').innerHTML=`
-    <p class="modal-title" style="margin-bottom:16px;">✏️ Editar pedido</p>
-    <p style="font-size:13px;font-weight:700;color:var(--cacao);margin-bottom:12px;">${o.client_name}</p>
-
-    <div class="form-group"><label class="form-label">Stage</label>
-      <div class="stage-selector">
-        ${[...STAGES,'cancelado'].map(s=>{
-          const sc=STAGE_COLOR[s];
-          const isActive=stage===s;
-          return`<button class="stage-opt ${isActive?'active':''}" data-stage="${s}"
-            style="${isActive?`background:${sc.bg};color:${sc.color};border-color:${sc.color};`:''}"
-            onclick="selectEditStage(this,'${s}')">${STAGE_ICON[s]} ${STAGE_LABEL[s]}</button>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <div class="form-group"><label class="form-label">Producto</label>
-      <select class="form-input" id="edit_product">
-        ${products.map(p=>`<option value="${p.id}" ${o.product_id===p.id?'selected':''}>${p.name} — ${formatPrice(p.price)}</option>`).join('')}
-      </select>
-    </div>
-
-    <div class="form-group"><label class="form-label">Cantidad (loafs)</label>
-      <input class="form-input" id="edit_qty" type="number" min="1" max="${MAX_SEMANA}" value="${o.qty}">
-    </div>
-
-    <div class="form-group"><label class="form-label">Teléfono / WhatsApp</label>
-      <input class="form-input" id="edit_phone" type="tel" value="${o.client_phone||''}" placeholder="8888-8888">
-    </div>
-
-    <div class="form-group"><label class="form-label">Fecha del pedido</label>
-      <input class="form-input" id="edit_date" type="date" value="${orderDate}" max="${today}">
-    </div>
-
-    <div class="form-group"><label class="form-label">Ciclo de entrega</label>
-      <select class="form-input" id="edit_cycle">
-        ${CYCLES.map(c=>`<option value="${c.id}" ${o.cycle_id===c.id?'selected':''}>${c.label} → entrega ${c.entrega}</option>`).join('')}
-      </select>
-    </div>
-
-    <div class="form-group"><label class="form-label">Notas</label>
-      <input class="form-input" id="edit_notes" type="text" value="${o.notes||''}" placeholder="Sin notas">
-    </div>
-
-    ${pagos.length>0?`<div class="form-group"><label class="form-label">Fecha de pagos</label>
-      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;">
-        ${pagos.map(p=>`<div class="payment-row" style="align-items:center;">
-          <div><div class="payment-method">${METODOS[p.method]||p.method} · ${formatPrice(p.amount)}</div></div>
-          <input type="date" id="edit_pay_${p.id}" value="${(p.payment_date||p.created_at.slice(0,10))}"
-            style="border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:5px 8px;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:600;color:var(--text);background:var(--white);outline:none;max-width:140px;">
-        </div>`).join('')}
-      </div>
-    </div>`:''}
-
-    <div class="modal-actions">
-      <button class="btn-status btn-next" onclick="saveOrderEdit()">Guardar cambios</button>
-      <button class="btn-close-modal" onclick="openOrderModal(currentOrderId)">← Volver</button>
-    </div>`;
-}
-
-let editStageSelected=null;
-function selectEditStage(btn,stage){
-  editStageSelected=stage;
-  document.querySelectorAll('.stage-opt').forEach(b=>{
-    b.classList.remove('active');
-    b.style.background='';b.style.color='';b.style.borderColor='';
-  });
-  const sc=STAGE_COLOR[stage];
-  btn.classList.add('active');
-  btn.style.background=sc.bg;btn.style.color=sc.color;btn.style.borderColor=sc.color;
-}
-
-async function saveOrderEdit(){
-  const o=allOrders.find(x=>x.id===currentOrderId);if(!o)return;
-  const btn=event.target;btn.disabled=true;btn.textContent='Guardando...';
-  try{
-    const newProduct=document.getElementById('edit_product').value;
-    const newQty=parseInt(document.getElementById('edit_qty').value)||o.qty;
-    const newPhone=document.getElementById('edit_phone').value.trim();
-    const newDate=document.getElementById('edit_date').value;
-    const newCycle=document.getElementById('edit_cycle').value;
-    const newNotes=document.getElementById('edit_notes').value.trim();
-    const newWeekKey=getWeekKey(newDate);
-    const newStage=editStageSelected||(o.stage||'recibido');
-    const newPrice=(products.find(p=>p.id===newProduct)||{price:o.price}).price;
-
-    // Ajustar stock si cambió producto o cantidad
-    const productChanged=newProduct!==o.product_id;
-    const qtyChanged=newQty!==o.qty;
-    if(productChanged||qtyChanged){
-      // Devolver stock del pedido original
-      const oldRecipe=productMaterials.filter(pm=>pm.product_id===o.product_id);
-      for(const pm of oldRecipe){
-        const idx=ingredients.findIndex(x=>x.id===pm.ingredient_id);
-        if(idx<0)continue;
-        const devolucion=pm.qty_per_unit*o.qty;
-        const restored=ingredients[idx].stock+devolucion;
-        await sb.from('ingredients').update({stock:restored}).eq('id',pm.ingredient_id);
-        ingredients[idx]={...ingredients[idx],stock:restored};
-      }
-      // Descontar stock del nuevo pedido
-      const newRecipe=productMaterials.filter(pm=>pm.product_id===newProduct);
-      for(const pm of newRecipe){
-        const idx=ingredients.findIndex(x=>x.id===pm.ingredient_id);
-        if(idx<0)continue;
-        const consumo=pm.qty_per_unit*newQty;
-        const newStock=Math.max(0,ingredients[idx].stock-consumo);
-        await sb.from('ingredients').update({stock:newStock}).eq('id',pm.ingredient_id);
-        await sb.from('stock_movements').insert({ingredient_id:pm.ingredient_id,type:'uso',qty:-consumo});
-        ingredients[idx]={...ingredients[idx],stock:newStock};
-      }
-      updateStockBadge();
-    }
-
-    const{error:eo}=await sb.from('orders').update({
-      product_id:newProduct,qty:newQty,price:newPrice,
-      client_phone:newPhone||null,
-      order_date:newDate,cycle_id:newCycle,notes:newNotes||null,
-      week_key:newWeekKey,stage:newStage,
-    }).eq('id',currentOrderId);
-    if(eo)throw eo;
-
-    // Actualizar fechas de pagos
-    const pagos=orderPayments(currentOrderId);
-    for(const p of pagos){
-      const el=document.getElementById('edit_pay_'+p.id);
-      if(!el)continue;
-      const newPayDate=el.value;
-      if(newPayDate&&newPayDate!==(p.payment_date||p.created_at.slice(0,10))){
-        await sb.from('payments').update({payment_date:newPayDate}).eq('id',p.id);
-        const pi=allPayments.findIndex(x=>x.id===p.id);
-        if(pi>=0)allPayments[pi]={...allPayments[pi],payment_date:newPayDate};
-      }
-    }
-
-    const oi=allOrders.findIndex(x=>x.id===currentOrderId);
-    if(oi>=0)allOrders[oi]={...allOrders[oi],product_id:newProduct,qty:newQty,price:newPrice,client_phone:newPhone||null,order_date:newDate,cycle_id:newCycle,notes:newNotes||null,week_key:newWeekKey,stage:newStage};
-    editStageSelected=null;
-    showToast('✓ Pedido actualizado');openOrderModal(currentOrderId);rerenderCurrent();
-  }catch(e){showError('Error: '+e.message);btn.disabled=false;btn.textContent='Guardar cambios';}
-}
-
-// ── STOCK SCREEN ──────────────────────────────────────────────
-function renderStock(){
-  const filtered=ingredients.filter(i=>(i.category||'ingrediente')===stockTab);
-  const criticos=filtered.filter(i=>ingStatus(i)==='critico');
-  const alertas=filtered.filter(i=>ingStatus(i)==='alerta');
-  const ok=filtered.filter(i=>ingStatus(i)==='ok');
-  const sorted=[...criticos,...alertas,...ok];
-  const el=document.getElementById('screen-stock');
-  el.innerHTML=`
-    <div class="view-tabs" style="margin-bottom:12px;">
-      <button class="view-tab ${stockTab==='ingrediente'?'active':''}" onclick="stockTab='ingrediente';renderStock()">🌾 Ingredientes</button>
-      <button class="view-tab ${stockTab==='material'?'active':''}" onclick="stockTab='material';renderStock()">📦 Materiales</button>
-    </div>
-    ${criticos.length>0?`<div class="alert-banner" style="cursor:default;">
-      <div class="alert-banner-title">🔴 ${criticos.length} ${stockTab==='ingrediente'?'ingrediente':'material'}${criticos.length>1?'s':''} en nivel crítico</div>
-      <div class="alert-banner-text">Reposición urgente antes de producir.</div>
-    </div>`:''}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <span class="sec-label" style="margin:0;">${stockTab==='ingrediente'?'Ingredientes':'Materiales'} (${sorted.length})</span>
-      <div style="display:flex;gap:8px;font-size:11px;font-weight:700;">
-        <span style="color:var(--rojo);">🔴 ${criticos.length}</span>
-        <span style="color:var(--amarillo);">🟡 ${alertas.length}</span>
-        <span style="color:var(--hoja);">🟢 ${ok.length}</span>
-      </div>
-    </div>
-    ${sorted.map(i=>{
-      const st=ingStatus(i);
-      const max=Math.max(i.warn_stock*1.5,i.stock,1);
-      const pct=Math.min(100,Math.round((i.stock/max)*100));
-      return`<div class="ing-card status-${st}" data-id="${i.id}">
-        <div class="ing-top">
-          <div><div class="ing-name">${i.name}</div><div class="ing-meta">${i.cost_per_unit?formatPrice(i.cost_per_unit)+' / '+i.unit:''}</div></div>
-          <div class="ing-stock-val ${st}">${i.stock} ${i.unit}</div>
-        </div>
-        <div class="ing-bar-track"><div class="ing-bar-fill ${st}" style="width:${pct}%"></div></div>
-        <div class="ing-bottom"><span>Mín: ${i.min_stock} ${i.unit}</span><span>Alerta: ${i.warn_stock} ${i.unit}</span></div>
-      </div>`;
-    }).join('')}
-    ${sorted.length===0?`<div class="empty-state"><div class="e-icon">📦</div><div class="e-title">Sin ${stockTab==='ingrediente'?'ingredientes':'materiales'}</div></div>`:''}
-  `;
-  el.querySelectorAll('.ing-card').forEach(card=>card.addEventListener('click',()=>openIngModal(card.dataset.id)));
-}
-
-function openIngModal(ingId){
-  currentIngId=ingId;ingMoveType='compra';
-  const i=ingredients.find(x=>x.id===ingId);if(!i)return;
-  const st=ingStatus(i);
-  const stLabel={critico:'🔴 Crítico',alerta:'🟡 Alerta',ok:'🟢 OK'}[st];
-  document.getElementById('modalContent').innerHTML=`
-    <p class="modal-title">${i.name}</p>
-    <p class="modal-sub">${i.notes||''}</p>
-    <div class="modal-row"><span class="modal-row-label">Stock actual</span><span class="modal-row-val" style="color:${st==='critico'?'var(--rojo)':st==='alerta'?'var(--amarillo)':'var(--hoja)'};">${i.stock} ${i.unit}</span></div>
-    <div class="modal-row"><span class="modal-row-label">Estado</span><span class="modal-row-val">${stLabel}</span></div>
-    <div class="modal-row"><span class="modal-row-label">Nivel crítico</span><span class="modal-row-val">${i.min_stock} ${i.unit}</span></div>
-    <div class="modal-row"><span class="modal-row-label">Nivel de alerta</span><span class="modal-row-val">${i.warn_stock} ${i.unit}</span></div>
-    ${i.cost_per_unit?`<div class="modal-row"><span class="modal-row-label">Costo / ${i.unit}</span><span class="modal-row-val">${formatPrice(i.cost_per_unit)}</span></div>`:''}
-    <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid #F1EFE8;">
-      <p style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Actualizar stock</p>
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button class="filter-chip active" onclick="setIngMoveType('compra',this)">+ Compra</button>
-        <button class="filter-chip" onclick="setIngMoveType('uso',this)">− Uso</button>
-        <button class="filter-chip" onclick="setIngMoveType('ajuste',this)">Ajuste</button>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input class="form-input" id="ingQtyInput" type="number" placeholder="Cantidad (${i.unit})" style="flex:1;margin:0;">
-        <button class="btn-primary" style="width:auto;padding:11px 16px;flex-shrink:0;" onclick="saveIngMovement()">Guardar</button>
-      </div>
-      <p id="ingMoveHint" style="font-size:11px;color:var(--text-muted);margin-top:6px;">Suma al stock actual.</p>
-    </div>
-    <div class="modal-actions"><button class="btn-close-modal" onclick="closeModal()">Cerrar</button></div>
-  `;
-  document.getElementById('modalOverlay').classList.add('open');
-}
-function setIngMoveType(type,btn){
-  ingMoveType=type;
-  document.querySelectorAll('#modalContent .filter-chip').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  const hints={compra:'Suma al stock actual.',uso:'Resta del stock actual.',ajuste:'Reemplaza el stock con el valor ingresado.'};
-  const h=document.getElementById('ingMoveHint');if(h)h.textContent=hints[type];
-}
-async function saveIngMovement(){
-  const qty=parseFloat(document.getElementById('ingQtyInput').value);
-  if(!qty||qty<=0){showToast('⚠️ Ingresá una cantidad válida');return;}
-  const i=ingredients.find(x=>x.id===currentIngId);if(!i)return;
-  const newStock=ingMoveType==='compra'?i.stock+qty:ingMoveType==='uso'?Math.max(0,i.stock-qty):qty;
-  try{
-    const{error}=await sb.from('ingredients').update({stock:newStock}).eq('id',currentIngId);
-    if(error)throw error;
-    await sb.from('stock_movements').insert({ingredient_id:currentIngId,type:ingMoveType,qty:ingMoveType==='uso'?-qty:qty});
-    const idx=ingredients.findIndex(x=>x.id===currentIngId);
-    if(idx>=0)ingredients[idx]={...ingredients[idx],stock:newStock};
-    closeModal();updateStockBadge();showToast('✓ Stock actualizado');rerenderCurrent();
-  }catch(e){showError('Error: '+e.message);}
-}
-
-// ── FINANCE SCREEN ────────────────────────────────────────────
-
-// ── CONFIG SCREEN ─────────────────────────────────────────────
-function renderConfig(){
-  const{url}=loadConfig();
-  const el=document.getElementById('screen-config');
-  el.innerHTML=`
-    <div style="text-align:center;padding:6px 0 10px;">
-      <a href="/bananisimo/finanzas/" style="font-size:13px;font-weight:700;color:var(--dorado);text-decoration:none;">💰 Abrir app de Finanzas →</a>
-    </div>
-    <span class="sec-label">Recetas por producto</span>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;">Definí cuántas unidades de cada ingrediente/material se usan por loaf. El stock se rebajará automáticamente al crear un pedido.</p>
-    ${products.map(p=>{
-      const recipe=productMaterials.filter(pm=>pm.product_id===p.id);
-      const recipeItems=recipe.map(pm=>{
-        const ing=ingredients.find(i=>i.id===pm.ingredient_id);
-        return ing?`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #F1EFE8;">
-          <span style="font-size:12px;color:var(--text);">${ing.name}</span>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:12px;font-weight:700;color:var(--cacao);">${pm.qty_per_unit} ${ing.unit}</span>
-            <button onclick="removeRecipeItem('${pm.id}')" style="background:#fde8e8;color:#922b21;border:none;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">×</button>
+          <div class="two-col" id="ingQtyRow" style="display:none">
+            <div class="field">
+              <label>Cantidad</label>
+              <input type="text" id="ingQty" placeholder="100" inputmode="decimal" oninput="recalcIngMacros()">
+            </div>
+            <div class="field">
+              <label>Unidad</label>
+              <select id="ingUnit" onchange="onIngUnitChange()">
+                <option>gramos</option><option>ml</option><option>oz</option>
+                <option>tazas</option><option>cdas</option><option>cditas</option>
+                <option>unidades</option><option>rebanadas</option><option>piezas</option>
+              </select>
+            </div>
           </div>
-        </div>`:'';
-      }).join('');
-      return`<div class="card" style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <div>
-            <div style="font-size:15px;font-weight:700;color:var(--cacao);">${p.name}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${formatPrice(p.price)}</div>
+          <div id="ingServingRow" style="display:none">
+            <div class="field">
+              <label>Porción de referencia</label>
+              <select id="ingServingSelect" onchange="onIngServingSelect(this.value)">
+                <option value="">— elegí una porción de referencia —</option>
+              </select>
+            </div>
           </div>
-          <button onclick="openRecipeEditor('${p.id}')"
-            style="background:var(--crema);color:var(--cacao);border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:6px 12px;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">
-            + Agregar
+          <div id="ingMacroPreview" style="display:none;background:rgba(168,192,96,0.06);border:1px solid rgba(168,192,96,0.2);border-radius:10px;padding:10px 14px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center">
+              <div><div style="font-size:15px;color:var(--accent);font-family:var(--font-display)" id="ipCal">0</div><div style="font-size:10px;color:var(--muted)">kcal</div></div>
+              <div><div style="font-size:15px;color:var(--text);font-family:var(--font-display)" id="ipProt">0</div><div style="font-size:10px;color:var(--muted)">prot</div></div>
+              <div><div style="font-size:15px;color:var(--text);font-family:var(--font-display)" id="ipCarb">0</div><div style="font-size:10px;color:var(--muted)">carb</div></div>
+              <div><div style="font-size:15px;color:var(--text);font-family:var(--font-display)" id="ipFat">0</div><div style="font-size:10px;color:var(--muted)">gras</div></div>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="addIngredientToDish()" style="background:var(--surface2);color:var(--accent);border:1.5px solid var(--accent)">+ Agregar ingrediente</button>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button onclick="cancelDishBuilder()" style="flex:1;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-display);font-size:14px;cursor:pointer">Cancelar</button>
+          <button onclick="saveDish()" style="flex:2;padding:14px;border-radius:var(--r);border:none;background:var(--accent);color:#0e110a;font-family:var(--font-display);font-size:15px;font-weight:600;cursor:pointer">✓ Guardar platillo</button>
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- ══ PLANTILLAS SECTION ══ -->
+    <div id="sectionPlantillas" style="display:none">
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;margin-bottom:4px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Mis plantillas</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Tiempos de comida que repetís frecuentemente</div>
+        </div>
+        <button onclick="openNewTemplateBuilder()"
+          style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:9px 14px;font-family:var(--font-display);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
+          + Nueva
+        </button>
+      </div>
+      <div id="templatesList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div id="templatesEmpty" style="display:none" class="empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">Todavía no tenés plantillas.<br>Creá una con el botón "+" o guardá un tiempo de comida desde Inicio.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ PAGE: PERFIL ══ -->
+  <div class="page" id="page-profile">
+
+    <!-- User header -->
+    <div class="profile-header">
+      <div class="profile-avatar">👤</div>
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-email" id="profileEmail">—</div>
+    </div>
+
+    <!-- Profile nav -->
+    <div id="profNavRows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px">
+      <button id="profTabMetas"       onclick="switchProfileTab('metas')"
+        style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:15px;color:var(--text);cursor:pointer;transition:all 0.2s">
+        <span>🎯 Metas</span><span style="color:var(--muted);font-size:12px">›</span>
+      </button>
+      <button id="profTabSuplementos" onclick="switchProfileTab('suplementos')"
+        style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:15px;color:var(--text);cursor:pointer;transition:all 0.2s">
+        <span>💊 Suplementos</span><span style="color:var(--muted);font-size:12px">›</span>
+      </button>
+      <button id="profTabCuenta"      onclick="switchProfileTab('cuenta')"
+        style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-family:var(--font-display);font-size:15px;color:var(--text);cursor:pointer;transition:all 0.2s">
+        <span>👤 Cuenta</span><span style="color:var(--muted);font-size:12px">›</span>
+      </button>
+    </div>
+
+    <!-- Back button (shown when a section is open) -->
+    <div id="profBackRow" style="display:none;align-items:center;gap:10px;margin-bottom:8px">
+      <button onclick="profileGoBack()"
+        style="display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-family:var(--font-display);font-size:14px;cursor:pointer;padding:4px 0">
+        ‹ Perfil
+      </button>
+      <span style="font-size:15px;font-family:var(--font-display);color:var(--text)" id="profBackLabel"></span>
+    </div>
+
+    <!-- ── Metas ── -->
+    <div id="profSec-metas">
+      <div class="section-label" style="margin-top:4px">Nutrición diaria</div>
+      <div class="card">
+        <div class="settings-row"><div><div class="settings-label">Calorías</div></div><input class="settings-input" type="number" id="goalCal" placeholder="2000" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Proteína (g)</div></div><input class="settings-input" type="number" id="goalProtein" placeholder="150" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Carbohidratos (g)</div></div><input class="settings-input" type="number" id="goalCarbs" placeholder="250" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Grasas (g)</div></div><input class="settings-input" type="number" id="goalFat" placeholder="70" inputmode="numeric"></div>
+      </div>
+
+      <div class="section-label" style="margin-top:4px">Hidratación diaria</div>
+      <div class="card">
+        <div class="settings-row"><div><div class="settings-label">Agua (ml)</div></div><input class="settings-input" type="number" id="goalWater" placeholder="2000" inputmode="numeric"></div>
+        <div class="settings-row"><div><div class="settings-label">Hidratante (ml)</div></div><input class="settings-input" type="number" id="goalIsotonic" placeholder="500" inputmode="numeric"></div>
+      </div>
+
+      <!-- Metas por día de la semana -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:4px">
+        <div class="section-label" style="margin-top:0">Metas por día de la semana</div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <div id="adaptiveToggle" onclick="toggleAdaptiveGoals()"
+            style="width:38px;height:22px;border-radius:11px;background:var(--border);position:relative;cursor:pointer;transition:background .2s">
+            <div id="adaptiveThumb" style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s"></div>
+          </div>
+          <span style="font-size:12px;color:var(--muted)">Activar overrides</span>
+        </label>
+      </div>
+      <div id="adaptiveGoalsSection" style="display:none">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Dejá en blanco los días que usen las metas base de arriba.</div>
+        <div class="card" style="padding:10px 12px">
+          <div id="weeklyGoalsGrid"></div>
+        </div>
+      </div>
+
+      <button class="save-settings-btn" onclick="saveSettings()">✓ Guardar metas</button>
+    </div>
+
+    <!-- ── Suplementos ── -->
+    <div id="profSec-suplementos" style="display:none">
+      <div class="section-label" style="margin-top:4px">Mis suplementos</div>
+      <div class="card">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" id="newSuppName" placeholder="Nombre del suplemento…" style="width:100%">
+          <input type="text" id="newSuppNotes" placeholder="Notas (opcional)…" style="width:100%">
+          <button onclick="addSupplement()" style="background:var(--accent);color:#0e110a;border:none;border-radius:10px;padding:12px 16px;font-family:var(--font-display);font-size:14px;font-weight:600;cursor:pointer;width:100%">+ Agregar suplemento</button>
+        </div>
+        <div id="suppList" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- ── Cuenta ── -->
+    <div id="profSec-cuenta" style="display:none">
+      <div class="section-label" style="margin-top:4px">Cuenta</div>
+      <div class="card">
+        <button class="logout-btn" onclick="confirmLogout()">Cerrar sesión</button>
+        <button onclick="clearAllData()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:var(--r);padding:14px;font-family:var(--font-display);font-size:14px;cursor:pointer;width:100%;margin-top:8px">🗑 Borrar todos mis datos</button>
+      </div>
+
+      <div class="section-label" style="margin-top:12px">Exportar datos</div>
+      <div class="card" style="margin-top:4px">
+        <div class="two-col" style="margin-bottom:12px">
+          <div class="field">
+            <label>Desde</label>
+            <input type="date" id="exportDateFrom" style="width:100%;font-size:13px">
+          </div>
+          <div class="field">
+            <label>Hasta</label>
+            <input type="date" id="exportDateTo" style="width:100%;font-size:13px">
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          Incluye alimentos, hidratación, suplementos y notas del día en un solo archivo.
+        </div>
+        <button class="btn-primary" onclick="exportCSV()" style="background:var(--surface2);color:var(--accent);border:1.5px solid var(--accent)">
+          📥 Descargar CSV
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ PAGE: ANÁLISIS ══ -->
+  <div class="page" id="page-stats">
+
+    <!-- Header controls -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div class="sub-tabs" style="flex:1">
+        <button class="sub-tab active" id="statsRange7"    onclick="setStatsRange(7)">7 días</button>
+        <button class="sub-tab"        id="statsRange30"   onclick="setStatsRange(30)">30 días</button>
+        <button class="sub-tab"        id="statsRangeCustom" onclick="setStatsRange('custom')">Rango</button>
+      </div>
+    </div>
+
+    <!-- Custom date range picker -->
+    <div id="statsCustomRange" style="display:none;margin-top:8px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1">
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Desde</label>
+          <input type="date" id="statsCustomFrom" style="width:100%;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;color:var(--text)">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Hasta</label>
+          <input type="date" id="statsCustomTo" style="width:100%;font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;color:var(--text)">
+        </div>
+        <div style="padding-top:16px">
+          <button onclick="applyCustomRange()" class="btn-primary" style="padding:8px 14px;font-size:13px">Ver</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Period navigation row (hidden for custom) -->
+    <div id="statsNavRow" style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <button id="statsNavPrev" onclick="navigateStatsRange(-1)"
+        style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
+      <div style="flex:1;text-align:center">
+        <div id="statsNavLabel" style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--text)">—</div>
+        <div id="statsNavSub"   style="font-size:10px;color:var(--muted);margin-top:1px"></div>
+      </div>
+      <button id="statsNavNext" onclick="navigateStatsRange(1)"
+        style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
+    </div>
+
+    <!-- Loading skeleton — visible until renderStats() runs -->
+    <div id="statsSkeleton">
+      <div class="card" style="height:120px;opacity:0.4"></div>
+      <div class="card" style="height:80px;opacity:0.3"></div>
+      <div class="card" style="height:200px;opacity:0.2"></div>
+    </div>
+
+    <!-- ① Resumen del período -->
+    <div class="card" id="statsSummary" style="display:none">
+      <div class="section-label" style="margin-bottom:4px">Resumen del período</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px" id="statsSummaryGrid"></div>
+    </div>
+
+    <!-- ② Consistencia de metas -->
+    <div class="card" id="statsConsistency" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Consistencia de metas</div>
+      <div id="statsConsistencyContent"></div>
+    </div>
+
+    <!-- Hidratación -->
+    <div class="card" id="statsHydCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Hidratación promedio</div>
+      <div id="statsHydContent"></div>
+      <canvas id="chartHyd" height="260" style="display:none"></canvas>
+    </div>
+
+    <!-- Tendencia de calorías -->
+    <div class="card" id="statsTrendCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Tendencia de calorías</div>
+      <canvas id="chartTrend" height="180"></canvas>
+    </div>
+
+    <!-- Gasto vs consumo calórico -->
+    <div class="card" id="statsBurnCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Gasto vs consumo calórico</div>
+      <div id="statsBurnContent"></div>
+      <canvas id="chartBurn" height="200" style="margin-top:8px"></canvas>
+      <div id="statsBurnLegend" style="margin-top:10px"></div>
+      <div style="font-size:11px;color:var(--muted);margin:14px 0 6px;font-family:var(--font-display)">Balance neto diario</div>
+      <canvas id="chartBurnBalance" height="110"></canvas>
+    </div>
+
+    <!-- Tendencia de macronutrientes -->
+    <div class="card" id="statsMacroTrendCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Tendencia de macronutrientes</div>
+      <canvas id="chartMacroTrend" height="200"></canvas>
+    </div>
+
+    <!-- Tendencia de azúcar y fibra -->
+    <div class="card" id="statsSugarFiberCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Tendencia de azúcar y fibra</div>
+      <canvas id="chartSugarFiber" height="200"></canvas>
+    </div>
+
+    <!-- Alimentos más frecuentes -->
+    <div class="card" id="statsTopFoodsCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Alimentos más frecuentes</div>
+      <div id="statsTopFoods"></div>
+    </div>
+
+    <!-- Bebidas más frecuentes -->
+    <div class="card" id="statsTopDrinksCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Bebidas más frecuentes</div>
+      <div id="statsTopDrinks"></div>
+    </div>
+
+    <!-- Distribución por comida -->
+    <div class="card" id="statsMealCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Promedio de calorías por tiempo de comida</div>
+      <div id="statsMealContent"></div>
+    </div>
+
+    <!-- Macros por tiempo de comida -->
+    <div class="card" id="statsMealMacrosCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Macros promedio por tiempo de comida</div>
+      <div id="statsMealMacrosContent"></div>
+    </div>
+
+    <!-- Origen de comidas -->
+    <div class="card" id="statsOriginCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Origen de comidas</div>
+      <div id="statsOriginContent"></div>
+    </div>
+
+    <!-- Días comiendo fuera -->
+    <div class="card" id="statsEatingOutCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Días comiendo fuera</div>
+      <canvas id="chartEatingOut" height="160"></canvas>
+      <div id="statsEatingOutSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
+      <div id="statsEatingOutList" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"></div>
+    </div>
+
+    <!-- Días con consumo de alcohol -->
+    <div class="card" id="statsAlcoholCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Días con consumo de alcohol</div>
+      <canvas id="chartAlcohol" height="160"></canvas>
+      <div id="statsAlcoholSummary" style="margin-top:10px;font-size:13px;color:var(--muted);text-align:center"></div>
+      <div id="statsAlcoholList" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)"></div>
+    </div>
+
+    <!-- Analítica de uso -->
+    <div class="card" id="statsUsageCard" style="display:none">
+      <div class="section-label" style="margin-bottom:8px">Uso de la app</div>
+      <div id="statsUsageContent"></div>
+    </div>
+
+    <!-- Generar informe -->
+    <div id="statsReportSection" style="display:none;padding-bottom:8px">
+      <div class="field" style="margin-bottom:10px">
+        <label>Notas para el nutricionista (opcional)</label>
+        <textarea id="reportNotes" placeholder="Ej: he estado con más estrés esta semana, tomé antibióticos…" style="resize:none;height:72px;font-size:13px"></textarea>
+      </div>
+      <button class="btn-primary" onclick="generatePDF()" id="btnGeneratePDF">
+        📄 Descargar informe PDF
+      </button>
+
+      <!-- CSV Export -->
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
+    <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
+      <span class="nav-icon">🏠</span>Inicio
+    </button>
+    <button class="nav-btn" id="nav-foods" onclick="switchTab('foods')">
+      <span class="nav-icon">🥦</span>Alimentos
+    </button>
+    <button class="nav-btn-register" onclick="openRegisterSheet()" aria-label="Registrar">
+      <div class="nav-register-circle">+</div>
+      <span class="nav-register-label">Registrar</span>
+    </button>
+    <button class="nav-btn" id="nav-stats" onclick="switchTab('stats')">
+      <span class="nav-icon">📊</span>Análisis
+    </button>
+    <button class="nav-btn" id="nav-profile" onclick="switchTab('profile')">
+      <span class="nav-icon">👤</span>Perfil
+    </button>
+  </nav>
+
+</div><!-- end appScreen -->
+
+<!-- ══ BOTTOM SHEETS ══ -->
+
+  <!-- Register bottom sheet -->
+  <div class="bottom-sheet-overlay" id="bsRegister" onclick="closeBSIfOverlay(event,'bsRegister')">
+    <div class="bottom-sheet" style="padding-bottom:env(safe-area-inset-bottom)">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">➕ Registrar</div>
+        <button class="bs-close" onclick="closeBS('bsRegister')">✕</button>
+      </div>
+      <div class="bs-body" style="padding:16px 20px 24px">
+
+        <!-- Contextual suggestion — filled by JS -->
+        <div id="regSuggestion" style="display:none;margin-bottom:14px"></div>
+
+        <!-- Alimentación options -->
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Alimentación</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+          <button onclick="closeBS('bsRegister');openBS('bsFood')"
+            style="padding:14px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
+            <span style="font-size:22px">🥗</span>
+            <span style="font-family:var(--font-display);font-size:12px;color:var(--text)">Alimento</span>
+          </button>
+          <button id="regDishBtn" onclick="closeBS('bsRegister');openDishPicker()"
+            style="padding:14px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
+            <span style="font-size:22px">🍽️</span>
+            <span style="font-family:var(--font-display);font-size:12px;color:var(--text)">Platillo</span>
+          </button>
+          <button id="regTemplateBtn" onclick="closeBS('bsRegister');openTemplatePicker()"
+            style="padding:14px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px">
+            <span style="font-size:22px">📋</span>
+            <span style="font-family:var(--font-display);font-size:12px;color:var(--text)">Plantilla</span>
           </button>
         </div>
-        ${recipe.length===0
-          ?`<p style="font-size:12px;color:var(--text-muted);font-style:italic;">Sin receta configurada</p>`
-          :recipeItems}
-      </div>`;
-    }).join('')}
-    <span class="sec-label" style="margin-top:16px;">Conexión Supabase</span>
-    <div class="card">
-      <p style="font-size:12px;font-weight:700;color:var(--cacao);word-break:break-all;margin-bottom:12px;">${url||'No configurado'}</p>
-      <button onclick="resetConfig()" style="font-family:'Quicksand',sans-serif;font-size:13px;font-weight:700;padding:10px 16px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:transparent;cursor:pointer;color:var(--cacao);width:100%;">Reconfigurar conexión</button>
-    </div>
-  `;
-}
-function resetConfig(){if(!confirm('¿Borrar las credenciales?'))return;localStorage.removeItem('sb_url');localStorage.removeItem('sb_key');location.reload();}
 
-// ── EDITOR DE RECETAS ─────────────────────────────────────────
-let editingProductId=null;
-function openRecipeEditor(productId){
-  editingProductId=productId;
-  const p=products.find(x=>x.id===productId);
-  const existing=productMaterials.filter(pm=>pm.product_id===productId).map(pm=>pm.ingredient_id);
-  const available=ingredients.filter(i=>!existing.includes(i.id));
-  document.getElementById('modalContent').innerHTML=`
-    <p class="modal-title" style="margin-bottom:4px;">Receta — ${p?.name}</p>
-    <p class="modal-sub">Cantidad por loaf</p>
-    <div class="form-group"><label class="form-label">Ingrediente / Material</label>
-      <select class="form-input" id="recipe_ing">
-        <option value="">— Seleccioná —</option>
-        ${available.map(i=>`<option value="${i.id}">${i.name} (${i.unit})</option>`).join('')}
-      </select>
+        <!-- Other types -->
+        <div style="font-family:var(--font-display);font-size:13px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Otros</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onclick="closeBS('bsRegister');openBS('bsHyd')"
+            style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
+            <div style="width:40px;height:40px;border-radius:50%;background:#4a90d9;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💧</div>
+            <div>
+              <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Hidratación</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Agua, hidratantes</div>
+            </div>
+          </button>
+          <button onclick="closeBS('bsRegister');openBS('bsSupp')"
+            style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);cursor:pointer;text-align:left;width:100%">
+            <div style="width:40px;height:40px;border-radius:50%;background:#9b59b6;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💊</div>
+            <div>
+              <div style="font-family:var(--font-display);font-size:14px;color:var(--text);font-weight:500">Suplementos</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Marcá los suplementos del día</div>
+            </div>
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="form-group"><label class="form-label">Cantidad por loaf</label>
-      <input class="form-input" id="recipe_qty" type="number" step="0.1" placeholder="Ej: 1, 2.5, 30">
+  </div>
+
+  <!-- Dish picker sheet -->
+  <div class="bottom-sheet-overlay" id="bsDishPicker" onclick="closeBSIfOverlay(event,'bsDishPicker')">
+    <div class="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">🍽️ Elegí un platillo</div>
+        <button class="bs-close" onclick="closeBS('bsDishPicker')">✕</button>
+      </div>
+      <div class="bs-body">
+        <div id="dishPickerList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template picker sheet -->
+  <div class="bottom-sheet-overlay" id="bsTemplatePicker" onclick="closeBSIfOverlay(event,'bsTemplatePicker')">
+    <div class="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">📋 Aplicar plantilla</div>
+        <button class="bs-close" onclick="closeBS('bsTemplatePicker')">✕</button>
+      </div>
+      <div class="bs-body">
+        <div style="margin-bottom:12px">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Fecha</label>
+          <input type="date" id="templatePickerDate" style="width:100%;font-size:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;color:var(--text)">
+        </div>
+        <div id="templatePickerList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Food bottom sheet -->
+  <div class="bottom-sheet-overlay" id="bsFood" onclick="closeBSIfOverlay(event,'bsFood')">
+    <div class="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">🥗 Alimentación</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="voiceBtn" onclick="startVoiceEntry()" title="Registrar por voz"
+            style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;color:var(--muted);line-height:1">🎙️</button>
+          <button class="bs-close" onclick="closeBS('bsFood')">✕</button>
+        </div>
+      </div>
+      <!-- Voice status bar -->
+      <div id="voiceStatusBar" style="display:none;background:rgba(74,144,217,0.1);border-bottom:1px solid var(--border);padding:8px 16px;font-size:12px;color:#4a90d9;display:none;align-items:center;gap:8px">
+        <span id="voiceStatusDot" style="width:8px;height:8px;border-radius:50%;background:#4a90d9;flex-shrink:0;animation:pulse 1s infinite"></span>
+        <span id="voiceStatusText">Escuchando…</span>
+        <button onclick="stopVoice()" style="margin-left:auto;background:none;border:none;color:#4a90d9;font-size:11px;cursor:pointer;padding:0">Cancelar</button>
+      </div>
+      <div class="bs-body">
+        <!-- Search first -->
+        <div class="card">
+          <div class="field">
+            <label>Alimento / plato</label>
+            <div class="food-search-wrap">
+              <input type="text" id="foodName" placeholder="Buscar o escribir…" autocomplete="off" autocorrect="off" oninput="onFoodInput(this.value)" onfocus="onFoodInput(this.value)" onblur="hideFoodDropdown()">
+              <div class="food-dropdown" id="foodDropdown"></div>
+            </div>
+          </div>
+          <div id="autofillBadge" class="autofill-badge" style="display:none">
+            <span>✓ Datos cargados automáticamente</span>
+            <button onclick="clearAutofill()">✕</button>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label>Cantidad</label>
+              <input type="text" id="quantity" placeholder="100" inputmode="decimal" min="0" oninput="recalcByQty()">
+            </div>
+            <div class="field">
+              <label>Unidad</label>
+              <select id="unit" onchange="onUnitChange()">
+                <option>gramos</option><option>ml</option><option>oz</option>
+                <option>tazas</option><option>cdas</option><option>cditas</option>
+                <option>porciones</option><option>unidades</option>
+                <option>rebanadas</option><option>piezas</option>
+              </select>
+            </div>
+          </div>
+          <div id="servingRow" style="display:none">
+            <div class="field">
+              <label>Porción de referencia</label>
+              <select id="servingSelect" onchange="onServingSelect(this.value)">
+                <option value="">— elegí una porción de referencia —</option>
+              </select>
+            </div>
+          </div>
+          <div class="cal-display">
+            <div class="cal-number" id="calDisplay">0</div>
+            <div class="cal-label">calorías estimadas</div>
+          </div>
+          <div class="two-col">
+            <div class="macro-input"><label>Proteína</label><input type="number" id="protein" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">g</div></div>
+            <div class="macro-input"><label>Carbos</label><input type="number" id="carbs" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">g</div></div>
+          </div>
+          <div class="two-col">
+            <div class="macro-input"><label>Grasas</label><input type="number" id="fat" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">g</div></div>
+            <div class="macro-input"><label>Calorías</label><input type="number" id="calories" placeholder="0" inputmode="decimal" oninput="updateCalDisplay()"><div class="macro-unit">kcal</div></div>
+          </div>
+          <div class="two-col">
+            <div class="macro-input"><label>Fibra</label><input type="number" id="fiber" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
+            <div class="macro-input"><label>Azúcar</label><input type="number" id="sugar" placeholder="0" inputmode="decimal"><div class="macro-unit">g</div></div>
+          </div>
+          <div class="field">
+            <label>Notas (opcional)</label>
+            <input type="text" id="notes" placeholder="Ej: sin sal, con aceite…">
+          </div>
+        </div>
+
+        <!-- Tiempo de comida -->
+        <div class="card" style="margin-top:12px">
+          <div class="section-label">Tiempo de comida</div>
+          <div class="meal-grid">
+            <button class="meal-btn" data-meal="Desayuno" onclick="selectMeal(this)"><span class="emoji">🌅</span>Desayuno</button>
+            <button class="meal-btn" data-meal="Snack Mañana" onclick="selectMeal(this)"><span class="emoji">🍎</span>Snack AM</button>
+            <button class="meal-btn" data-meal="Almuerzo" onclick="selectMeal(this)"><span class="emoji">☀️</span>Almuerzo</button>
+            <button class="meal-btn" data-meal="Snack Tarde" onclick="selectMeal(this)"><span class="emoji">🥪</span>Snack PM</button>
+            <button class="meal-btn" data-meal="Cena" onclick="selectMeal(this)"><span class="emoji">🌙</span>Cena</button>
+            <button class="meal-btn" data-meal="Extra" onclick="selectMeal(this)"><span class="emoji">🍰</span>Extra</button>
+          </div>
+        </div>
+
+        <!-- Origen -->
+        <div class="card" style="margin-top:12px">
+          <div class="section-label">Origen</div>
+          <div class="origin-toggle">
+            <button class="origin-btn active" id="originHome" onclick="selectOrigin('Casa')">🏠 Casa</button>
+            <button class="origin-btn" id="originRestaurant" onclick="selectOrigin('Fuera')">🌍 Fuera</button>
+          </div>
+          <div class="settings-row" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div>
+              <div class="settings-label">Es bebida</div>
+              <div style="font-size:11px;color:var(--muted)">Se contará en análisis de bebidas</div>
+            </div>
+            <div onclick="toggleFoodBeverage()" id="foodBeverageToggle"
+              style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0"
+              data-active="false">
+              <div id="foodBeverageThumb"
+                style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>
+            </div>
+          </div>
+          <div class="settings-row" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div>
+              <div class="settings-label">Bebida alcohólica</div>
+              <div style="font-size:11px;color:var(--muted)">Se contará en el análisis de alcohol</div>
+            </div>
+            <div onclick="toggleFoodAlcohol()" id="foodAlcoholToggle"
+              style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0"
+              data-active="false">
+              <div id="foodAlcoholThumb"
+                style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fecha -->
+        <div class="card" style="margin-top:12px">
+          <div class="section-label">Fecha</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button id="foodDateBtn" onclick="document.getElementById('foodDateInput').showPicker()"
+              style="flex:1;padding:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-display);font-size:14px;cursor:pointer;text-align:left">
+              📅 Hoy
+            </button>
+            <input type="date" id="foodDateInput" max="" style="position:absolute;opacity:0;pointer-events:none"
+              oninput="onFoodDateChange(this.value)">
+            <button id="foodDateClear" onclick="clearFoodDate()" style="display:none;background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+          </div>
+        </div>
+
+        <button class="btn-primary" style="margin-top:12px" onclick="openFoodConfirm()">Revisar y registrar →</button>
+        <div style="height:24px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hydration bottom sheet -->
+  <div class="bottom-sheet-overlay" id="bsHyd" onclick="closeBSIfOverlay(event,'bsHyd')">
+    <div class="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">💧 Hidratación</div>
+        <button class="bs-close" onclick="closeBS('bsHyd')">✕</button>
+      </div>
+      <div class="bs-body">
+
+        <!-- Drink type -->
+        <div class="card">
+          <div class="section-label">Tipo de bebida</div>
+          <div class="drink-grid" id="drinkTypeGrid" style="grid-template-columns:1fr 1fr"></div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div id="hydAmountRow">
+            <div class="section-label">Cantidad</div>
+            <!-- Custom amount first -->
+            <div class="field" style="margin-bottom:10px">
+              <label>Cantidad personalizada (ml)</label>
+              <input type="number" id="hydCustomAmt" placeholder="500" inputmode="numeric">
+            </div>
+            <!-- Quick buttons in 2 rows of 4 -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px">
+              <button class="quick-btn" onclick="addQuickWater(150)">150ml</button>
+              <button class="quick-btn" onclick="addQuickWater(250)">250ml</button>
+              <button class="quick-btn" onclick="addQuickWater(350)">350ml</button>
+              <button class="quick-btn" onclick="addQuickWater(400)">400ml</button>
+              <button class="quick-btn" onclick="addQuickWater(500)">500ml</button>
+              <button class="quick-btn" onclick="addQuickWater(600)">600ml</button>
+              <button class="quick-btn" onclick="addQuickWater(750)">750ml</button>
+              <button class="quick-btn" onclick="addQuickWater(1000)">1L</button>
+            </div>
+          </div>
+          <div id="hydCountRow" style="display:none">
+            <div class="section-label">Cantidad</div>
+            <div class="count-control">
+              <button class="count-btn" onclick="adjustCount(-1)">−</button>
+              <div class="count-display" id="hydCountDisplay">1</div>
+              <button class="count-btn" onclick="adjustCount(1)">+</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Notas (opcional)</label>
+            <input type="text" id="hydNotes" placeholder="Ej: con limón…">
+          </div>
+          <!-- Fecha -->
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+            <button id="hydDateBtn" onclick="document.getElementById('hydDateInput').showPicker()"
+              style="flex:1;padding:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-display);font-size:14px;cursor:pointer;text-align:left">
+              📅 Hoy
+            </button>
+            <input type="date" id="hydDateInput" max="" style="position:absolute;opacity:0;pointer-events:none"
+              oninput="onHydDateChange(this.value)">
+            <button id="hydDateClear" onclick="clearHydDate()" style="display:none;background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+          </div>
+          <button class="btn-primary" style="margin-top:12px" onclick="logHydration()">💧 Registrar bebida</button>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supplements bottom sheet -->
+  <div class="bottom-sheet-overlay" id="bsSupp" onclick="closeBSIfOverlay(event,'bsSupp')">
+    <div class="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-header">
+        <div class="bs-title">💊 Suplementos</div>
+        <button class="bs-close" onclick="closeBS('bsSupp')">✕</button>
+      </div>
+      <div class="bs-body">
+        <div class="card">
+          <div class="section-label" style="margin-bottom:4px">Suplementos de hoy</div>
+          <div id="suppChecklist">
+            <div class="empty" style="padding:20px 0">
+              <div class="empty-icon" style="font-size:28px">💊</div>
+              <div class="empty-text">No tenés suplementos configurados aún.</div>
+            </div>
+          </div>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+    </div>
+  </div>
+
+<!-- ══ FOOD CONFIRM MODAL ══ -->
+<div class="modal-overlay" id="foodConfirmModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">✓ Confirmar registro</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+
+      <div style="background:var(--surface2);border-radius:12px;padding:14px 16px">
+        <div style="font-family:var(--font-display);font-size:17px;color:var(--text);font-weight:500" id="cfFoodName"></div>
+        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+          <span id="cfMealBadge" style="font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+          <span id="cfOriginBadge" style="font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+          <span id="cfDateBadge" style="font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)"></span>
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:baseline;gap:6px">
+          <span id="cfCal" style="font-size:28px;font-weight:300;color:var(--accent);font-family:var(--font-display)"></span>
+          <span style="font-size:12px;color:var(--muted)">kcal</span>
+        </div>
+        <div id="cfQtyUnit" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfProt" style="font-size:18px;font-weight:300;color:var(--accent2);font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">proteína g</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfCarb" style="font-size:18px;font-weight:300;color:#5bc0de;font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">carbos g</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfFat" style="font-size:18px;font-weight:300;color:#e07840;font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">grasas g</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfFiber" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">fibra g</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 6px">
+          <div id="cfSugar" style="font-size:16px;font-weight:300;color:var(--text2);font-family:var(--font-display)"></div>
+          <div style="font-size:10px;color:var(--muted)">azúcar g</div>
+        </div>
+      </div>
+
+      <div id="cfNotesRow" style="display:none;background:var(--surface2);border-radius:10px;padding:10px 14px">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Notas</div>
+        <div id="cfNotes" style="font-size:13px;color:var(--text2)"></div>
+      </div>
+
     </div>
     <div class="modal-actions">
-      <button class="btn-status btn-next" onclick="saveRecipeItem()">Agregar a receta</button>
-      <button class="btn-close-modal" onclick="closeModal();renderConfig();">Volver</button>
-    </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
-}
-async function saveRecipeItem(){
-  const ingId=document.getElementById('recipe_ing').value;
-  const qty=parseFloat(document.getElementById('recipe_qty').value);
-  if(!ingId){showToast('⚠️ Seleccioná un ingrediente');return;}
-  if(!qty||qty<=0){showToast('⚠️ Ingresá una cantidad válida');return;}
-  const btn=event.target;btn.disabled=true;btn.textContent='Guardando...';
-  try{
-    const{data,error}=await sb.from('product_materials').insert({
-      product_id:editingProductId,ingredient_id:ingId,qty_per_unit:qty
-    }).select().single();
-    if(error)throw error;
-    productMaterials.push(data);
-    showToast('✓ Ingrediente agregado');
-    closeModal();renderConfig();
-  }catch(e){showError('Error: '+e.message);btn.disabled=false;btn.textContent='Agregar a receta';}
-}
-async function removeRecipeItem(pmId){
-  if(!confirm('¿Quitar este ingrediente de la receta?'))return;
-  try{
-    const{error}=await sb.from('product_materials').delete().eq('id',pmId);
-    if(error)throw error;
-    productMaterials=productMaterials.filter(pm=>pm.id!==pmId);
-    renderConfig();showToast('✓ Ingrediente quitado');
-  }catch(e){showError('Error: '+e.message);}
-}
+      <button class="modal-cancel" onclick="closeFoodConfirmModal()">← Editar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="event.stopPropagation();confirmAndSaveEntry()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
 
-// ── SERVICE WORKER ────────────────────────────────────────────
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/bananisimo/pedidos/sw.js',{scope:'/bananisimo/pedidos/'}).then(reg=>{
-      reg.addEventListener('updatefound',()=>{
-        const nw=reg.installing;
-        nw.addEventListener('statechange',()=>{
-          if(nw.state==='installed'&&navigator.serviceWorker.controller)showToast('🍌 Nueva versión disponible — recargá la app',6000);
-        });
-      });
-    });
-  });
-}
+<!-- ══ EDIT ENTRY MODAL ══ -->
+<div class="modal-overlay" id="editEntryModal">
+  <div class="modal" style="max-width:380px;max-height:90dvh;overflow-y:auto">
+    <div class="modal-title">Editar entrada</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field">
+        <label>Nombre</label>
+        <input type="text" id="editFoodName" placeholder="Nombre del alimento">
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>Cantidad</label>
+          <input type="text" id="editQuantity" inputmode="decimal" oninput="recalcEditMacros()">
+        </div>
+        <div class="field">
+          <label>Unidad</label>
+          <select id="editUnit">
+            <option>gramos</option><option>ml</option><option>oz</option>
+            <option>tazas</option><option>cdas</option><option>cditas</option>
+            <option>unidades</option><option>rebanadas</option><option>piezas</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Tiempo de comida</label>
+        <select id="editMealType">
+          <option>Desayuno</option><option>Snack Mañana</option><option>Almuerzo</option>
+          <option>Snack Tarde</option><option>Cena</option><option>Extra</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="editLogDate" max="">
+      </div>
+      <div class="field">
+        <label>Origen</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button id="editOriginHome" onclick="setEditOrigin('Casa')" style="padding:10px;border-radius:10px;border:1.5px solid var(--accent2);background:rgba(212,168,64,0.08);color:var(--accent2);font-family:var(--font-display);font-size:13px;cursor:pointer">🏠 Casa</button>
+          <button id="editOriginFuera" onclick="setEditOrigin('Fuera')" style="padding:10px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-display);font-size:13px;cursor:pointer">🌍 Fuera</button>
+        </div>
+      </div>
+      <!-- Toggles -->
+      <div class="settings-row" style="padding:4px 0">
+        <div>
+          <div class="settings-label">Es bebida</div>
+          <div style="font-size:11px;color:var(--muted)">Se contará en análisis de bebidas</div>
+        </div>
+        <div onclick="toggleEditBeverage()" id="editBeverageToggle"
+          style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0"
+          data-active="false">
+          <div id="editBeverageThumb"
+            style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>
+        </div>
+      </div>
+      <div class="settings-row" style="padding:4px 0">
+        <div>
+          <div class="settings-label">Bebida alcohólica</div>
+          <div style="font-size:11px;color:var(--muted)">Se contará en el análisis de alcohol</div>
+        </div>
+        <div onclick="toggleEditAlcohol()" id="editAlcoholToggle"
+          style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0"
+          data-active="false">
+          <div id="editAlcoholThumb"
+            style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="macro-input"><label>Proteína</label><input type="number" id="editProtein" inputmode="decimal"><div class="macro-unit">g</div></div>
+        <div class="macro-input"><label>Carbos</label><input type="number" id="editCarbs" inputmode="decimal"><div class="macro-unit">g</div></div>
+      </div>
+      <div class="two-col">
+        <div class="macro-input"><label>Grasas</label><input type="number" id="editFat" inputmode="decimal"><div class="macro-unit">g</div></div>
+        <div class="macro-input"><label>Calorías</label><input type="number" id="editCalories" inputmode="decimal"><div class="macro-unit">kcal</div></div>
+      </div>
+      <div class="two-col">
+        <div class="macro-input"><label>Fibra</label><input type="number" id="editFiber" inputmode="decimal"><div class="macro-unit">g</div></div>
+        <div class="macro-input"><label>Azúcar</label><input type="number" id="editSugar" inputmode="decimal"><div class="macro-unit">g</div></div>
+      </div>
+      <div class="field">
+        <label>Notas</label>
+        <input type="text" id="editNotes" placeholder="Opcional">
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-cancel" onclick="closeEditModal()">Cancelar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="saveEditEntry()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
 
-initApp();
-</script>
-</body>
-</html>
+<!-- ══ CONFIRM MODAL (genérico) ══ -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-title" id="confirmTitle">¿Estás seguro?</div>
+    <div class="modal-body" id="confirmBody"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeConfirmModal()">Cancelar</button>
+      <button class="modal-confirm" id="confirmActionBtn" onclick="runConfirmAction()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NEW TEMPLATE MODAL ══ -->
+<div class="modal-overlay" id="newTemplateModal">
+  <div class="modal" style="max-width:400px;max-height:90dvh;overflow-y:auto">
+    <div class="modal-title">📋 Nueva plantilla</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field">
+        <label>Nombre</label>
+        <input type="text" id="newTplName" placeholder="Ej: Desayuno habitual…">
+      </div>
+      <div class="field">
+        <label>Tiempo de comida</label>
+        <select id="newTplMealType" style="font-family:var(--font-display)">
+          <option>Desayuno</option><option>Snack Mañana</option><option>Almuerzo</option>
+          <option>Snack Tarde</option><option>Cena</option><option>Extra</option>
+        </select>
+      </div>
+      <div class="section-label" style="margin:0">Alimentos</div>
+      <div id="newTplItems" style="display:flex;flex-direction:column;gap:6px"></div>
+      <!-- Add item row -->
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div class="field" style="flex:2;margin:0">
+          <label>Alimento</label>
+          <div style="position:relative">
+            <input type="text" id="newTplFoodInput" placeholder="Buscar…" autocomplete="off"
+              oninput="onNewTplFoodInput(this.value)"
+              onblur="setTimeout(()=>document.getElementById('newTplDropdown').classList.remove('show'),200)">
+            <div class="food-dropdown" id="newTplDropdown"></div>
+          </div>
+        </div>
+        <div class="field" style="flex:1;margin:0">
+          <label>Cant.</label>
+          <input type="number" id="newTplQty" placeholder="1" inputmode="decimal" min="0">
+        </div>
+        <div class="field" style="flex:1;margin:0">
+          <label>Unidad</label>
+          <select id="newTplUnit" style="font-family:var(--font-display);font-size:13px">
+            <option>gramos</option><option>ml</option><option>unidades</option>
+            <option>tazas</option><option>cdas</option><option>rebanadas</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="addNewTplItem()"
+        style="padding:10px;border-radius:var(--r);border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-family:var(--font-display);font-size:13px;cursor:pointer">
+        + Agregar alimento
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-cancel" onclick="document.getElementById('newTemplateModal').classList.remove('show')">Cancelar</button>
+      <button class="modal-confirm" style="background:var(--accent);color:#0e110a" onclick="saveNewTemplate()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GLOBAL SEARCH OVERLAY ══ -->
+<!-- ══ CALENDAR PICKER ══ -->
+<div id="calendarOverlay" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.55);align-items:flex-end;justify-content:center">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:85dvh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)">
+    <!-- Handle -->
+    <div style="width:40px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 0"></div>
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px 8px">
+      <button onclick="calendarPrevMonth()" style="background:none;border:none;font-size:22px;color:var(--text2);cursor:pointer;padding:4px 8px;line-height:1">‹</button>
+      <div id="calendarMonthLabel" style="font-family:var(--font-display);font-size:16px;color:var(--text);font-weight:500"></div>
+      <button onclick="calendarNextMonth()" style="background:none;border:none;font-size:22px;color:var(--text2);cursor:pointer;padding:4px 8px;line-height:1">›</button>
+    </div>
+    <!-- Day-of-week labels -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);padding:0 12px;margin-bottom:4px">
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-display);pa
